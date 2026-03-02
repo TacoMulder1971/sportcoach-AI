@@ -1,65 +1,118 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import Countdown from '@/components/Countdown';
+import TrainingCard from '@/components/TrainingCard';
+import { getTodayTraining } from '@/lib/schedule';
+import { getRecentCheckIns } from '@/lib/storage';
+import { TrainingDay, CheckIn, FEELING_EMOJIS } from '@/lib/types';
+
+export default function Dashboard() {
+  const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
+  const [recentCheckIns, setRecentCheckIns] = useState<CheckIn[]>([]);
+
+  useEffect(() => {
+    setTodayTraining(getTodayTraining());
+    setRecentCheckIns(getRecentCheckIns(3));
+  }, []);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="px-4 pt-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">TriCoach AI</h1>
+        <p className="text-gray-500 text-sm">Jouw persoonlijke trainingscoach</p>
+      </div>
+
+      {/* Countdown */}
+      <Countdown />
+
+      {/* Training van vandaag */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          Training vandaag
+        </h2>
+        {todayTraining ? (
+          <TrainingCard training={todayTraining} isToday />
+        ) : (
+          <div className="bg-white rounded-xl p-6 border border-gray-200 text-center">
+            <p className="text-gray-500">Geen training gepland vandaag</p>
+          </div>
+        )}
+      </section>
+
+      {/* Snelle acties */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Snel naar</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <Link
+            href="/checkin"
+            className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <span className="text-2xl">✅</span>
+            <p className="text-sm font-medium mt-2">Check-in</p>
+            <p className="text-xs text-gray-500">Hoe ging het?</p>
+          </Link>
+          <Link
+            href="/coach"
+            className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
           >
-            Documentation
-          </a>
+            <span className="text-2xl">🤖</span>
+            <p className="text-sm font-medium mt-2">AI Coach</p>
+            <p className="text-xs text-gray-500">Vraag advies</p>
+          </Link>
+          <Link
+            href="/schema"
+            className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
+          >
+            <span className="text-2xl">📅</span>
+            <p className="text-sm font-medium mt-2">Schema</p>
+            <p className="text-xs text-gray-500">Bekijk planning</p>
+          </Link>
+          <Link
+            href="/schema"
+            className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
+          >
+            <span className="text-2xl">❤️</span>
+            <p className="text-sm font-medium mt-2">Hartslagzones</p>
+            <p className="text-xs text-gray-500">Z1-Z4 overzicht</p>
+          </Link>
         </div>
-      </main>
+      </section>
+
+      {/* Recente check-ins */}
+      {recentCheckIns.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+            Recente check-ins
+          </h2>
+          <div className="space-y-2">
+            {recentCheckIns.map((ci) => (
+              <div
+                key={ci.id}
+                className="bg-white rounded-xl p-3 border border-gray-200 flex items-center gap-3"
+              >
+                <span className="text-2xl">
+                  {FEELING_EMOJIS[ci.feeling]?.emoji}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {ci.trainingDay}
+                  </p>
+                  {ci.note && (
+                    <p className="text-xs text-gray-500 truncate">{ci.note}</p>
+                  )}
+                </div>
+                <span className="text-xs text-gray-400">{ci.date}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Bottom spacer for nav */}
+      <div className="h-4" />
     </div>
   );
 }
