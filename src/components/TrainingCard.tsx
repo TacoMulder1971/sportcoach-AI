@@ -40,7 +40,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
         {training.sessions.map((session, idx) => (
           <div key={idx} className="flex items-start gap-3">
             <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
+              className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${
                 SPORT_COLORS[session.sport]
               } text-white flex-shrink-0`}
             >

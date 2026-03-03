@@ -24,7 +24,11 @@ export default function Countdown() {
           </p>
           <p className="text-blue-200 text-sm mt-1">tot 1/4 Triatlon</p>
         </div>
-        <div className="text-5xl">🏊🚴🏃</div>
+        <div className="flex gap-2">
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">Z</div>
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">F</div>
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-bold">H</div>
+        </div>
       </div>
       <div className="mt-4 bg-blue-500/30 rounded-full h-2">
         <div

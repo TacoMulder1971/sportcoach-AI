@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckIn, FEELING_EMOJIS, TrainingSession } from '@/lib/types';
+import { CheckIn, FEELING_SCALE, TrainingSession } from '@/lib/types';
 import { saveCheckIn, generateId } from '@/lib/storage';
 
 interface CheckInFormProps {
@@ -36,7 +36,9 @@ export default function CheckInForm({ sessions, dayLabel, onComplete }: CheckInF
   if (submitted) {
     return (
       <div className="text-center py-8">
-        <div className="text-5xl mb-4">✅</div>
+        <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
         <p className="text-lg font-semibold text-gray-900">Check-in opgeslagen!</p>
         <p className="text-gray-500 text-sm mt-1">Je coach onthoudt dit</p>
       </div>
@@ -54,14 +56,16 @@ export default function CheckInForm({ sessions, dayLabel, onComplete }: CheckInF
             <button
               key={level}
               onClick={() => setFeeling(level)}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl transition-all ${
+              className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all ${
                 feeling === level
-                  ? 'bg-blue-100 border-2 border-blue-500 scale-105'
+                  ? 'bg-blue-50 border-2 border-blue-500 scale-105'
                   : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
               }`}
             >
-              <span className="text-3xl">{FEELING_EMOJIS[level].emoji}</span>
-              <span className="text-xs text-gray-600">{FEELING_EMOJIS[level].label}</span>
+              <div className={`w-10 h-10 rounded-full ${FEELING_SCALE[level].color} ${FEELING_SCALE[level].textColor} flex items-center justify-center font-bold text-lg`}>
+                {level}
+              </div>
+              <span className="text-xs text-gray-600">{FEELING_SCALE[level].label}</span>
             </button>
           ))}
         </div>

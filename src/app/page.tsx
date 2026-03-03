@@ -6,7 +6,7 @@ import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData } from '@/lib/storage';
-import { TrainingDay, CheckIn, FEELING_EMOJIS, GarminSyncData, SPORT_ICONS } from '@/lib/types';
+import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, SPORT_ICONS, SPORT_COLORS } from '@/lib/types';
 
 export default function Dashboard() {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
@@ -146,9 +146,9 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   {garmin.activities.slice(0, 5).map((a) => (
                     <div key={a.id} className="flex items-center gap-3">
-                      <span className="text-xl">
-                        {a.sport !== 'overig' ? SPORT_ICONS[a.sport] : '🏋️'}
-                      </span>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${a.sport !== 'overig' ? SPORT_COLORS[a.sport] : 'bg-gray-500'}`}>
+                        {a.sport !== 'overig' ? SPORT_ICONS[a.sport] : '?'}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{a.activityName}</p>
                         <p className="text-xs text-gray-500">
@@ -181,32 +181,40 @@ export default function Dashboard() {
             href="/checkin"
             className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
           >
-            <span className="text-2xl">✅</span>
-            <p className="text-sm font-medium mt-2">Check-in</p>
+            <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center mb-2">
+              <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+            </div>
+            <p className="text-sm font-medium">Check-in</p>
             <p className="text-xs text-gray-500">Hoe ging het?</p>
           </Link>
           <Link
             href="/coach"
             className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
           >
-            <span className="text-2xl">🤖</span>
-            <p className="text-sm font-medium mt-2">AI Coach</p>
+            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mb-2">
+              <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <p className="text-sm font-medium">AI Coach</p>
             <p className="text-xs text-gray-500">Vraag advies</p>
           </Link>
           <Link
             href="/schema"
             className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
           >
-            <span className="text-2xl">📅</span>
-            <p className="text-sm font-medium mt-2">Schema</p>
+            <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center mb-2">
+              <svg className="w-5 h-5 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <p className="text-sm font-medium">Schema</p>
             <p className="text-xs text-gray-500">Bekijk planning</p>
           </Link>
           <Link
             href="/schema"
             className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-300 transition-colors"
           >
-            <span className="text-2xl">❤️</span>
-            <p className="text-sm font-medium mt-2">Hartslagzones</p>
+            <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center mb-2">
+              <svg className="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 7.65l.78.77L12 20.64l7.64-7.64.78-.77a5.4 5.4 0 0 0 0-7.65z"/></svg>
+            </div>
+            <p className="text-sm font-medium">Hartslagzones</p>
             <p className="text-xs text-gray-500">Z1-Z4 overzicht</p>
           </Link>
         </div>
@@ -224,9 +232,9 @@ export default function Dashboard() {
                 key={ci.id}
                 className="bg-white rounded-xl p-3 border border-gray-200 flex items-center gap-3"
               >
-                <span className="text-2xl">
-                  {FEELING_EMOJIS[ci.feeling]?.emoji}
-                </span>
+                <div className={`w-9 h-9 rounded-full ${FEELING_SCALE[ci.feeling]?.color} ${FEELING_SCALE[ci.feeling]?.textColor} flex items-center justify-center font-bold text-sm flex-shrink-0`}>
+                  {ci.feeling}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
                     {ci.trainingDay}

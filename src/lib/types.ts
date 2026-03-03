@@ -64,11 +64,11 @@ export const HEART_RATE_ZONES: HeartRateZoneInfo[] = [
 ];
 
 export const SPORT_ICONS: Record<Sport, string> = {
-  zwemmen: '🏊',
-  fietsen: '🚴',
-  hardlopen: '🏃',
-  mountainbike: '🚵',
-  rust: '😴',
+  zwemmen: 'Z',
+  fietsen: 'F',
+  hardlopen: 'H',
+  mountainbike: 'M',
+  rust: 'R',
 };
 
 export const SPORT_COLORS: Record<Sport, string> = {
@@ -79,12 +79,12 @@ export const SPORT_COLORS: Record<Sport, string> = {
   rust: 'bg-gray-400',
 };
 
-export const FEELING_EMOJIS: Record<number, { emoji: string; label: string }> = {
-  1: { emoji: '😫', label: 'Zeer slecht' },
-  2: { emoji: '😕', label: 'Matig' },
-  3: { emoji: '😐', label: 'Oké' },
-  4: { emoji: '😊', label: 'Goed' },
-  5: { emoji: '🤩', label: 'Uitstekend' },
+export const FEELING_SCALE: Record<number, { label: string; color: string; textColor: string }> = {
+  1: { label: 'Zeer slecht', color: 'bg-red-500', textColor: 'text-white' },
+  2: { label: 'Matig', color: 'bg-orange-400', textColor: 'text-white' },
+  3: { label: 'Oké', color: 'bg-yellow-400', textColor: 'text-gray-800' },
+  4: { label: 'Goed', color: 'bg-lime-500', textColor: 'text-white' },
+  5: { label: 'Uitstekend', color: 'bg-green-500', textColor: 'text-white' },
 };
 
 export const DEFAULT_PROFILE: UserProfile = {
