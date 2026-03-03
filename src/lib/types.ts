@@ -94,3 +94,36 @@ export const DEFAULT_PROFILE: UserProfile = {
   raceGoal: 'Onder de 3 uur',
   raceType: '1/4 Triatlon',
 };
+
+// Garmin types
+export interface GarminActivity {
+  id: number;
+  date: string; // ISO date
+  sport: Sport | 'overig';
+  activityName: string;
+  durationMinutes: number;
+  distanceKm: number;
+  avgHR: number;
+  maxHR: number;
+  calories: number;
+  avgSpeed: number; // km/h
+}
+
+export interface GarminHealthStats {
+  date: string;
+  sleepDurationHours: number;
+  sleepScore: number;
+  deepSleepMinutes: number;
+  remSleepMinutes: number;
+  avgOvernightHrv: number;
+  hrvStatus: string;
+  restingHR: number;
+  bodyBatteryChange: number;
+  steps: number;
+}
+
+export interface GarminSyncData {
+  activities: GarminActivity[];
+  health: GarminHealthStats | null;
+  syncedAt: string;
+}

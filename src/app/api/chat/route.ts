@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { messages, checkIns } = await request.json();
+    const { messages, checkIns, garminData } = await request.json();
 
     // Add current date/time context
     const now = new Date();
@@ -79,6 +79,29 @@ export async function POST(request: NextRequest) {
         contextMessage += `- ${ci.date} (${ci.trainingDay}): Gevoel ${ci.feeling}/5`;
         if (ci.note) contextMessage += ` - "${ci.note}"`;
         contextMessage += '\n';
+      }
+    }
+
+    // Add Garmin data context
+    if (garminData) {
+      if (garminData.health) {
+        const h = garminData.health;
+        contextMessage += `\nGARMIN GEZONDHEIDSDATA (${h.date}):\n`;
+        contextMessage += `- Slaap: ${h.sleepDurationHours} uur (score: ${h.sleepScore}/100)\n`;
+        contextMessage += `- Diepe slaap: ${h.deepSleepMinutes} min, REM: ${h.remSleepMinutes} min\n`;
+        contextMessage += `- HRV: ${h.avgOvernightHrv} ms (status: ${h.hrvStatus})\n`;
+        contextMessage += `- Rust hartslag: ${h.restingHR} bpm\n`;
+        contextMessage += `- Body Battery verandering: ${h.bodyBatteryChange > 0 ? '+' : ''}${h.bodyBatteryChange}\n`;
+        contextMessage += `- Stappen: ${h.steps}\n`;
+      }
+      if (garminData.activities && garminData.activities.length > 0) {
+        contextMessage += '\nRECENTE GARMIN ACTIVITEITEN:\n';
+        for (const a of garminData.activities.slice(0, 7)) {
+          contextMessage += `- ${a.date}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
+          if (a.distanceKm > 0) contextMessage += `, ${a.distanceKm}km`;
+          if (a.avgHR > 0) contextMessage += `, gem HR ${a.avgHR}, max HR ${a.maxHR}`;
+          contextMessage += '\n';
+        }
       }
     }
 

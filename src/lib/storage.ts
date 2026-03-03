@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData } from './types';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
 export function generateId(): string {
@@ -9,6 +9,7 @@ const KEYS = {
   CHECK_INS: 'tricoach_checkins',
   CHAT_MESSAGES: 'tricoach_chat',
   PROFILE: 'tricoach_profile',
+  GARMIN_DATA: 'tricoach_garmin',
 } as const;
 
 function getItem<T>(key: string, fallback: T): T {
@@ -72,4 +73,13 @@ export function getProfile(): UserProfile {
 
 export function saveProfile(profile: UserProfile): void {
   setItem(KEYS.PROFILE, profile);
+}
+
+// Garmin data
+export function getGarminData(): GarminSyncData | null {
+  return getItem<GarminSyncData | null>(KEYS.GARMIN_DATA, null);
+}
+
+export function saveGarminData(data: GarminSyncData): void {
+  setItem(KEYS.GARMIN_DATA, data);
 }
