@@ -122,6 +122,13 @@ export interface GarminHealthStats {
   steps: number;
 }
 
+export interface TrainingLoadData {
+  weekLoad: number; // TRIMP over 7 dagen
+  status: 'laag' | 'optimaal' | 'hoog' | 'overbelast';
+  statusColor: string;
+  advice: string;
+}
+
 export interface GarminSyncData {
   activities: GarminActivity[];
   health: GarminHealthStats | null;

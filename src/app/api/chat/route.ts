@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { messages, checkIns, garminData } = await request.json();
+    const { messages, checkIns, garminData, trainingLoad } = await request.json();
 
     // Add current date/time context
     const now = new Date();
@@ -103,6 +103,14 @@ export async function POST(request: NextRequest) {
           contextMessage += '\n';
         }
       }
+    }
+
+    // Add Training Load context
+    if (trainingLoad) {
+      contextMessage += `\nTRAINING LOAD (TRIMP, 7 dagen):\n`;
+      contextMessage += `- Weekbelasting: ${trainingLoad.weekLoad} TRIMP\n`;
+      contextMessage += `- Status: ${trainingLoad.status}\n`;
+      contextMessage += `- Advies: ${trainingLoad.advice}\n`;
     }
 
     const client = new Anthropic({ apiKey });

@@ -15,12 +15,16 @@ function IconClipboard({ className }: { className?: string }) {
 function IconChat({ className }: { className?: string }) {
   return (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>);
 }
+function IconData({ className }: { className?: string }) {
+  return (<svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>);
+}
 
 const navItems = [
   { href: '/', label: 'Home', Icon: IconHome },
   { href: '/schema', label: 'Schema', Icon: IconCalendar },
   { href: '/checkin', label: 'Check-in', Icon: IconClipboard },
   { href: '/coach', label: 'Coach', Icon: IconChat },
+  { href: '/data', label: 'Data', Icon: IconData },
 ];
 
 export default function Navigation() {
@@ -41,8 +45,8 @@ export default function Navigation() {
                   : 'text-gray-400 hover:text-gray-600'
               }`}
             >
-              <item.Icon className="w-6 h-6" />
-              <span className={`text-xs mt-1 ${isActive ? 'font-semibold' : ''}`}>
+              <item.Icon className="w-5 h-5" />
+              <span className={`text-[10px] mt-1 ${isActive ? 'font-semibold' : ''}`}>
                 {item.label}
               </span>
             </Link>
