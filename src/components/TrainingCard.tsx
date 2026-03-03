@@ -47,7 +47,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
               {SPORT_ICONS[session.sport]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+              <p className="text-sm font-medium text-gray-900">
                 {session.description}
               </p>
               <div className="flex items-center gap-2 mt-1">
