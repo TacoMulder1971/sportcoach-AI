@@ -1,19 +1,73 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckIn, FEELING_SCALE, TrainingSession } from '@/lib/types';
-import { saveCheckIn, generateId } from '@/lib/storage';
+import { CheckIn, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
+import { saveCheckIn, generateId, getGarminData, getRecentCheckIns } from '@/lib/storage';
+import { calculateTrainingLoad } from '@/lib/training-load';
 
 interface CheckInFormProps {
   sessions: TrainingSession[];
   dayLabel: string;
+  garminActivities?: GarminActivity[];
   onComplete: () => void;
 }
 
-export default function CheckInForm({ sessions, dayLabel, onComplete }: CheckInFormProps) {
+export default function CheckInForm({ sessions, dayLabel, garminActivities = [], onComplete }: CheckInFormProps) {
   const [feeling, setFeeling] = useState<1 | 2 | 3 | 4 | 5 | null>(null);
   const [note, setNote] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+
+  const fetchFeedback = async (checkIn: CheckIn) => {
+    setLoadingFeedback(true);
+    try {
+      const garminData = getGarminData();
+      const recentCheckIns = getRecentCheckIns(5);
+      const trainingLoad = garminData
+        ? calculateTrainingLoad(garminData.activities, garminData.health)
+        : null;
+
+      // Build a specific feedback request
+      let feedbackPrompt = `De atleet heeft zojuist een check-in gedaan na de training van ${dayLabel}.\n`;
+      feedbackPrompt += `Gevoel: ${checkIn.feeling}/5`;
+      if (checkIn.note) feedbackPrompt += ` - "${checkIn.note}"`;
+      feedbackPrompt += '\n\nGeplande sessies:\n';
+      for (const s of sessions) {
+        feedbackPrompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min in ${s.zone}\n`;
+      }
+
+      if (garminActivities.length > 0) {
+        feedbackPrompt += '\nWerkelijke Garmin data van vandaag:\n';
+        for (const a of garminActivities) {
+          feedbackPrompt += `- ${a.activityName}: ${a.durationMinutes}min, ${a.distanceKm}km, gem HR ${a.avgHR}, max HR ${a.maxHR}\n`;
+        }
+        feedbackPrompt += '\nGeef korte feedback (2-3 zinnen) over deze training. Vergelijk gepland vs gedaan. Was de intensiteit goed? Hoe past dit in het trainingsplan?';
+      } else {
+        feedbackPrompt += '\nEr is geen Garmin activiteit beschikbaar voor vandaag. Geef korte feedback (2-3 zinnen) op basis van het gevoel en de geplande training.';
+      }
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: feedbackPrompt }],
+          checkIns: recentCheckIns,
+          garminData,
+          trainingLoad,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFeedback(data.content);
+      }
+    } catch {
+      // Feedback is optional, don't block the flow
+    } finally {
+      setLoadingFeedback(false);
+    }
+  };
 
   const handleSubmit = () => {
     if (feeling === null) return;
@@ -30,17 +84,53 @@ export default function CheckInForm({ sessions, dayLabel, onComplete }: CheckInF
 
     saveCheckIn(checkIn);
     setSubmitted(true);
-    setTimeout(() => onComplete(), 1500);
+    fetchFeedback(checkIn);
   };
 
   if (submitted) {
     return (
-      <div className="text-center py-8">
-        <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <div className="py-4">
+        {/* Success */}
+        <div className="text-center mb-4">
+          <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <p className="text-lg font-semibold text-gray-900">Check-in opgeslagen!</p>
         </div>
-        <p className="text-lg font-semibold text-gray-900">Check-in opgeslagen!</p>
-        <p className="text-gray-500 text-sm mt-1">Je coach onthoudt dit</p>
+
+        {/* AI Feedback */}
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-semibold text-blue-600 mb-1">Coach feedback</p>
+              {loadingFeedback ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  </div>
+                  <p className="text-sm text-gray-500">Analyse bezig...</p>
+                </div>
+              ) : feedback ? (
+                <p className="text-sm text-gray-700">{feedback}</p>
+              ) : (
+                <p className="text-sm text-gray-500">Feedback niet beschikbaar</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Back button */}
+        <button
+          onClick={onComplete}
+          className="w-full mt-4 py-3 rounded-xl font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+        >
+          Terug naar dashboard
+        </button>
       </div>
     );
   }
