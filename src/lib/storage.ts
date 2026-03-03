@@ -51,6 +51,15 @@ export function getRecentCheckIns(count: number = 7): CheckIn[] {
   return checkIns.slice(-count);
 }
 
+export function updateCheckIn(id: string, updates: Partial<CheckIn>): void {
+  const checkIns = getCheckIns();
+  const index = checkIns.findIndex((c) => c.id === id);
+  if (index !== -1) {
+    checkIns[index] = { ...checkIns[index], ...updates };
+    setItem(KEYS.CHECK_INS, checkIns);
+  }
+}
+
 // Chat messages
 export function getChatMessages(): ChatMessage[] {
   return getItem<ChatMessage[]>(KEYS.CHAT_MESSAGES, []);

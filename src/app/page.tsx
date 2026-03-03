@@ -201,20 +201,30 @@ export default function Dashboard() {
             {recentCheckIns.map((ci) => (
               <div
                 key={ci.id}
-                className="bg-white rounded-xl p-3 border border-gray-200 flex items-center gap-3"
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden"
               >
-                <div className={`w-9 h-9 rounded-full ${FEELING_SCALE[ci.feeling]?.color} ${FEELING_SCALE[ci.feeling]?.textColor} flex items-center justify-center font-bold text-sm flex-shrink-0`}>
-                  {ci.feeling}
+                <div className="p-3 flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-full ${FEELING_SCALE[ci.feeling]?.color} ${FEELING_SCALE[ci.feeling]?.textColor} flex items-center justify-center font-bold text-sm flex-shrink-0`}>
+                    {ci.feeling}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {ci.trainingDay}
+                    </p>
+                    {ci.note && (
+                      <p className="text-xs text-gray-500 truncate">{ci.note}</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400">{ci.date}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">
-                    {ci.trainingDay}
-                  </p>
-                  {ci.note && (
-                    <p className="text-xs text-gray-500 truncate">{ci.note}</p>
-                  )}
-                </div>
-                <span className="text-xs text-gray-400">{ci.date}</span>
+                {ci.feedback && (
+                  <div className="px-3 pb-3 pt-0">
+                    <div className="bg-blue-50 rounded-lg p-2.5 flex items-start gap-2">
+                      <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      <p className="text-xs text-gray-600 leading-relaxed">{ci.feedback}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

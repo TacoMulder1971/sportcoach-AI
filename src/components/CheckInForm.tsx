@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CheckIn, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
-import { saveCheckIn, generateId, getGarminData, getRecentCheckIns } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, getRecentCheckIns } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 
 interface CheckInFormProps {
@@ -61,6 +61,8 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       if (response.ok) {
         const data = await response.json();
         setFeedback(data.content);
+        // Feedback opslaan bij de check-in
+        updateCheckIn(checkIn.id, { feedback: data.content });
       }
     } catch {
       // Feedback is optional, don't block the flow

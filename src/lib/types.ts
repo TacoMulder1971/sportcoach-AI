@@ -38,6 +38,7 @@ export interface CheckIn {
   feeling: 1 | 2 | 3 | 4 | 5;
   note: string;
   sessions: TrainingSession[];
+  feedback?: string; // AI coach feedback na check-in
   createdAt: string;
 }
 
