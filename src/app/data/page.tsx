@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getGarminData } from '@/lib/storage';
-import { calculateTrainingLoad } from '@/lib/training-load';
-import { GarminSyncData, SPORT_ICONS, SPORT_COLORS, HEART_RATE_ZONES } from '@/lib/types';
+import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
+import { GarminSyncData, SPORT_ICONS, SPORT_COLORS, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -15,6 +15,11 @@ export default function DataPage() {
   const trainingLoad = useMemo(() => {
     if (!garmin) return null;
     return calculateTrainingLoad(garmin.activities, garmin.health);
+  }, [garmin]);
+
+  const readiness: TrainingReadiness | null = useMemo(() => {
+    if (!garmin) return null;
+    return getTrainingReadiness(garmin.health, true);
   }, [garmin]);
 
   // Weekly totals
@@ -60,6 +65,49 @@ export default function DataPage() {
         <h1 className="text-2xl font-bold text-gray-900">Data</h1>
         <p className="text-gray-500 text-sm">Garmin gegevens {lastSync && `· ${lastSync}`}</p>
       </div>
+
+      {/* Trainingsgereedheid detail */}
+      {readiness && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Trainingsgereedheid</h2>
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-full ${readiness.bgColor} flex items-center justify-center`}>
+                <span className="text-white font-bold text-lg">{readiness.score}</span>
+              </div>
+              <div>
+                <p className={`text-xl font-bold ${readiness.color}`}>{readiness.label}</p>
+                <p className="text-xs text-gray-500">{readiness.score}/9 punten</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: 'HRV', val: readiness.factors.hrv, detail: garmin?.health ? `${garmin.health.avgOvernightHrv}ms · ${garmin.health.hrvStatus}` : '' },
+                { label: 'Slaap', val: readiness.factors.sleep, detail: garmin?.health ? `Score ${garmin.health.sleepScore} · ${garmin.health.sleepDurationHours}u` : '' },
+                { label: 'Lichaam', val: readiness.factors.body, detail: garmin?.health ? `Battery ${garmin.health.bodyBatteryChange > 0 ? '+' : ''}${garmin.health.bodyBatteryChange} · Rust HR ${garmin.health.restingHR}` : '' },
+              ].map((f) => (
+                <div key={f.label} className="flex items-center gap-3">
+                  <p className="text-xs text-gray-500 w-14">{f.label}</p>
+                  <div className="flex gap-1 flex-1">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-3 flex-1 rounded ${
+                          i <= f.val
+                            ? f.val >= 3 ? 'bg-green-400' : f.val >= 2 ? 'bg-yellow-400' : 'bg-red-400'
+                            : 'bg-gray-100'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-400 w-36 text-right">{f.detail}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-gray-600 mt-3 pt-3 border-t border-gray-100">{readiness.advice}</p>
+          </div>
+        </section>
+      )}
 
       {/* Week overzicht */}
       {weekStats && (

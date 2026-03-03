@@ -6,8 +6,8 @@ import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData } from '@/lib/storage';
-import { calculateTrainingLoad, getBatteryAdvice } from '@/lib/training-load';
-import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData } from '@/lib/types';
+import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
+import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness } from '@/lib/types';
 
 export default function Dashboard() {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
@@ -44,9 +44,9 @@ export default function Dashboard() {
     return calculateTrainingLoad(garmin.activities, garmin.health);
   }, [garmin]);
 
-  const batteryAdvice = useMemo(() => {
+  const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getBatteryAdvice(garmin.health, !!todayTraining && !todayTraining.isRestDay);
+    return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay);
   }, [garmin, todayTraining]);
 
   // Load bar percentage (0-100, capped at 600 TRIMP)
@@ -106,19 +106,41 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Body Battery / Herstel */}
+        {/* Trainingsgereedheid */}
         <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <p className="text-xs text-gray-400 mb-1">Herstel</p>
-          {batteryAdvice ? (
+          <p className="text-xs text-gray-400 mb-1">Gereedheid</p>
+          {readiness ? (
             <>
-              <p className={`text-2xl font-bold ${batteryAdvice.color}`}>
-                {garmin?.health?.bodyBatteryChange !== undefined
-                  ? `${garmin.health.bodyBatteryChange > 0 ? '+' : ''}${garmin.health.bodyBatteryChange}`
-                  : '–'}
-              </p>
-              <p className={`text-xs font-semibold ${batteryAdvice.color}`}>
-                {batteryAdvice.level}
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <div className={`w-3 h-3 rounded-full ${readiness.bgColor}`} />
+                <p className={`text-lg font-bold ${readiness.color}`}>
+                  {readiness.label}
+                </p>
+              </div>
+              <p className={`text-xs ${readiness.color} font-semibold mb-2`}>{readiness.score}/9</p>
+              <div className="flex gap-1">
+                {[
+                  { label: 'HRV', val: readiness.factors.hrv },
+                  { label: 'Slaap', val: readiness.factors.sleep },
+                  { label: 'Lichaam', val: readiness.factors.body },
+                ].map((f) => (
+                  <div key={f.label} className="flex-1 text-center">
+                    <div className="flex gap-px justify-center mb-0.5">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className={`w-2 h-2 rounded-sm ${
+                            i <= f.val
+                              ? f.val >= 3 ? 'bg-green-400' : f.val >= 2 ? 'bg-yellow-400' : 'bg-red-400'
+                              : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-[9px] text-gray-400">{f.label}</p>
+                  </div>
+                ))}
+              </div>
             </>
           ) : (
             <p className="text-sm text-gray-400 mt-1">Sync voor data</p>
@@ -127,7 +149,7 @@ export default function Dashboard() {
       </div>
 
       {/* Coach advies strip */}
-      {(trainingLoad || batteryAdvice) && (
+      {(trainingLoad || readiness) && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -136,9 +158,9 @@ export default function Dashboard() {
             <div>
               <p className="text-xs font-semibold text-blue-600 mb-1">Coach advies</p>
               <p className="text-sm text-gray-700">
-                {batteryAdvice?.advice || trainingLoad?.advice || ''}
+                {readiness?.advice || trainingLoad?.advice || ''}
               </p>
-              {trainingLoad && batteryAdvice && trainingLoad.advice !== batteryAdvice.advice && (
+              {trainingLoad && readiness && trainingLoad.advice !== readiness.advice && (
                 <p className="text-sm text-gray-600 mt-1">{trainingLoad.advice}</p>
               )}
             </div>

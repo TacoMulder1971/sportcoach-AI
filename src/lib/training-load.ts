@@ -1,4 +1,4 @@
-import { GarminActivity, GarminHealthStats, TrainingLoadData } from './types';
+import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness } from './types';
 
 const MAX_HR = 172;
 const REST_HR = 55; // geschatte rustHR, wordt overschreven door Garmin data
@@ -69,52 +69,85 @@ export function calculateTrainingLoad(
 }
 
 /**
- * Genereer advies op basis van Body Battery + geplande training
+ * Trainingsgereedheid: visueel groen/geel/rood systeem
+ * Combineert HRV, slaap en lichaam tot een score van 0-9
  */
-export function getBatteryAdvice(
+export function getTrainingReadiness(
   health: GarminHealthStats | null,
   hasTrainingToday: boolean
-): { level: string; color: string; advice: string } {
-  if (!health) {
-    return { level: '–', color: 'text-gray-400', advice: 'Sync je Garmin om advies te krijgen.' };
+): TrainingReadiness | null {
+  if (!health) return null;
+
+  // HRV score (0-3)
+  let hrvScore = 0;
+  const hrvStatus = (health.hrvStatus || '').toLowerCase();
+  if (hrvStatus === 'balanced' || hrvStatus === 'good' || hrvStatus === 'optimal') {
+    hrvScore = 3;
+  } else if (health.avgOvernightHrv > 40) {
+    hrvScore = 2;
+  } else if (health.avgOvernightHrv > 25) {
+    hrvScore = 1;
   }
 
-  const battery = health.bodyBatteryChange;
-  const hrv = health.avgOvernightHrv;
-  const sleepScore = health.sleepScore;
+  // Slaap score (0-3)
+  let sleepScore = 0;
+  if (health.sleepScore > 75) {
+    sleepScore = 3;
+  } else if (health.sleepScore > 55) {
+    sleepScore = 2;
+  } else if (health.sleepScore > 40) {
+    sleepScore = 1;
+  }
 
-  // Herstel score: combinatie van battery change, HRV en slaap
-  let recoveryScore = 0;
-  if (battery > 30) recoveryScore += 2;
-  else if (battery > 10) recoveryScore += 1;
-  if (hrv > 50) recoveryScore += 2;
-  else if (hrv > 30) recoveryScore += 1;
-  if (sleepScore > 70) recoveryScore += 2;
-  else if (sleepScore > 50) recoveryScore += 1;
+  // Lichaam score: battery + rusthartslag (0-3)
+  let bodyScore = 0;
+  if (health.bodyBatteryChange > 20) {
+    bodyScore += 2;
+  } else if (health.bodyBatteryChange > 5) {
+    bodyScore += 1;
+  }
+  if (health.restingHR > 0 && health.restingHR < 55) {
+    bodyScore += 1;
+  }
+  bodyScore = Math.min(3, bodyScore);
 
-  if (recoveryScore >= 5) {
+  const total = hrvScore + sleepScore + bodyScore;
+
+  if (total >= 7) {
     return {
-      level: 'Goed hersteld',
-      color: 'text-green-500',
+      level: 'klaar',
+      label: 'Klaar',
+      color: 'text-green-600',
+      bgColor: 'bg-green-500',
+      score: total,
       advice: hasTrainingToday
-        ? 'Je bent goed hersteld. Ga vol voor de geplande training!'
-        : 'Goed hersteld. Rustdag of lichte activiteit is prima.',
+        ? 'Je bent goed hersteld. Ga vol voor de training!'
+        : 'Top hersteld. Geniet van je rustdag.',
+      factors: { hrv: hrvScore, sleep: sleepScore, body: bodyScore },
     };
   }
-  if (recoveryScore >= 3) {
+  if (total >= 4) {
     return {
-      level: 'Voldoende',
-      color: 'text-yellow-500',
+      level: 'matig',
+      label: 'Matig',
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-400',
+      score: total,
       advice: hasTrainingToday
-        ? 'Redelijk hersteld. Doe de training, maar luister naar je lichaam.'
+        ? 'Redelijk hersteld. Train, maar luister naar je lichaam.'
         : 'Matig herstel. Neem het rustig aan vandaag.',
+      factors: { hrv: hrvScore, sleep: sleepScore, body: bodyScore },
     };
   }
   return {
-    level: 'Onvoldoende',
+    level: 'rust_nodig',
+    label: 'Rust nodig',
     color: 'text-red-500',
+    bgColor: 'bg-red-500',
+    score: total,
     advice: hasTrainingToday
-      ? 'Slecht hersteld. Overweeg een lichtere training of rustdag.'
-      : 'Matig hersteld. Focus op herstel: rust, voeding en slaap.',
+      ? 'Neem het rustig aan of kies voor een lichte hersteltraining.'
+      : 'Focus op herstel: rust, voeding en slaap.',
+    factors: { hrv: hrvScore, sleep: sleepScore, body: bodyScore },
   };
 }

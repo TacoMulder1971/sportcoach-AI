@@ -135,3 +135,13 @@ export interface GarminSyncData {
   health: GarminHealthStats | null;
   syncedAt: string;
 }
+
+export interface TrainingReadiness {
+  level: 'klaar' | 'matig' | 'rust_nodig';
+  label: string;
+  color: string;
+  bgColor: string;
+  score: number; // 0-9
+  advice: string;
+  factors: { hrv: number; sleep: number; body: number };
+}
