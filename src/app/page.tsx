@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness } from '@/lib/types';
 
@@ -17,7 +17,8 @@ export default function Dashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
-    const training = getTodayTraining();
+    const { plan, cycleStartDate } = getActivePlan();
+    const training = getTodayTraining(plan, cycleStartDate);
     setTodayTraining(training);
     setRecentCheckIns(getRecentCheckIns(3));
     setGarmin(getGarminData());

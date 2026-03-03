@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CheckInForm from '@/components/CheckInForm';
 import { getTodayTraining } from '@/lib/schedule';
-import { getGarminData } from '@/lib/storage';
+import { getGarminData, getActivePlan } from '@/lib/storage';
 import { TrainingDay, GarminActivity, SPORT_ICONS, SPORT_COLORS, HEART_RATE_ZONES } from '@/lib/types';
 
 function getHRZoneLabel(avgHR: number): string {
@@ -20,7 +20,8 @@ export default function CheckInPage() {
   const [todayActivities, setTodayActivities] = useState<GarminActivity[]>([]);
 
   useEffect(() => {
-    setTodayTraining(getTodayTraining());
+    const { plan, cycleStartDate } = getActivePlan();
+    setTodayTraining(getTodayTraining(plan, cycleStartDate));
 
     // Match Garmin activities from today
     const garmin = getGarminData();

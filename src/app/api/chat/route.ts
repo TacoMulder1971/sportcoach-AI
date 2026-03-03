@@ -1,32 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-const SYSTEM_PROMPT = `Je bent TriCoach AI, een persoonlijke trainingscoach voor triatlon. Je spreekt Nederlands.
+const BASE_PROMPT = `Je bent TriCoach AI, een persoonlijke trainingscoach voor triatlon. Je spreekt Nederlands.
 
 ATLEET PROFIEL:
 - Traint voor een 1/4 triatlon op 13 juni 2026
 - Doel: onder de 3 uur finishen
 - Max hartslag: 172 bpm
 - Hartslagzones: Z1 (103-120), Z2 (121-137), Z3 (138-151), Z4 (152-163)
-
-TRAININGSSCHEMA (2-weekse cyclus):
-Week 1:
-- Ma: Zwemmen techniek (45min Z2) + Fietsen herstel (45min Z1)
-- Di: Hardlopen interval (50min Z3) - 6x 800m met 2 min rust
-- Wo: Rust
-- Do: Hardlopen duur (60min Z2)
-- Vr: Zwemmen tempo/techniek (45min Z3)
-- Za: Hardlopen rustig (45min Z1)
-- Zo: Fietsen lang (90-120min Z2) + Brick run (20-30min Z2)
-
-Week 2:
-- Ma: Zwemmen techniek (45min Z2) + Fietsen herstel (45min Z1)
-- Di: Hardlopen tempo (50min Z3)
-- Wo: Rust
-- Do: Hardlopen duur (65min Z2)
-- Vr: Zwemmen duur (50min Z2)
-- Za: Mountainbike (60min Z2)
-- Zo: Zwemmen (40min Z2) + Hardlopen duur (50min Z2)
 
 JE TAKEN:
 1. Geef concreet, praktisch trainingsadvies
@@ -44,6 +25,25 @@ STIJL:
 - Geef maximaal 1-2 alinea's antwoord tenzij meer detail gevraagd wordt
 - Gebruik geen emojis in lopende tekst, alleen aan het begin van een bericht als het past`;
 
+function buildPlanText(plan: { weekNumber: number; label: string; days: { day: string; isRestDay: boolean; sessions: { sport: string; type: string; durationMinutes?: number; zone?: string; description: string }[] }[] }[]): string {
+  let text = '\nTRAININGSSCHEMA (2-weekse cyclus):\n';
+  for (const week of plan) {
+    text += `${week.label}:\n`;
+    for (const day of week.days) {
+      if (day.isRestDay) {
+        text += `- ${day.day}: Rust\n`;
+      } else {
+        const parts = day.sessions.map((s) =>
+          `${s.sport} ${s.type} (${s.durationMinutes}min ${s.zone || ''})`
+        );
+        text += `- ${day.day}: ${parts.join(' + ')}\n`;
+      }
+    }
+    text += '\n';
+  }
+  return text;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -54,7 +54,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { messages, checkIns, garminData, trainingLoad } = await request.json();
+    const { messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate } = await request.json();
+
+    // Bouw schema tekst dynamisch
+    let planText = '';
+    if (currentPlan && Array.isArray(currentPlan) && currentPlan.length === 2) {
+      planText = buildPlanText(currentPlan);
+    } else {
+      // Fallback naar hardcoded tekst
+      planText = `\nTRAININGSSCHEMA (2-weekse cyclus):
+Week 1:
+- Ma: Zwemmen techniek (45min Z2) + Fietsen herstel (45min Z1)
+- Di: Hardlopen interval (50min Z3) - 6x 800m met 2 min rust
+- Wo: Rust
+- Do: Hardlopen duur (60min Z2)
+- Vr: Zwemmen tempo/techniek (45min Z3)
+- Za: Hardlopen rustig (45min Z1)
+- Zo: Fietsen lang (90-120min Z2) + Brick run (20-30min Z2)
+
+Week 2:
+- Ma: Zwemmen techniek (45min Z2) + Fietsen herstel (45min Z1)
+- Di: Hardlopen tempo (50min Z3)
+- Wo: Rust
+- Do: Hardlopen duur (65min Z2)
+- Vr: Zwemmen duur (50min Z2)
+- Za: Mountainbike (60min Z2)
+- Zo: Zwemmen (40min Z2) + Hardlopen duur (50min Z2)\n`;
+    }
 
     // Add current date/time context
     const now = new Date();
@@ -64,7 +90,8 @@ export async function POST(request: NextRequest) {
     const dayName = days[now.getDay()];
 
     // Determine current week in cycle
-    const startDate = new Date('2026-02-23');
+    const startStr = cycleStartDate || '2026-02-23';
+    const startDate = new Date(startStr);
     const diffDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const weekNum = Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2;
 
@@ -113,13 +140,15 @@ export async function POST(request: NextRequest) {
       contextMessage += `- Advies: ${trainingLoad.advice}\n`;
     }
 
+    const fullSystemPrompt = BASE_PROMPT + planText + contextMessage;
+
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      system: SYSTEM_PROMPT + contextMessage,
-      messages: messages.slice(-20), // Keep last 20 messages for context
+      system: fullSystemPrompt,
+      messages: messages.slice(-20),
     });
 
     const content =

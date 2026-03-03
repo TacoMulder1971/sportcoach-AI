@@ -145,3 +145,18 @@ export interface TrainingReadiness {
   advice: string;
   factors: { hrv: number; sleep: number; body: number };
 }
+
+// Dynamisch schema genereren
+export interface AgendaInput {
+  blockedDays: { weekNumber: 1 | 2; dayIndex: number; reason?: string }[];
+  constraints: string;
+}
+
+export interface StoredPlan {
+  id: string;
+  plan: TrainingWeek[];
+  cycleStartDate: string; // ISO, altijd een maandag
+  createdAt: string;
+  agendaInput: AgendaInput;
+  status: 'active' | 'archived';
+}

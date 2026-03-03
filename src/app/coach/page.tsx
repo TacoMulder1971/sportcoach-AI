@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ChatMessage from '@/components/ChatMessage';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getGarminData, generateId } from '@/lib/storage';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getGarminData, getActivePlan, generateId } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 
 export default function CoachPage() {
@@ -58,6 +58,8 @@ export default function CoachPage() {
         ? calculateTrainingLoad(garminData.activities, garminData.health)
         : null;
 
+      const { plan: currentPlan, cycleStartDate } = getActivePlan();
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,6 +71,8 @@ export default function CoachPage() {
           checkIns: recentCheckIns,
           garminData,
           trainingLoad,
+          currentPlan,
+          cycleStartDate,
         }),
       });
 

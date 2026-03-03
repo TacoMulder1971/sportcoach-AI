@@ -1,5 +1,7 @@
 import { trainingPlan } from '@/data/training-plan';
-import { TrainingDay } from './types';
+import { TrainingDay, TrainingWeek } from './types';
+
+const DEFAULT_CYCLE_START = '2026-02-23';
 
 export function getTodayDayIndex(): number {
   const day = new Date().getDay();
@@ -7,9 +9,8 @@ export function getTodayDayIndex(): number {
   return day === 0 ? 6 : day - 1;
 }
 
-export function getCurrentWeekNumber(): 1 | 2 {
-  // Determine which week of the 2-week cycle we're in
-  const startDate = new Date('2026-02-23'); // Start van cyclus (een maandag)
+export function getCurrentWeekNumber(cycleStartDate?: string): 1 | 2 {
+  const startDate = new Date(cycleStartDate || DEFAULT_CYCLE_START);
   const today = new Date();
   const diffDays = Math.floor(
     (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -18,15 +19,23 @@ export function getCurrentWeekNumber(): 1 | 2 {
   return (weeksSinceStart % 2 === 0 ? 1 : 2) as 1 | 2;
 }
 
-export function getTodayTraining(): TrainingDay | null {
-  const weekNum = getCurrentWeekNumber();
+export function getTodayTraining(
+  plan?: TrainingWeek[],
+  cycleStartDate?: string
+): TrainingDay | null {
+  const p = plan || trainingPlan;
+  const weekNum = getCurrentWeekNumber(cycleStartDate);
   const dayIndex = getTodayDayIndex();
-  const week = trainingPlan.find((w) => w.weekNumber === weekNum);
+  const week = p.find((w) => w.weekNumber === weekNum);
   return week?.days.find((d) => d.dayIndex === dayIndex) ?? null;
 }
 
-export function getWeekTrainings(weekNumber: 1 | 2): TrainingDay[] {
-  const week = trainingPlan.find((w) => w.weekNumber === weekNumber);
+export function getWeekTrainings(
+  weekNumber: 1 | 2,
+  plan?: TrainingWeek[]
+): TrainingDay[] {
+  const p = plan || trainingPlan;
+  const week = p.find((w) => w.weekNumber === weekNumber);
   return week?.days ?? [];
 }
 
@@ -43,4 +52,22 @@ export function formatDuration(minutes: number): string {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;
   return mins > 0 ? `${hrs}u ${mins}min` : `${hrs}u`;
+}
+
+export function getDaysInCurrentCycle(cycleStartDate?: string): number {
+  const startDate = new Date(cycleStartDate || DEFAULT_CYCLE_START);
+  const today = new Date();
+  const diffDays = Math.floor(
+    (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  return (diffDays % 14) + 1; // dag 1-14 in de cyclus
+}
+
+export function getNextMonday(): string {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 7 : 8 - dayOfWeek;
+  const nextMonday = new Date(today);
+  nextMonday.setDate(today.getDate() + daysUntilMonday);
+  return nextMonday.toISOString().split('T')[0];
 }
