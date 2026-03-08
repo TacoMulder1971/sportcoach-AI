@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { TrainingWeek } from '@/lib/types';
+import { TrainingWeek, DayPreference } from '@/lib/types';
 
 const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'rust'];
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4'];
@@ -43,105 +43,34 @@ function validatePlan(data: unknown): { valid: boolean; plan?: TrainingWeek[]; e
     : { valid: false, errors };
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
-    }
-
-    const { agenda, checkIns, garminData, trainingLoad, previousPlan, daysUntilRace } = await request.json();
-
-    // Bouw context voor het vorige schema
-    let previousPlanText = '';
-    if (previousPlan && Array.isArray(previousPlan)) {
-      previousPlanText = '\nVORIG SCHEMA (bouw hierop voort met geleidelijke progressie):\n';
-      for (const week of previousPlan) {
-        previousPlanText += `\n${week.label}:\n`;
-        for (const day of week.days) {
-          if (day.isRestDay) {
-            previousPlanText += `- ${day.day}: Rust\n`;
-          } else {
-            for (const s of day.sessions) {
-              previousPlanText += `- ${day.day}: ${s.sport} ${s.type} (${s.durationMinutes}min ${s.zone || ''}) - ${s.description}\n`;
-            }
-          }
+function planToText(plan: TrainingWeek[]): string {
+  let text = '';
+  for (const week of plan) {
+    text += `\n${week.label}:\n`;
+    for (const day of week.days) {
+      if (day.isRestDay) {
+        text += `- ${day.day}: Rust\n`;
+      } else {
+        for (const s of day.sessions) {
+          text += `- ${day.day}: ${s.sport} ${s.type} (${s.durationMinutes}min ${s.zone || ''}) - ${s.description}\n`;
         }
       }
     }
+  }
+  return text;
+}
 
-    // Bouw context voor prestaties
-    let performanceText = '';
-    if (checkIns && checkIns.length > 0) {
-      performanceText += '\nRECENTE CHECK-INS (gevoel na trainingen):\n';
-      for (const ci of checkIns) {
-        performanceText += `- ${ci.date} (${ci.trainingDay}): Gevoel ${ci.feeling}/5`;
-        if (ci.note) performanceText += ` - "${ci.note}"`;
-        performanceText += '\n';
-      }
-    }
-    if (garminData?.activities?.length > 0) {
-      performanceText += '\nRECENTE GARMIN ACTIVITEITEN:\n';
-      for (const a of garminData.activities.slice(0, 10)) {
-        performanceText += `- ${a.date}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
-        if (a.distanceKm > 0) performanceText += `, ${a.distanceKm}km`;
-        if (a.avgHR > 0) performanceText += `, gem HR ${a.avgHR}`;
-        performanceText += '\n';
-      }
-    }
-    if (garminData?.health) {
-      const h = garminData.health;
-      performanceText += `\nHERSTEL: Slaap ${h.sleepDurationHours}u (score ${h.sleepScore}), HRV ${h.avgOvernightHrv}ms (${h.hrvStatus}), rust HR ${h.restingHR}\n`;
-    }
-    if (trainingLoad) {
-      performanceText += `\nTRAINING LOAD: ${trainingLoad.weekLoad} TRIMP (${trainingLoad.status})\n`;
-    }
+function buildPreferencesText(dayPreferences: DayPreference[]): string {
+  if (!dayPreferences || dayPreferences.length === 0) return '';
+  let text = '\nDAGVOORKEUREN VAN DE ATLEET (respecteer deze wensen):\n';
+  for (const pref of dayPreferences) {
+    const dayName = DAY_NAMES[pref.dayIndex];
+    text += `- Week ${pref.weekNumber}, ${dayName}: ${pref.preference}\n`;
+  }
+  return text;
+}
 
-    // Geblokkeerde dagen
-    let blockedText = '';
-    if (agenda?.blockedDays?.length > 0) {
-      blockedText = '\nGEBLOKKEERDE DAGEN (MOETEN rustdagen worden):\n';
-      for (const bd of agenda.blockedDays) {
-        const dayName = DAY_NAMES[bd.dayIndex];
-        blockedText += `- Week ${bd.weekNumber}, ${dayName}`;
-        if (bd.reason) blockedText += ` (reden: ${bd.reason})`;
-        blockedText += '\n';
-      }
-    }
-    if (agenda?.constraints) {
-      blockedText += `\nEXTRA BEPERKINGEN: ${agenda.constraints}\n`;
-    }
-
-    // Periodisering advies
-    let phaseAdvice = '';
-    if (daysUntilRace > 56) {
-      phaseAdvice = 'FASE: Opbouwfase — focus op volume opbouwen, basis uithouding, techniek.';
-    } else if (daysUntilRace > 28) {
-      phaseAdvice = 'FASE: Piekfase — hogere intensiteit, race-specifieke sessies, brick trainingen.';
-    } else if (daysUntilRace > 14) {
-      phaseAdvice = 'FASE: Pre-taper — begin volume te verlagen, behoud intensiteit.';
-    } else {
-      phaseAdvice = 'FASE: Taper — flink volume verlagen, korte scherpe sessies, focus op rust en frisheid.';
-    }
-
-    const systemPrompt = `Je bent TriCoach AI planmaker. Genereer een 2-weekse trainingsplanning als JSON.
-
-ATLEET: Max HR 172 bpm, Zones: Z1(103-120), Z2(121-137), Z3(138-151), Z4(152-163)
-DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
-DAGEN TOT WEDSTRIJD: ${daysUntilRace}
-${phaseAdvice}
-${blockedText}${previousPlanText}${performanceText}
-REGELS:
-- Geblokkeerde dagen MOETEN rustdagen zijn (sport:"rust", type:"rust", isRestDay:true)
-- Bouw voort op het vorige schema: verhoog geleidelijk duur (+5-10%) of intensiteit
-- Als training load hoog/overbelast is: verminder volume, meer herstel
-- Als check-in gevoelens laag (1-2): pas aan naar minder intensief
-- Balanceer zwemmen/fietsen/hardlopen over de week
-- Minimaal 1 brick-sessie (fietsen+lopen) per 2 weken
-- Maximaal 2 sessies per dag
-- Descriptions in het Nederlands
-
-STRICT OUTPUT FORMAT:
+const JSON_FORMAT_SPEC = `STRICT OUTPUT FORMAT:
 Antwoord ALLEEN met een JSON code block. Geen andere tekst ervoor of erna.
 Het JSON moet exact dit TypeScript type volgen:
 
@@ -178,7 +107,160 @@ Output: TrainingWeek[] (array van exact 2 weken)
 ]
 \`\`\``;
 
+function parseAndValidate(text: string): { valid: boolean; plan?: TrainingWeek[]; errors: string[] } {
+  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+  const jsonStr = jsonMatch ? jsonMatch[1] : text;
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return validatePlan(parsed);
+  } catch {
+    return { valid: false, errors: ['Kon geen geldig JSON vinden in AI response'] };
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
+    }
+
+    const body = await request.json();
+    const {
+      agenda,
+      checkIns,
+      garminData,
+      trainingLoad,
+      previousPlan,
+      daysUntilRace,
+      mode = 'generate',
+      currentProposal,
+      refinementFeedback,
+    } = body;
+
     const client = new Anthropic({ apiKey });
+
+    // --- REFINE MODE ---
+    if (mode === 'refine' && currentProposal && refinementFeedback) {
+      const currentPlanText = planToText(currentProposal);
+
+      const refinePrompt = `Je bent TriCoach AI planmaker. Je hebt eerder een 2-weekse trainingsplanning gemaakt.
+
+ATLEET: Max HR 172 bpm, Zones: Z1(103-120), Z2(121-137), Z3(138-151), Z4(152-163)
+DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
+DAGEN TOT WEDSTRIJD: ${daysUntilRace}
+
+HUIDIG VOORSTEL:
+${currentPlanText}
+
+DE ATLEET WIL DEZE AANPASSINGEN:
+${refinementFeedback}
+
+Pas het schema aan op basis van de feedback. Behoud de algehele structuur maar verwerk de gevraagde wijzigingen.
+
+REGELS:
+- Geblokkeerde dagen (rustdagen) NIET wijzigen
+- Balanceer zwemmen/fietsen/hardlopen over de week
+- Maximaal 2 sessies per dag
+- Descriptions in het Nederlands
+
+${JSON_FORMAT_SPEC}`;
+
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: refinePrompt,
+        messages: [{ role: 'user', content: 'Pas het trainingsschema aan volgens de feedback.' }],
+      });
+
+      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const result = parseAndValidate(text);
+
+      if (!result.valid) {
+        return NextResponse.json({ error: `Validatie mislukt: ${result.errors.join(', ')}` }, { status: 422 });
+      }
+      return NextResponse.json({ plan: result.plan });
+    }
+
+    // --- GENERATE MODE ---
+    let previousPlanText = '';
+    if (previousPlan && Array.isArray(previousPlan)) {
+      previousPlanText = '\nVORIG SCHEMA (bouw hierop voort met geleidelijke progressie):\n';
+      previousPlanText += planToText(previousPlan);
+    }
+
+    let performanceText = '';
+    if (checkIns && checkIns.length > 0) {
+      performanceText += '\nRECENTE CHECK-INS (gevoel na trainingen):\n';
+      for (const ci of checkIns) {
+        performanceText += `- ${ci.date} (${ci.trainingDay}): Gevoel ${ci.feeling}/5`;
+        if (ci.note) performanceText += ` - "${ci.note}"`;
+        performanceText += '\n';
+      }
+    }
+    if (garminData?.activities?.length > 0) {
+      performanceText += '\nRECENTE GARMIN ACTIVITEITEN:\n';
+      for (const a of garminData.activities.slice(0, 10)) {
+        performanceText += `- ${a.date}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
+        if (a.distanceKm > 0) performanceText += `, ${a.distanceKm}km`;
+        if (a.avgHR > 0) performanceText += `, gem HR ${a.avgHR}`;
+        performanceText += '\n';
+      }
+    }
+    if (garminData?.health) {
+      const h = garminData.health;
+      performanceText += `\nHERSTEL: Slaap ${h.sleepDurationHours}u (score ${h.sleepScore}), HRV ${h.avgOvernightHrv}ms (${h.hrvStatus}), rust HR ${h.restingHR}\n`;
+    }
+    if (trainingLoad) {
+      performanceText += `\nTRAINING LOAD: ${trainingLoad.weekLoad} TRIMP (${trainingLoad.status})\n`;
+    }
+
+    let blockedText = '';
+    if (agenda?.blockedDays?.length > 0) {
+      blockedText = '\nGEBLOKKEERDE DAGEN (MOETEN rustdagen worden):\n';
+      for (const bd of agenda.blockedDays) {
+        const dayName = DAY_NAMES[bd.dayIndex];
+        blockedText += `- Week ${bd.weekNumber}, ${dayName}`;
+        if (bd.reason) blockedText += ` (reden: ${bd.reason})`;
+        blockedText += '\n';
+      }
+    }
+    if (agenda?.constraints) {
+      blockedText += `\nEXTRA BEPERKINGEN: ${agenda.constraints}\n`;
+    }
+
+    const preferencesText = buildPreferencesText(agenda?.dayPreferences || []);
+
+    let phaseAdvice = '';
+    if (daysUntilRace > 56) {
+      phaseAdvice = 'FASE: Opbouwfase — focus op volume opbouwen, basis uithouding, techniek.';
+    } else if (daysUntilRace > 28) {
+      phaseAdvice = 'FASE: Piekfase — hogere intensiteit, race-specifieke sessies, brick trainingen.';
+    } else if (daysUntilRace > 14) {
+      phaseAdvice = 'FASE: Pre-taper — begin volume te verlagen, behoud intensiteit.';
+    } else {
+      phaseAdvice = 'FASE: Taper — flink volume verlagen, korte scherpe sessies, focus op rust en frisheid.';
+    }
+
+    const systemPrompt = `Je bent TriCoach AI planmaker. Genereer een 2-weekse trainingsplanning als JSON.
+
+ATLEET: Max HR 172 bpm, Zones: Z1(103-120), Z2(121-137), Z3(138-151), Z4(152-163)
+DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
+DAGEN TOT WEDSTRIJD: ${daysUntilRace}
+${phaseAdvice}
+${blockedText}${preferencesText}${previousPlanText}${performanceText}
+REGELS:
+- Geblokkeerde dagen MOETEN rustdagen zijn (sport:"rust", type:"rust", isRestDay:true)
+- Respecteer de dagvoorkeuren van de atleet (tijdstippen, specifieke sporten)
+- Bouw voort op het vorige schema: verhoog geleidelijk duur (+5-10%) of intensiteit
+- Als training load hoog/overbelast is: verminder volume, meer herstel
+- Als check-in gevoelens laag (1-2): pas aan naar minder intensief
+- Balanceer zwemmen/fietsen/hardlopen over de week
+- Minimaal 1 brick-sessie (fietsen+lopen) per 2 weken
+- Maximaal 2 sessies per dag
+- Descriptions in het Nederlands
+
+${JSON_FORMAT_SPEC}`;
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
@@ -188,29 +270,11 @@ Output: TrainingWeek[] (array van exact 2 weken)
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const result = parseAndValidate(text);
 
-    // Extract JSON from code block
-    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (!jsonMatch) {
-      // Try parsing the entire response as JSON
-      try {
-        const parsed = JSON.parse(text);
-        const result = validatePlan(parsed);
-        if (result.valid) {
-          return NextResponse.json({ plan: result.plan });
-        }
-        return NextResponse.json({ error: `Validatie mislukt: ${result.errors.join(', ')}` }, { status: 422 });
-      } catch {
-        return NextResponse.json({ error: 'Kon geen geldig JSON vinden in AI response' }, { status: 422 });
-      }
-    }
-
-    const parsed = JSON.parse(jsonMatch[1]);
-    const result = validatePlan(parsed);
     if (!result.valid) {
       return NextResponse.json({ error: `Validatie mislukt: ${result.errors.join(', ')}` }, { status: 422 });
     }
-
     return NextResponse.json({ plan: result.plan });
   } catch (error) {
     console.error('Generate plan error:', error);

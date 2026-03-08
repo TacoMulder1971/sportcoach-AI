@@ -134,3 +134,14 @@ export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string;
   }
   return { plan: trainingPlan, cycleStartDate: DEFAULT_CYCLE_START, id: 'default' };
 }
+
+export function updateActivePlan(updatedPlan: TrainingWeek[]): boolean {
+  const activeId = getItem<string | null>(KEYS.ACTIVE_PLAN_ID, null);
+  if (!activeId) return false;
+  const plans = getStoredPlans();
+  const idx = plans.findIndex((p) => p.id === activeId);
+  if (idx === -1) return false;
+  plans[idx].plan = updatedPlan;
+  setItem(KEYS.PLANS, plans);
+  return true;
+}

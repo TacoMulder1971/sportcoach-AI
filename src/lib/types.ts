@@ -147,9 +147,16 @@ export interface TrainingReadiness {
 }
 
 // Dynamisch schema genereren
+export interface DayPreference {
+  weekNumber: 1 | 2;
+  dayIndex: number;
+  preference: string; // vrije tekst, bv "ochtend zwemmen, avond hardlopen"
+}
+
 export interface AgendaInput {
   blockedDays: { weekNumber: 1 | 2; dayIndex: number; reason?: string }[];
   constraints: string;
+  dayPreferences?: DayPreference[];
 }
 
 export interface StoredPlan {

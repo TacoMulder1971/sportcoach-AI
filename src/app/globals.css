@@ -41,3 +41,17 @@ nextjs-portal {
 .active\:scale-98:active {
   transform: scale(0.98);
 }
+
+/* Bottom sheet slide up animation */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}

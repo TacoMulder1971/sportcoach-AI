@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import TrainingCard from '@/components/TrainingCard';
-import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle } from '@/lib/schedule';
-import { getActivePlan } from '@/lib/storage';
-import { HEART_RATE_ZONES, TrainingWeek } from '@/lib/types';
+import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
+import { getActivePlan, updateActivePlan } from '@/lib/storage';
+import { HEART_RATE_ZONES, TrainingWeek, TrainingDay } from '@/lib/types';
 
 export default function SchemaPage() {
   const [plan, setPlan] = useState<TrainingWeek[] | null>(null);
@@ -13,6 +13,12 @@ export default function SchemaPage() {
   const [selectedWeek, setSelectedWeek] = useState<1 | 2>(1);
   const [cycleDay, setCycleDay] = useState(1);
   const todayDayIndex = getTodayDayIndex();
+
+  // Ad-hoc aanpassing state
+  const [adjustDay, setAdjustDay] = useState<{ weekNumber: 1 | 2; day: TrainingDay } | null>(null);
+  const [adjustText, setAdjustText] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
+  const [adjustError, setAdjustError] = useState<string | null>(null);
 
   useEffect(() => {
     const active = getActivePlan();
@@ -26,7 +32,40 @@ export default function SchemaPage() {
 
   const currentWeek = cycleStartDate ? getCurrentWeekNumber(cycleStartDate) : 1;
   const week = plan?.find((w) => w.weekNumber === selectedWeek);
-  const showNewPlanPrompt = cycleDay >= 11; // Laatste 3-4 dagen van cyclus
+  const showNewPlanPrompt = cycleDay >= 11;
+
+  async function handleAdjust() {
+    if (!adjustDay || !adjustText.trim() || !plan) return;
+    setAdjusting(true);
+    setAdjustError(null);
+
+    try {
+      const res = await fetch('/api/adjust-day', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPlan: plan,
+          weekNumber: adjustDay.weekNumber,
+          dayIndex: adjustDay.day.dayIndex,
+          adjustmentRequest: adjustText.trim(),
+          daysUntilRace: getDaysUntilRace('2026-06-13'),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Aanpassen mislukt');
+
+      // Update plan in state en storage
+      setPlan(data.plan);
+      updateActivePlan(data.plan);
+      setAdjustDay(null);
+      setAdjustText('');
+    } catch (e) {
+      setAdjustError(e instanceof Error ? e.message : 'Er ging iets mis');
+    } finally {
+      setAdjusting(false);
+    }
+  }
 
   if (!plan) return null;
 
@@ -95,16 +134,97 @@ export default function SchemaPage() {
         })}
       </div>
 
-      {/* Training days */}
+      {/* Training days met aanpas-icoon */}
       <div className="space-y-3">
         {week?.days.map((day) => (
-          <TrainingCard
-            key={day.dayIndex}
-            training={day}
-            isToday={selectedWeek === currentWeek && day.dayIndex === todayDayIndex}
-          />
+          <div key={day.dayIndex} className="relative">
+            <TrainingCard
+              training={day}
+              isToday={selectedWeek === currentWeek && day.dayIndex === todayDayIndex}
+            />
+            {planId !== 'default' && (
+              <button
+                onClick={() => {
+                  setAdjustDay({ weekNumber: selectedWeek, day });
+                  setAdjustText('');
+                  setAdjustError(null);
+                }}
+                className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                title="Dag aanpassen"
+              >
+                <svg className="w-3.5 h-3.5 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                  <path d="m15 5 4 4"/>
+                </svg>
+              </button>
+            )}
+          </div>
         ))}
       </div>
+
+      {/* Ad-hoc aanpassing modal */}
+      {adjustDay && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+          <div className="bg-white w-full rounded-t-2xl p-5 space-y-4 animate-slide-up">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">
+                {adjustDay.day.day} aanpassen
+              </h3>
+              <button
+                onClick={() => setAdjustDay(null)}
+                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
+              >
+                <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500">
+              Wat wil je veranderen? De AI past het schema aan (ook de rest van de week als nodig).
+            </p>
+
+            <textarea
+              value={adjustText}
+              onChange={(e) => setAdjustText(e.target.value)}
+              placeholder="Bijv. 'Kan vandaag niet, verschuif naar morgen' of 'Wil langer fietsen vandaag'"
+              className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none h-24 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              autoFocus
+            />
+
+            {adjustError && (
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">{adjustError}</div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setAdjustDay(null)}
+                className="flex-1 py-3 rounded-xl font-semibold text-gray-600 bg-gray-100"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleAdjust}
+                disabled={adjusting || !adjustText.trim()}
+                className="flex-1 py-3 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all"
+              >
+                {adjusting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" />
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.1s]" />
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:0.2s]" />
+                    </span>
+                    Aanpassen...
+                  </span>
+                ) : (
+                  'Aanpassen'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hartslagzones legenda */}
       <section>

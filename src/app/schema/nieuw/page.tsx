@@ -9,46 +9,73 @@ import {
   saveStoredPlan, setActivePlanId, generateId,
 } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
-import { AgendaInput, TrainingWeek } from '@/lib/types';
+import { AgendaInput, DayPreference, TrainingWeek } from '@/lib/types';
 
 const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+const FULL_DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
 export default function NieuwSchemaPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // Stap 1: Agenda
-  const [blocked, setBlocked] = useState<Set<string>>(new Set()); // "1-0", "2-3" etc
+  // Stap 1: Agenda + voorkeuren
+  const [blocked, setBlocked] = useState<Set<string>>(new Set());
   const [constraints, setConstraints] = useState('');
+  const [preferences, setPreferences] = useState<Record<string, string>>({});
 
-  // Stap 2: Genereren
+  // Stap 2: Genereren + verfijning
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<TrainingWeek[] | null>(null);
   const [previewWeek, setPreviewWeek] = useState<1 | 2>(1);
+  const [feedback, setFeedback] = useState('');
+  const [refining, setRefining] = useState(false);
 
   function toggleDay(weekNum: 1 | 2, dayIndex: number) {
     const key = `${weekNum}-${dayIndex}`;
     setBlocked((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+        // Wis voorkeur als dag geblokkeerd wordt
+        setPreferences((p) => {
+          const updated = { ...p };
+          delete updated[key];
+          return updated;
+        });
+      }
       return next;
     });
+  }
+
+  function setPreference(weekNum: 1 | 2, dayIndex: number, value: string) {
+    const key = `${weekNum}-${dayIndex}`;
+    setPreferences((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function buildAgenda(): AgendaInput {
+    const blockedDays = Array.from(blocked).map((key) => {
+      const [w, d] = key.split('-').map(Number);
+      return { weekNumber: w as 1 | 2, dayIndex: d };
+    });
+
+    const dayPreferences: DayPreference[] = Object.entries(preferences)
+      .filter(([, val]) => val.trim())
+      .map(([key, val]) => {
+        const [w, d] = key.split('-').map(Number);
+        return { weekNumber: w as 1 | 2, dayIndex: d, preference: val.trim() };
+      });
+
+    return { blockedDays, constraints, dayPreferences };
   }
 
   async function generatePlan() {
     setLoading(true);
     setError(null);
 
-    const agenda: AgendaInput = {
-      blockedDays: Array.from(blocked).map((key) => {
-        const [w, d] = key.split('-').map(Number);
-        return { weekNumber: w as 1 | 2, dayIndex: d };
-      }),
-      constraints,
-    };
-
+    const agenda = buildAgenda();
     const { plan: previousPlan } = getActivePlan();
     const garminData = getGarminData();
     const checkIns = getRecentCheckIns(10);
@@ -68,6 +95,7 @@ export default function NieuwSchemaPage() {
           trainingLoad,
           previousPlan,
           daysUntilRace,
+          mode: 'generate',
         }),
       });
 
@@ -76,6 +104,7 @@ export default function NieuwSchemaPage() {
 
       setProposal(data.plan);
       setPreviewWeek(1);
+      setFeedback('');
       setStep(2);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Er ging iets mis');
@@ -84,17 +113,42 @@ export default function NieuwSchemaPage() {
     }
   }
 
+  async function refinePlan() {
+    if (!proposal || !feedback.trim()) return;
+    setRefining(true);
+    setError(null);
+
+    const daysUntilRace = getDaysUntilRace('2026-06-13');
+
+    try {
+      const res = await fetch('/api/generate-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'refine',
+          currentProposal: proposal,
+          refinementFeedback: feedback.trim(),
+          daysUntilRace,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Aanpassen mislukt');
+
+      setProposal(data.plan);
+      setPreviewWeek(1);
+      setFeedback('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Er ging iets mis');
+    } finally {
+      setRefining(false);
+    }
+  }
+
   function approvePlan() {
     if (!proposal) return;
 
-    const agenda: AgendaInput = {
-      blockedDays: Array.from(blocked).map((key) => {
-        const [w, d] = key.split('-').map(Number);
-        return { weekNumber: w as 1 | 2, dayIndex: d };
-      }),
-      constraints,
-    };
-
+    const agenda = buildAgenda();
     const id = generateId();
     const cycleStartDate = getNextMonday();
 
@@ -110,16 +164,16 @@ export default function NieuwSchemaPage() {
     setStep(3);
   }
 
-  // Stap 1: Agenda invoer
+  // --- STAP 1: Beschikbaarheid + voorkeuren ---
   if (step === 1) {
     return (
-      <div className="px-4 pt-6 space-y-6">
+      <div className="px-4 pt-6 pb-24 space-y-6">
         <div>
           <button onClick={() => router.push('/schema')} className="text-sm text-blue-600 mb-2">
-            ← Terug naar schema
+            &larr; Terug naar schema
           </button>
           <h1 className="text-2xl font-bold text-gray-900">Nieuw schema</h1>
-          <p className="text-gray-500 text-sm">Welke dagen kun je de komende 2 weken NIET trainen?</p>
+          <p className="text-gray-500 text-sm">Tik op dagen waarop je NIET kunt trainen</p>
         </div>
 
         {/* 14-daags grid */}
@@ -142,7 +196,7 @@ export default function NieuwSchemaPage() {
                   >
                     {name}
                     {isBlocked && (
-                      <div className="text-[10px] text-red-500 mt-0.5">Geen</div>
+                      <div className="text-[10px] text-red-500 mt-0.5">Niet</div>
                     )}
                   </button>
                 );
@@ -151,6 +205,47 @@ export default function NieuwSchemaPage() {
           </div>
         ))}
 
+        {/* Dagvoorkeuren */}
+        <div>
+          <p className="text-sm font-semibold text-gray-700 mb-2">
+            Heb je specifieke plannen per dag? (optioneel)
+          </p>
+          <p className="text-xs text-gray-400 mb-3">
+            Bijv. &quot;ochtend zwemmen, avond hardlopen&quot; of &quot;alleen korte training&quot;
+          </p>
+          <div className="space-y-2">
+            {([1, 2] as const).map((weekNum) => {
+              const availableDays = DAY_NAMES.map((name, idx) => ({
+                name,
+                fullName: FULL_DAY_NAMES[idx],
+                idx,
+                key: `${weekNum}-${idx}`,
+              })).filter((d) => !blocked.has(d.key));
+
+              if (availableDays.length === 0) return null;
+
+              return (
+                <div key={weekNum}>
+                  <p className="text-xs font-medium text-gray-500 mb-1.5">Week {weekNum}</p>
+                  {availableDays.map((d) => (
+                    <div key={d.key} className="flex items-center gap-2 mb-1.5">
+                      <span className="text-sm font-medium text-gray-700 w-8 flex-shrink-0">{d.name}</span>
+                      <input
+                        type="text"
+                        value={preferences[d.key] || ''}
+                        onChange={(e) => setPreference(weekNum, d.idx, e.target.value)}
+                        placeholder={`Voorkeur voor ${d.fullName.toLowerCase()}...`}
+                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Extra opmerkingen */}
         <div>
           <label className="text-sm font-medium text-gray-700 mb-2 block">
             Extra opmerkingen (optioneel)
@@ -185,21 +280,19 @@ export default function NieuwSchemaPage() {
         {error && (
           <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">{error}</div>
         )}
-
-        <div className="h-4" />
       </div>
     );
   }
 
-  // Stap 2: Preview
+  // --- STAP 2: Preview + verfijning ---
   if (step === 2 && proposal) {
     const week = proposal.find((w) => w.weekNumber === previewWeek);
 
     return (
-      <div className="px-4 pt-6 space-y-6">
+      <div className="px-4 pt-6 pb-24 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Voorstel</h1>
-          <p className="text-gray-500 text-sm">Bekijk het voorgestelde schema</p>
+          <p className="text-gray-500 text-sm">Bekijk het schema en geef feedback</p>
         </div>
 
         {/* Week selector */}
@@ -229,15 +322,48 @@ export default function NieuwSchemaPage() {
           ))}
         </div>
 
-        {/* Action buttons */}
+        {/* Feedback voor verfijning */}
+        <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-700">Wat wil je aanpassen?</p>
+          <textarea
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="Bijv. 'Donderdag liever zwemmen i.p.v. hardlopen', 'Zondag iets korter', 'Meer interval trainingen'"
+            className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none h-20 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            onClick={refinePlan}
+            disabled={refining || !feedback.trim()}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition-colors"
+          >
+            {refining ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                  <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                </span>
+                Schema wordt aangepast...
+              </span>
+            ) : (
+              'Aanpassen'
+            )}
+          </button>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">{error}</div>
+        )}
+
+        {/* Actieknoppen */}
         <div className="flex gap-3">
           <button
             onClick={() => {
               setProposal(null);
+              setFeedback('');
               setStep(1);
-              generatePlan();
             }}
-            className="flex-1 py-3 rounded-xl font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+            className="flex-1 py-3 rounded-xl font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             Opnieuw
           </button>
@@ -248,13 +374,11 @@ export default function NieuwSchemaPage() {
             Goedkeuren
           </button>
         </div>
-
-        <div className="h-4" />
       </div>
     );
   }
 
-  // Stap 3: Bevestiging
+  // --- STAP 3: Bevestiging ---
   return (
     <div className="px-4 pt-6 space-y-6">
       <div className="text-center py-8">
