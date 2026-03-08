@@ -37,7 +37,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         : null;
       const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
-      let feedbackPrompt = `De atleet heeft zojuist een check-in gedaan na de training van ${dayLabel}.\n`;
+      let feedbackPrompt = `De atleet heeft zojuist een check-out gedaan na de training van ${dayLabel}.\n`;
       feedbackPrompt += `Gevoel: ${checkIn.feeling}/5`;
       if (checkIn.note) feedbackPrompt += ` - "${checkIn.note}"`;
       feedbackPrompt += '\n\nGeplande sessies:\n';
@@ -103,7 +103,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
       const apiMessages = [
-        { role: 'user' as const, content: `[Check-in context: ${dayLabel}, gevoel ${feeling}/5${note ? `, notitie: "${note}"` : ''}]` },
+        { role: 'user' as const, content: `[Check-out context: ${dayLabel}, gevoel ${feeling}/5${note ? `, notitie: "${note}"` : ''}]` },
         ...updatedMessages.map(m => ({ role: m.role, content: m.content })),
       ];
 
@@ -172,7 +172,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <p className="text-lg font-semibold text-gray-900">Check-in opgeslagen!</p>
+          <p className="text-lg font-semibold text-gray-900">Check-out opgeslagen!</p>
         </div>
 
         {/* Chat berichten */}

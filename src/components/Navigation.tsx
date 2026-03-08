@@ -22,7 +22,7 @@ function IconData({ className }: { className?: string }) {
 const navItems = [
   { href: '/', label: 'Home', Icon: IconHome },
   { href: '/schema', label: 'Schema', Icon: IconCalendar },
-  { href: '/checkin', label: 'Check-in', Icon: IconClipboard },
+  { href: '/checkin', label: 'Check-out', Icon: IconClipboard },
   { href: '/coach', label: 'Coach', Icon: IconChat },
   { href: '/data', label: 'Data', Icon: IconData },
 ];

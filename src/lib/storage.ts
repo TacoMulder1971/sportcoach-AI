@@ -51,7 +51,7 @@ export function getCheckInsForDate(date: string): CheckIn[] {
 
 export function getRecentCheckIns(count: number = 7): CheckIn[] {
   const checkIns = getCheckIns();
-  return checkIns.slice(-count);
+  return checkIns.slice(-count).reverse();
 }
 
 export function updateCheckIn(id: string, updates: Partial<CheckIn>): void {

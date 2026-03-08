@@ -191,7 +191,7 @@ export default function Dashboard() {
             <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center mb-1">
               <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 14l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
             </div>
-            <p className="text-xs font-medium">Check-in</p>
+            <p className="text-xs font-medium">Check-out</p>
           </Link>
           <Link href="/coach" className="bg-white rounded-xl p-3 border border-gray-200 hover:border-blue-300 transition-colors flex flex-col items-center text-center">
             <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center mb-1">
@@ -214,11 +214,11 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Recente check-ins */}
+      {/* Recente check-outs */}
       {recentCheckIns.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
-            Recente check-ins
+            Recente check-outs
           </h2>
           <div className="space-y-2">
             {recentCheckIns.map((ci) => (
