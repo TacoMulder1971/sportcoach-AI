@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { CheckIn, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, getRecentCheckIns } from '@/lib/storage';
+import { useState, useRef, useEffect } from 'react';
+import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, getRecentCheckIns, getActivePlan } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 
 interface CheckInFormProps {
@@ -16,10 +16,18 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
   const [feeling, setFeeling] = useState<1 | 2 | 3 | 4 | 5 | null>(null);
   const [note, setNote] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [messages, setMessages] = useState<CheckInMessage[]>([]);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [checkInId, setCheckInId] = useState<string>('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchFeedback = async (checkIn: CheckIn) => {
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  async function fetchFeedback(checkIn: CheckIn) {
     setLoadingFeedback(true);
     try {
       const garminData = getGarminData();
@@ -27,8 +35,8 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       const trainingLoad = garminData
         ? calculateTrainingLoad(garminData.activities, garminData.health)
         : null;
+      const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
-      // Build a specific feedback request
       let feedbackPrompt = `De atleet heeft zojuist een check-in gedaan na de training van ${dayLabel}.\n`;
       feedbackPrompt += `Gevoel: ${checkIn.feeling}/5`;
       if (checkIn.note) feedbackPrompt += ` - "${checkIn.note}"`;
@@ -55,27 +63,93 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           checkIns: recentCheckIns,
           garminData,
           trainingLoad,
+          currentPlan,
+          cycleStartDate,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setFeedback(data.content);
-        // Feedback opslaan bij de check-in
-        updateCheckIn(checkIn.id, { feedback: data.content });
+        const assistantMsg: CheckInMessage = { role: 'assistant', content: data.content };
+        setMessages([assistantMsg]);
+        updateCheckIn(checkIn.id, {
+          feedback: data.content,
+          messages: [assistantMsg],
+        });
       }
     } catch {
-      // Feedback is optional, don't block the flow
+      // Feedback is optional
     } finally {
       setLoadingFeedback(false);
     }
-  };
+  }
+
+  async function sendMessage() {
+    const text = chatInput.trim();
+    if (!text || sending) return;
+
+    const userMsg: CheckInMessage = { role: 'user', content: text };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setChatInput('');
+    setSending(true);
+
+    try {
+      const garminData = getGarminData();
+      const recentCheckIns = getRecentCheckIns(5);
+      const trainingLoad = garminData
+        ? calculateTrainingLoad(garminData.activities, garminData.health)
+        : null;
+      const { plan: currentPlan, cycleStartDate } = getActivePlan();
+
+      const apiMessages = [
+        { role: 'user' as const, content: `[Check-in context: ${dayLabel}, gevoel ${feeling}/5${note ? `, notitie: "${note}"` : ''}]` },
+        ...updatedMessages.map(m => ({ role: m.role, content: m.content })),
+      ];
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: apiMessages,
+          checkIns: recentCheckIns,
+          garminData,
+          trainingLoad,
+          currentPlan,
+          cycleStartDate,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const assistantMsg: CheckInMessage = { role: 'assistant', content: data.content };
+        const allMessages = [...updatedMessages, assistantMsg];
+        setMessages(allMessages);
+        updateCheckIn(checkInId, {
+          feedback: data.content,
+          messages: allMessages,
+        });
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
 
   const handleSubmit = () => {
     if (feeling === null) return;
 
+    const id = generateId();
     const checkIn: CheckIn = {
-      id: generateId(),
+      id,
       date: new Date().toISOString().split('T')[0],
       trainingDay: dayLabel,
       feeling,
@@ -85,51 +159,88 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
     };
 
     saveCheckIn(checkIn);
+    setCheckInId(id);
     setSubmitted(true);
     fetchFeedback(checkIn);
   };
 
   if (submitted) {
     return (
-      <div className="py-4">
+      <div className="py-4 space-y-4">
         {/* Success */}
-        <div className="text-center mb-4">
+        <div className="text-center">
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <p className="text-lg font-semibold text-gray-900">Check-in opgeslagen!</p>
         </div>
 
-        {/* AI Feedback */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        {/* Chat berichten */}
+        <div className="space-y-3">
+          {messages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                msg.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-br-md'
+                  : 'bg-gray-100 text-gray-800 rounded-bl-md'
+              }`}>
+                {msg.role === 'assistant' && (
+                  <p className="text-xs font-semibold text-blue-600 mb-1">Coach</p>
+                )}
+                <p className="text-sm leading-relaxed">{msg.content}</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-blue-600 mb-1">Coach feedback</p>
-              {loadingFeedback ? (
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
-                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  </div>
-                  <p className="text-sm text-gray-500">Analyse bezig...</p>
+          ))}
+
+          {/* Loading */}
+          {(loadingFeedback || sending) && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+                <p className="text-xs font-semibold text-blue-600 mb-1">Coach</p>
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
                 </div>
-              ) : feedback ? (
-                <p className="text-sm text-gray-700">{feedback}</p>
-              ) : (
-                <p className="text-sm text-gray-500">Feedback niet beschikbaar</p>
-              )}
+              </div>
             </div>
-          </div>
+          )}
+
+          <div ref={messagesEndRef} />
         </div>
+
+        {/* Chat input */}
+        {!loadingFeedback && messages.length > 0 && (
+          <div className="flex items-end gap-2 bg-white rounded-2xl border border-gray-200 p-2">
+            <textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Stel een vraag aan de coach..."
+              rows={1}
+              className="flex-1 resize-none text-sm p-2 outline-none max-h-24"
+              style={{ minHeight: '2.5rem' }}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!chatInput.trim() || sending}
+              className={`p-2 rounded-xl transition-all ${
+                chatInput.trim() && !sending
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-100 text-gray-400'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path d="M3.105 2.288a.75.75 0 0 0-.826.95l1.414 4.926A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.897 28.897 0 0 0 15.293-7.155.75.75 0 0 0 0-1.114A28.897 28.897 0 0 0 3.105 2.288Z" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* Back button */}
         <button
           onClick={onComplete}
-          className="w-full mt-4 py-3 rounded-xl font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+          className="w-full py-3 rounded-xl font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
         >
           Terug naar dashboard
         </button>

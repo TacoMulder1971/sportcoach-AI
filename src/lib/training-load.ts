@@ -69,49 +69,117 @@ export function calculateTrainingLoad(
 }
 
 /**
+ * Bereken uren sinds laatste training
+ */
+function hoursSinceLastActivity(activities: GarminActivity[]): number {
+  if (activities.length === 0) return 999;
+  const sorted = [...activities].sort((a, b) => b.date.localeCompare(a.date));
+  const lastDate = new Date(sorted[0].date + 'T18:00:00'); // schat einde training
+  const now = new Date();
+  return (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+}
+
+/**
  * Trainingsgereedheid: visueel groen/geel/rood systeem
- * Combineert HRV, slaap en lichaam tot een score van 0-9
+ * Met slaapdata: HRV + Slaap + Lichaam (0-9)
+ * Zonder slaapdata: RustHR + Hersteltijd + Lichaam (0-9)
  */
 export function getTrainingReadiness(
   health: GarminHealthStats | null,
-  hasTrainingToday: boolean
+  hasTrainingToday: boolean,
+  activities: GarminActivity[] = []
 ): TrainingReadiness | null {
   if (!health) return null;
 
-  // HRV score (0-3)
-  let hrvScore = 0;
-  const hrvStatus = (health.hrvStatus || '').toLowerCase();
-  if (hrvStatus === 'balanced' || hrvStatus === 'good' || hrvStatus === 'optimal') {
-    hrvScore = 3;
-  } else if (health.avgOvernightHrv > 40) {
-    hrvScore = 2;
-  } else if (health.avgOvernightHrv > 25) {
-    hrvScore = 1;
+  const hasSleepData = health.sleepScore > 0;
+
+  let score1 = 0;
+  let score2 = 0;
+  let score3 = 0;
+  let label1: string;
+  let label2: string;
+  let label3: string;
+  let mode: 'full' | 'fallback';
+
+  if (hasSleepData) {
+    // --- VOLLEDIGE MODUS: HRV + Slaap + Lichaam ---
+    mode = 'full';
+
+    // HRV (0-3)
+    label1 = 'HRV';
+    const hrvStatus = (health.hrvStatus || '').toLowerCase();
+    if (hrvStatus === 'balanced' || hrvStatus === 'good' || hrvStatus === 'optimal') {
+      score1 = 3;
+    } else if (health.avgOvernightHrv > 40) {
+      score1 = 2;
+    } else if (health.avgOvernightHrv > 25) {
+      score1 = 1;
+    }
+
+    // Slaap (0-3)
+    label2 = 'Slaap';
+    if (health.sleepScore > 75) {
+      score2 = 3;
+    } else if (health.sleepScore > 55) {
+      score2 = 2;
+    } else if (health.sleepScore > 40) {
+      score2 = 1;
+    }
+
+    // Lichaam (0-3)
+    label3 = 'Lichaam';
+    if (health.bodyBatteryChange > 20) {
+      score3 += 2;
+    } else if (health.bodyBatteryChange > 5) {
+      score3 += 1;
+    }
+    if (health.restingHR > 0 && health.restingHR < 55) {
+      score3 += 1;
+    }
+    score3 = Math.min(3, score3);
+  } else {
+    // --- FALLBACK MODUS: RustHR + Hersteltijd + Lichaam ---
+    mode = 'fallback';
+
+    // Rust-hartslag (0-3)
+    label1 = 'Rust HR';
+    if (health.restingHR > 0) {
+      if (health.restingHR < 52) {
+        score1 = 3;
+      } else if (health.restingHR < 56) {
+        score1 = 2;
+      } else if (health.restingHR < 60) {
+        score1 = 1;
+      }
+    }
+
+    // Hersteltijd sinds laatste training (0-3)
+    label2 = 'Herstel';
+    const hours = hoursSinceLastActivity(activities);
+    if (hours > 36) {
+      score2 = 3;
+    } else if (hours > 20) {
+      score2 = 2;
+    } else if (hours > 10) {
+      score2 = 1;
+    }
+
+    // Lichaam (0-3) — body battery als beschikbaar
+    label3 = 'Lichaam';
+    if (health.bodyBatteryChange > 20) {
+      score3 += 2;
+    } else if (health.bodyBatteryChange > 5) {
+      score3 += 1;
+    }
+    // In fallback: als geen battery data, geef 1 punt als rustHR laag
+    if (health.bodyBatteryChange === 0 && health.restingHR > 0 && health.restingHR < 55) {
+      score3 += 1;
+    }
+    score3 = Math.min(3, score3);
   }
 
-  // Slaap score (0-3)
-  let sleepScore = 0;
-  if (health.sleepScore > 75) {
-    sleepScore = 3;
-  } else if (health.sleepScore > 55) {
-    sleepScore = 2;
-  } else if (health.sleepScore > 40) {
-    sleepScore = 1;
-  }
-
-  // Lichaam score: battery + rusthartslag (0-3)
-  let bodyScore = 0;
-  if (health.bodyBatteryChange > 20) {
-    bodyScore += 2;
-  } else if (health.bodyBatteryChange > 5) {
-    bodyScore += 1;
-  }
-  if (health.restingHR > 0 && health.restingHR < 55) {
-    bodyScore += 1;
-  }
-  bodyScore = Math.min(3, bodyScore);
-
-  const total = hrvScore + sleepScore + bodyScore;
+  const total = score1 + score2 + score3;
+  const factors = { label1, score1, label2, score2, label3, score3 };
 
   if (total >= 7) {
     return {
@@ -120,10 +188,11 @@ export function getTrainingReadiness(
       color: 'text-green-600',
       bgColor: 'bg-green-500',
       score: total,
+      mode,
       advice: hasTrainingToday
         ? 'Je bent goed hersteld. Ga vol voor de training!'
         : 'Top hersteld. Geniet van je rustdag.',
-      factors: { hrv: hrvScore, sleep: sleepScore, body: bodyScore },
+      factors,
     };
   }
   if (total >= 4) {
@@ -133,10 +202,11 @@ export function getTrainingReadiness(
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-400',
       score: total,
+      mode,
       advice: hasTrainingToday
         ? 'Redelijk hersteld. Train, maar luister naar je lichaam.'
         : 'Matig herstel. Neem het rustig aan vandaag.',
-      factors: { hrv: hrvScore, sleep: sleepScore, body: bodyScore },
+      factors,
     };
   }
   return {
@@ -145,9 +215,10 @@ export function getTrainingReadiness(
     color: 'text-red-500',
     bgColor: 'bg-red-500',
     score: total,
+    mode,
     advice: hasTrainingToday
       ? 'Neem het rustig aan of kies voor een lichte hersteltraining.'
       : 'Focus op herstel: rust, voeding en slaap.',
-    factors: { hrv: hrvScore, sleep: sleepScore, body: bodyScore },
+    factors,
   };
 }

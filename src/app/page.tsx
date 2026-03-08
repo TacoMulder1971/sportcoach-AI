@@ -47,7 +47,7 @@ export default function Dashboard() {
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay);
+    return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, garmin.activities);
   }, [garmin, todayTraining]);
 
   // Load bar percentage (0-100, capped at 600 TRIMP)
@@ -121,9 +121,9 @@ export default function Dashboard() {
               <p className={`text-xs ${readiness.color} font-semibold mb-2`}>{readiness.score}/9</p>
               <div className="flex gap-1">
                 {[
-                  { label: 'HRV', val: readiness.factors.hrv },
-                  { label: 'Slaap', val: readiness.factors.sleep },
-                  { label: 'Lichaam', val: readiness.factors.body },
+                  { label: readiness.factors.label1, val: readiness.factors.score1 },
+                  { label: readiness.factors.label2, val: readiness.factors.score2 },
+                  { label: readiness.factors.label3, val: readiness.factors.score3 },
                 ].map((f) => (
                   <div key={f.label} className="flex-1 text-center">
                     <div className="flex gap-px justify-center mb-0.5">
@@ -240,14 +240,20 @@ export default function Dashboard() {
                   </div>
                   <span className="text-xs text-gray-400">{ci.date}</span>
                 </div>
-                {ci.feedback && (
-                  <div className="px-3 pb-3 pt-0">
-                    <div className="bg-blue-50 rounded-lg p-2.5 flex items-start gap-2">
-                      <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                      <p className="text-xs text-gray-600 leading-relaxed">{ci.feedback}</p>
+                {(() => {
+                  // Toon laatste assistant-bericht uit gesprek, of fallback naar feedback
+                  const lastMsg = ci.messages?.filter(m => m.role === 'assistant').slice(-1)[0];
+                  const displayText = lastMsg?.content || ci.feedback;
+                  if (!displayText) return null;
+                  return (
+                    <div className="px-3 pb-3 pt-0">
+                      <div className="bg-blue-50 rounded-lg p-2.5 flex items-start gap-2">
+                        <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <p className="text-xs text-gray-600 leading-relaxed">{displayText}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             ))}
           </div>

@@ -19,7 +19,7 @@ export default function DataPage() {
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getTrainingReadiness(garmin.health, true);
+    return getTrainingReadiness(garmin.health, true, garmin.activities);
   }, [garmin]);
 
   // Weekly totals
@@ -82,9 +82,9 @@ export default function DataPage() {
             </div>
             <div className="space-y-3">
               {[
-                { label: 'HRV', val: readiness.factors.hrv, detail: garmin?.health ? `${garmin.health.avgOvernightHrv}ms · ${garmin.health.hrvStatus}` : '' },
-                { label: 'Slaap', val: readiness.factors.sleep, detail: garmin?.health ? `Score ${garmin.health.sleepScore} · ${garmin.health.sleepDurationHours}u` : '' },
-                { label: 'Lichaam', val: readiness.factors.body, detail: garmin?.health ? `Battery ${garmin.health.bodyBatteryChange > 0 ? '+' : ''}${garmin.health.bodyBatteryChange} · Rust HR ${garmin.health.restingHR}` : '' },
+                { label: readiness.factors.label1, val: readiness.factors.score1, detail: readiness.mode === 'full' ? `${garmin?.health?.avgOvernightHrv || 0}ms · ${garmin?.health?.hrvStatus || ''}` : `${garmin?.health?.restingHR || ''} bpm` },
+                { label: readiness.factors.label2, val: readiness.factors.score2, detail: readiness.mode === 'full' ? `Score ${garmin?.health?.sleepScore || 0} · ${garmin?.health?.sleepDurationHours || 0}u` : 'Tijd sinds training' },
+                { label: readiness.factors.label3, val: readiness.factors.score3, detail: garmin?.health ? `Battery ${garmin.health.bodyBatteryChange > 0 ? '+' : ''}${garmin.health.bodyBatteryChange} · Rust HR ${garmin.health.restingHR}` : '' },
               ].map((f) => (
                 <div key={f.label} className="flex items-center gap-3">
                   <p className="text-xs text-gray-500 w-14">{f.label}</p>

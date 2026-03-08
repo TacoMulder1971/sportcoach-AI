@@ -31,6 +31,11 @@ export interface TrainingWeek {
   days: TrainingDay[];
 }
 
+export interface CheckInMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface CheckIn {
   id: string;
   date: string; // ISO date
@@ -38,7 +43,8 @@ export interface CheckIn {
   feeling: 1 | 2 | 3 | 4 | 5;
   note: string;
   sessions: TrainingSession[];
-  feedback?: string; // AI coach feedback na check-in
+  feedback?: string; // AI coach feedback na check-in (backward compat)
+  messages?: CheckInMessage[]; // gesprek na check-in
   createdAt: string;
 }
 
@@ -143,7 +149,8 @@ export interface TrainingReadiness {
   bgColor: string;
   score: number; // 0-9
   advice: string;
-  factors: { hrv: number; sleep: number; body: number };
+  mode: 'full' | 'fallback'; // full=met slaapdata, fallback=zonder
+  factors: { label1: string; score1: number; label2: string; score2: number; label3: string; score3: number };
 }
 
 // Dynamisch schema genereren
