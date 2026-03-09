@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
-import { getTodayTraining } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan } from '@/lib/storage';
+import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness } from '@/lib/types';
 
@@ -15,6 +15,51 @@ export default function Dashboard() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [dailyMessage, setDailyMessage] = useState<string | null>(null);
+  const [loadingDaily, setLoadingDaily] = useState(false);
+
+  const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null) => {
+    // Check cache first
+    const cached = getDailyMessage();
+    if (cached) {
+      setDailyMessage(cached.message);
+      return;
+    }
+
+    setLoadingDaily(true);
+    try {
+      const checkIns = getRecentCheckIns(5);
+      // Gisteren = eerste check-out (lijst is al reverse gesorteerd)
+      const yesterdayCheckOut = checkIns.length > 0 ? checkIns[0] : null;
+      const { cycleStartDate } = getActivePlan();
+
+      const res = await fetch('/api/daily-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          todayTraining: training,
+          yesterdayCheckOut,
+          garminHealth: garminData?.health || null,
+          garminActivities: garminData?.activities?.slice(0, 3) || null,
+          trainingLoad: load,
+          readiness: ready,
+          daysUntilRace: getDaysUntilRace('2026-06-13'),
+          weekNumber: getCurrentWeekNumber(cycleStartDate),
+          dayInCycle: getDaysInCurrentCycle(cycleStartDate),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setDailyMessage(data.message);
+        saveDailyMessage(data.message);
+      }
+    } catch {
+      // Silently fail — fallback to static advice
+    } finally {
+      setLoadingDaily(false);
+    }
+  }, []);
 
   useEffect(() => {
     const { plan, cycleStartDate } = getActivePlan();
@@ -49,6 +94,11 @@ export default function Dashboard() {
     if (!garmin) return null;
     return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, garmin.activities);
   }, [garmin, todayTraining]);
+
+  // Fetch daily message once (uses cache)
+  useEffect(() => {
+    fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness);
+  }, [todayTraining, garmin, trainingLoad, readiness, fetchDailyMessage]);
 
   // Load bar percentage (0-100, capped at 600 TRIMP)
   const loadPct = trainingLoad ? Math.min(100, (trainingLoad.weekLoad / 600) * 100) : 0;
@@ -149,25 +199,30 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Coach advies strip */}
-      {(trainingLoad || readiness) && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-blue-600 mb-1">Coach advies</p>
+      {/* Dagelijks coach-bericht */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-blue-600 mb-1">Coach van de dag</p>
+            {loadingDaily ? (
+              <div className="flex gap-1 py-1">
+                <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" />
+                <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce [animation-delay:0.1s]" />
+                <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce [animation-delay:0.2s]" />
+              </div>
+            ) : dailyMessage ? (
+              <p className="text-sm text-gray-700 leading-relaxed">{dailyMessage}</p>
+            ) : (
               <p className="text-sm text-gray-700">
-                {readiness?.advice || trainingLoad?.advice || ''}
+                {readiness?.advice || trainingLoad?.advice || 'Open de app dagelijks voor persoonlijk coach-advies.'}
               </p>
-              {trainingLoad && readiness && trainingLoad.advice !== readiness.advice && (
-                <p className="text-sm text-gray-600 mt-1">{trainingLoad.advice}</p>
-              )}
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Training van vandaag */}
       <section>

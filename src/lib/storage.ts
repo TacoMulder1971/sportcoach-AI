@@ -13,6 +13,7 @@ const KEYS = {
   GARMIN_DATA: 'tricoach_garmin',
   PLANS: 'tricoach_plans',
   ACTIVE_PLAN_ID: 'tricoach_active_plan_id',
+  DAILY_MESSAGE: 'tricoach_daily_message',
 } as const;
 
 function getItem<T>(key: string, fallback: T): T {
@@ -61,6 +62,24 @@ export function updateCheckIn(id: string, updates: Partial<CheckIn>): void {
     checkIns[index] = { ...checkIns[index], ...updates };
     setItem(KEYS.CHECK_INS, checkIns);
   }
+}
+
+// Daily message
+interface DailyMessage {
+  date: string;
+  message: string;
+}
+
+export function getDailyMessage(): DailyMessage | null {
+  const stored = getItem<DailyMessage | null>(KEYS.DAILY_MESSAGE, null);
+  if (!stored) return null;
+  const today = new Date().toISOString().split('T')[0];
+  return stored.date === today ? stored : null;
+}
+
+export function saveDailyMessage(message: string): void {
+  const today = new Date().toISOString().split('T')[0];
+  setItem(KEYS.DAILY_MESSAGE, { date: today, message });
 }
 
 // Chat messages
