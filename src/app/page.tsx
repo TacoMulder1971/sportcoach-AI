@@ -64,8 +64,8 @@ export default function Dashboard() {
       {/* Header + Sync */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">TriCoach AI</h1>
-          <p className="text-gray-500 text-sm">Jouw persoonlijke trainingscoach</p>
+          <h1 className="text-[24px] font-bold text-gray-900">TriCoach AI</h1>
+          <p className="text-gray-500 text-[14px]">Jouw persoonlijke trainingscoach</p>
         </div>
         <button
           onClick={handleGarminSync}
