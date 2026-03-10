@@ -7,7 +7,7 @@ ATLEET PROFIEL:
 - Traint voor een 1/4 triatlon op 13 juni 2026
 - Doel: onder de 3 uur finishen
 - Max hartslag: 172 bpm
-- Hartslagzones: Z1 (103-120), Z2 (121-137), Z3 (138-151), Z4 (152-163)
+- Hartslagzones: Z1 (86-103 Herstel), Z2 (103-120 Basis), Z3 (120-138 Aeroob), Z4 (138-155 Drempel), Z5 (155-172 VO2max)
 
 JE TAKEN:
 1. Geef concreet, praktisch trainingsadvies
@@ -64,22 +64,22 @@ export async function POST(request: NextRequest) {
       // Fallback naar hardcoded tekst
       planText = `\nTRAININGSSCHEMA (2-weekse cyclus):
 Week 1:
-- Ma: Zwemmen techniek (45min Z2) + Fietsen herstel (45min Z1)
-- Di: Hardlopen interval (50min Z3) - 6x 800m met 2 min rust
+- Ma: Zwemmen techniek (45min Z3) + Fietsen herstel (45min Z2)
+- Di: Hardlopen interval (50min Z4) - 6x 800m met 2 min rust
 - Wo: Rust
-- Do: Hardlopen duur (60min Z2)
-- Vr: Zwemmen tempo/techniek (45min Z3)
-- Za: Hardlopen rustig (45min Z1)
-- Zo: Fietsen lang (90-120min Z2) + Brick run (20-30min Z2)
+- Do: Hardlopen duur (60min Z3)
+- Vr: Zwemmen tempo/techniek (45min Z4)
+- Za: Hardlopen rustig (45min Z2)
+- Zo: Fietsen lang (90-120min Z3) + Brick run (20-30min Z3)
 
 Week 2:
-- Ma: Zwemmen techniek (45min Z2) + Fietsen herstel (45min Z1)
-- Di: Hardlopen tempo (50min Z3)
+- Ma: Zwemmen techniek (45min Z3) + Fietsen herstel (45min Z2)
+- Di: Hardlopen tempo (50min Z4)
 - Wo: Rust
-- Do: Hardlopen duur (65min Z2)
-- Vr: Zwemmen duur (50min Z2)
-- Za: Mountainbike (60min Z2)
-- Zo: Zwemmen (40min Z2) + Hardlopen duur (50min Z2)\n`;
+- Do: Hardlopen duur (65min Z3)
+- Vr: Zwemmen duur (50min Z3)
+- Za: Mountainbike (60min Z3)
+- Zo: Zwemmen (40min Z3) + Hardlopen duur (50min Z3)\n`;
     }
 
     // Add current date/time context

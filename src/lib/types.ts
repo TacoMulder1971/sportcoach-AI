@@ -1,6 +1,6 @@
 export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'rust';
 
-export type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4';
+export type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5';
 
 export interface HeartRateZoneInfo {
   zone: HeartRateZone;
@@ -64,10 +64,11 @@ export interface UserProfile {
 }
 
 export const HEART_RATE_ZONES: HeartRateZoneInfo[] = [
-  { zone: 'Z1', label: 'Herstel', min: 103, max: 120, color: '#22c55e' },
-  { zone: 'Z2', label: 'Aeroob', min: 121, max: 137, color: '#3b82f6' },
-  { zone: 'Z3', label: 'Tempo', min: 138, max: 151, color: '#f59e0b' },
-  { zone: 'Z4', label: 'Drempel', min: 152, max: 163, color: '#ef4444' },
+  { zone: 'Z1', label: 'Herstel', min: 86, max: 103, color: '#9ca3af' },
+  { zone: 'Z2', label: 'Basis', min: 103, max: 120, color: '#22c55e' },
+  { zone: 'Z3', label: 'Aeroob', min: 120, max: 138, color: '#3b82f6' },
+  { zone: 'Z4', label: 'Drempel', min: 138, max: 155, color: '#f59e0b' },
+  { zone: 'Z5', label: 'VO2max', min: 155, max: 172, color: '#ef4444' },
 ];
 
 export const SPORT_ICONS: Record<Sport, string> = {

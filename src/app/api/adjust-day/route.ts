@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek } from '@/lib/types';
 
 const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'rust'];
-const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4'];
+const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
 const DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
 function validatePlan(data: unknown): { valid: boolean; plan?: TrainingWeek[]; errors: string[] } {
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     const systemPrompt = `Je bent TriCoach AI planmaker. De atleet wil een ad-hoc aanpassing aan zijn trainingsschema.
 
-ATLEET: Max HR 172 bpm, Zones: Z1(103-120), Z2(121-137), Z3(138-151), Z4(152-163)
+ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
 DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
@@ -101,7 +101,7 @@ Antwoord ALLEEN met een JSON code block. Geen andere tekst ervoor of erna.
 Het JSON moet exact dit TypeScript type volgen:
 
 type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'rust'
-type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4'
+type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5'
 
 interface TrainingSession {
   sport: Sport
