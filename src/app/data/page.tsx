@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { getGarminData } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
-import { GarminSyncData, SPORT_ICONS, SPORT_COLORS, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
+import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
+import SportIcon from '@/components/SportIcon';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -279,9 +280,7 @@ export default function DataPage() {
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {garmin.activities.map((a) => (
               <div key={a.id} className="p-3 flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${a.sport !== 'overig' ? SPORT_COLORS[a.sport] : 'bg-gray-500'}`}>
-                  {a.sport !== 'overig' ? SPORT_ICONS[a.sport] : '?'}
-                </div>
+                <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="md" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{a.activityName}</p>
                   <p className="text-xs text-gray-500">

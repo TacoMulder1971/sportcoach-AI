@@ -1,7 +1,8 @@
 'use client';
 
-import { TrainingDay, SPORT_ICONS, SPORT_COLORS, HEART_RATE_ZONES } from '@/lib/types';
+import { TrainingDay, HEART_RATE_ZONES } from '@/lib/types';
 import { formatDuration } from '@/lib/schedule';
+import SportIcon from './SportIcon';
 
 interface TrainingCardProps {
   training: TrainingDay;
@@ -39,13 +40,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
       <div className="space-y-2">
         {training.sessions.map((session, idx) => (
           <div key={idx} className="flex items-start gap-3">
-            <div
-              className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold ${
-                SPORT_COLORS[session.sport]
-              } text-white flex-shrink-0`}
-            >
-              {SPORT_ICONS[session.sport]}
-            </div>
+            <SportIcon sport={session.sport} size="lg" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">
                 {session.description}

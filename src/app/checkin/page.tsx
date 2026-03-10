@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import CheckInForm from '@/components/CheckInForm';
 import { getTodayTraining } from '@/lib/schedule';
 import { getGarminData, getActivePlan } from '@/lib/storage';
-import { TrainingDay, GarminActivity, SPORT_ICONS, SPORT_COLORS, HEART_RATE_ZONES } from '@/lib/types';
+import { TrainingDay, GarminActivity, HEART_RATE_ZONES } from '@/lib/types';
+import SportIcon from '@/components/SportIcon';
 
 function getHRZoneLabel(avgHR: number): string {
   for (const z of [...HEART_RATE_ZONES].reverse()) {
@@ -54,9 +55,7 @@ export default function CheckInPage() {
             <div className="space-y-2">
               {todayTraining.sessions.map((s, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded flex items-center justify-center text-xs font-bold text-white ${SPORT_COLORS[s.sport]}`}>
-                    {SPORT_ICONS[s.sport]}
-                  </div>
+                  <SportIcon sport={s.sport} size="sm" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-600 truncate">{s.type} · {s.durationMinutes}min · {s.zone}</p>
                   </div>
@@ -72,9 +71,7 @@ export default function CheckInPage() {
                   {todayActivities.map((a) => (
                     <div key={a.id} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-center gap-2 mb-1">
-                        <div className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white ${a.sport !== 'overig' ? SPORT_COLORS[a.sport] : 'bg-gray-500'}`}>
-                          {a.sport !== 'overig' ? SPORT_ICONS[a.sport] : '?'}
-                        </div>
+                        <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="sm" />
                         <p className="text-sm font-medium">{a.activityName}</p>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-center">
@@ -111,8 +108,8 @@ export default function CheckInPage() {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-            <span className="text-sm font-bold text-gray-400">R</span>
+          <div className="flex justify-center mb-4">
+            <SportIcon sport="rust" size="lg" />
           </div>
           <p className="text-gray-900 font-medium">Rustdag vandaag</p>
           <p className="text-gray-500 text-sm mt-1">
