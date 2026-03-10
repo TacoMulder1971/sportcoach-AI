@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -117,6 +117,42 @@ export function saveGarminData(data: GarminSyncData): void {
 
 // Training plans
 const DEFAULT_CYCLE_START = '2026-02-23';
+const ZONE_MIGRATION_KEY = 'tricoach_zones_v5_migrated';
+
+// Eenmalige migratie: 4-zone → 5-zone (Z1→Z2, Z2→Z3, Z3→Z4, Z4→Z5)
+function migrateZonesInPlan(plan: TrainingWeek[]): TrainingWeek[] {
+  const zoneMap: Record<string, HeartRateZone> = { Z1: 'Z2', Z2: 'Z3', Z3: 'Z4', Z4: 'Z5' };
+  return plan.map((week) => ({
+    ...week,
+    days: week.days.map((day) => ({
+      ...day,
+      sessions: day.sessions.map((session) => ({
+        ...session,
+        zone: session.zone ? (zoneMap[session.zone] ?? session.zone) as HeartRateZone : session.zone,
+        description: session.description
+          .replace(/\bZ4\b/g, 'Z5')
+          .replace(/\bZ3\b/g, 'Z4')
+          .replace(/\bZ2\b/g, 'Z3')
+          .replace(/\bZ1\b/g, 'Z2'),
+      })),
+    })),
+  }));
+}
+
+function runZoneMigration(): void {
+  if (typeof window === 'undefined') return;
+  if (localStorage.getItem(ZONE_MIGRATION_KEY)) return;
+  try {
+    const plans = getItem<StoredPlan[]>(KEYS.PLANS, []);
+    if (plans.length > 0) {
+      const migrated = plans.map((p) => ({ ...p, plan: migrateZonesInPlan(p.plan) }));
+      setItem(KEYS.PLANS, migrated);
+    }
+    localStorage.setItem(ZONE_MIGRATION_KEY, 'true');
+  } catch {
+    console.error('Zone migration failed');
+  }
+}
 
 export function getStoredPlans(): StoredPlan[] {
   return getItem<StoredPlan[]>(KEYS.PLANS, []);
@@ -143,6 +179,7 @@ export function setActivePlanId(id: string): void {
 }
 
 export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string; id: string } {
+  runZoneMigration();
   const activeId = getItem<string | null>(KEYS.ACTIVE_PLAN_ID, null);
   if (activeId) {
     const plans = getStoredPlans();
