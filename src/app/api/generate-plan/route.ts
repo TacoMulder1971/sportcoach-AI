@@ -6,6 +6,31 @@ const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'rust']
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
 const DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
+// Auto-repair veelvoorkomende AI-fouten vóór validatie
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function autoRepairPlan(data: any[]): any[] {
+  if (!Array.isArray(data)) return data;
+  for (const week of data) {
+    if (!week?.days || !Array.isArray(week.days)) continue;
+    for (let d = 0; d < week.days.length; d++) {
+      const day = week.days[d];
+      // Fix lege sessies → rustdag
+      if (!Array.isArray(day.sessions) || day.sessions.length === 0) {
+        day.isRestDay = true;
+        day.sessions = [{
+          sport: 'rust',
+          type: 'rust',
+          description: 'Rustdag — actief herstel of volledig rust',
+        }];
+      }
+      // Fix ontbrekende dag-naam/index
+      if (!day.day) day.day = DAY_NAMES[d];
+      if (day.dayIndex === undefined) day.dayIndex = d;
+    }
+  }
+  return data;
+}
+
 function validatePlan(data: unknown): { valid: boolean; plan?: TrainingWeek[]; errors: string[] } {
   const errors: string[] = [];
   if (!Array.isArray(data) || data.length !== 2) {
@@ -112,7 +137,8 @@ function parseAndValidate(text: string): { valid: boolean; plan?: TrainingWeek[]
   const jsonStr = jsonMatch ? jsonMatch[1] : text;
   try {
     const parsed = JSON.parse(jsonStr);
-    return validatePlan(parsed);
+    const repaired = autoRepairPlan(parsed);
+    return validatePlan(repaired);
   } catch {
     return { valid: false, errors: ['Kon geen geldig JSON vinden in AI response'] };
   }
