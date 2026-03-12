@@ -21,7 +21,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className={`font-semibold ${isToday ? 'text-blue-700' : 'text-gray-900'}`}>
+          <span className={`${isToday ? 'text-lg font-bold text-blue-700' : 'font-semibold text-gray-900'}`}>
             {training.day}
           </span>
           {isToday && (
@@ -42,18 +42,18 @@ export default function TrainingCard({ training, isToday = false, compact = fals
           <div key={idx} className="flex items-start gap-3">
             <SportIcon sport={session.sport} size="lg" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">
+              <p className={`${isToday ? 'text-base font-semibold' : 'text-sm font-medium'} text-gray-900`}>
                 {session.description}
               </p>
               <div className="flex items-center gap-2 mt-1">
                 {session.durationMinutes && (
-                  <span className="text-xs text-gray-500">
+                  <span className={`${isToday ? 'text-sm' : 'text-xs'} text-gray-500`}>
                     {formatDuration(session.durationMinutes)}
                   </span>
                 )}
                 {session.zone && (
                   <span
-                    className="text-xs px-1.5 py-0.5 rounded font-medium text-white"
+                    className={`${isToday ? 'text-sm px-2' : 'text-xs px-1.5'} py-0.5 rounded font-medium text-white`}
                     style={{
                       backgroundColor:
                         HEART_RATE_ZONES.find((z) => z.zone === session.zone)?.color ?? '#888',
