@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const dateStr = now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
 
     // Bouw de prompt op
-    let prompt = `Je bent TriCoach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
+    let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
 Spreek informeel (je/jij), wees warm en motiverend. Geen emojis in lopende tekst, alleen eventueel aan het begin.
 
 ATLEET: Traint voor 1/4 triatlon op 13 juni 2026 (nog ${daysUntilRace} dagen). Doel: onder 3 uur.

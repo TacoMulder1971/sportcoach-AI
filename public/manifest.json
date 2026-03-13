@@ -1,6 +1,6 @@
 {
-  "name": "TriCoach AI",
-  "short_name": "TriCoach",
+  "name": "My Sport Coach AI",
+  "short_name": "SportCoach",
   "description": "Jouw persoonlijke AI-trainingscoach voor triatlon",
   "start_url": "/",
   "display": "standalone",

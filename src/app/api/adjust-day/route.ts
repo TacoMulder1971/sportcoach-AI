@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     const dayName = DAY_NAMES[dayIndex] || 'onbekend';
     const currentPlanText = planToText(currentPlan);
 
-    const systemPrompt = `Je bent TriCoach AI planmaker. De atleet wil een ad-hoc aanpassing aan zijn trainingsschema.
+    const systemPrompt = `Je bent My Sport Coach AI planmaker. De atleet wil een ad-hoc aanpassing aan zijn trainingsschema.
 
 ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
 DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur

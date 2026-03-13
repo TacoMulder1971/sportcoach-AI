@@ -4,13 +4,13 @@ import Navigation from '@/components/Navigation';
 import PWARegister from '@/components/PWARegister';
 
 export const metadata: Metadata = {
-  title: 'TriCoach AI',
+  title: 'My Sport Coach AI',
   description: 'Jouw persoonlijke AI-trainingscoach voor triatlon',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'TriCoach AI',
+    title: 'My Sport Coach AI',
   },
 };
 

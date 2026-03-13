@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     if (mode === 'refine' && currentProposal && refinementFeedback) {
       const currentPlanText = planToText(currentProposal);
 
-      const refinePrompt = `Je bent TriCoach AI planmaker. Je hebt eerder een 2-weekse trainingsplanning gemaakt.
+      const refinePrompt = `Je bent My Sport Coach AI planmaker. Je hebt eerder een 2-weekse trainingsplanning gemaakt.
 
 ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
 DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
@@ -268,7 +268,7 @@ ${JSON_FORMAT_SPEC}`;
       phaseAdvice = 'FASE: Taper — flink volume verlagen, korte scherpe sessies, focus op rust en frisheid.';
     }
 
-    const systemPrompt = `Je bent TriCoach AI planmaker. Genereer een 2-weekse trainingsplanning als JSON.
+    const systemPrompt = `Je bent My Sport Coach AI planmaker. Genereer een 2-weekse trainingsplanning als JSON.
 
 ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
 DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur

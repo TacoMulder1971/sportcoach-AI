@@ -21,7 +21,7 @@ export default function CoachPage() {
         id: generateId(),
         role: 'assistant',
         content:
-          'Hoi! Ik ben je TriCoach AI. Ik ken je trainingsschema en help je richting je 1/4 triatlon op 13 juni.\n\nJe kunt me alles vragen over:\n- Je trainingsschema en aanpassingen\n- Hartslagzones en intensiteit\n- Herstel en periodisering\n- Motivatie en mentale tips\n\nHoe kan ik je helpen?',
+          'Hoi! Ik ben je My Sport Coach AI. Ik ken je trainingsschema en help je richting je 1/4 triatlon op 13 juni.\n\nJe kunt me alles vragen over:\n- Je trainingsschema en aanpassingen\n- Hartslagzones en intensiteit\n- Herstel en periodisering\n- Motivatie en mentale tips\n\nHoe kan ik je helpen?',
         createdAt: new Date().toISOString(),
       };
       saveChatMessage(welcome);
