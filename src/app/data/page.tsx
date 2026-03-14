@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { getGarminData } from '@/lib/storage';
+import { useEffect, useState, useMemo, useRef } from 'react';
+import { getGarminData, downloadExport, importAllData, markBackupDone } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
 import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
+  const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setGarmin(getGarminData());
@@ -47,15 +49,81 @@ export default function DataPage() {
 
   if (!garmin) {
     return (
-      <div className="px-4 pt-6">
-        <h1 className="text-2xl font-bold text-gray-900">Data</h1>
-        <p className="text-gray-500 text-sm mb-6">Garmin gegevens</p>
+      <div className="px-4 pt-6 space-y-5">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Data</h1>
+          <p className="text-gray-500 text-sm">Garmin gegevens</p>
+        </div>
         <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
           <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
           <p className="text-gray-500 text-sm">Sync eerst je Garmin op het dashboard</p>
         </div>
+
+        {/* Data beheer — ook zonder Garmin beschikbaar */}
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Data beheer</h2>
+          <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
+            <p className="text-sm text-gray-500">
+              Exporteer je data als backup of importeer een eerder gemaakte backup.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  downloadExport();
+                  markBackupDone();
+                  setImportStatus({ type: 'success', msg: 'Backup gedownload!' });
+                  setTimeout(() => setImportStatus(null), 3000);
+                }}
+                className="flex-1 py-3 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all text-sm"
+              >
+                Exporteer data
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 py-3 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm"
+              >
+                Importeer data
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (!confirm('Dit overschrijft alle huidige data. Doorgaan?')) {
+                  e.target.value = '';
+                  return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const result = importAllData(reader.result as string);
+                  if (result.success) {
+                    setImportStatus({ type: 'success', msg: 'Data succesvol geimporteerd! Pagina herlaadt...' });
+                    setTimeout(() => window.location.reload(), 1500);
+                  } else {
+                    setImportStatus({ type: 'error', msg: result.error || 'Import mislukt' });
+                  }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+              }}
+            />
+            {importStatus && (
+              <div className={`text-sm p-3 rounded-xl ${
+                importStatus.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+              }`}>
+                {importStatus.msg}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <div className="h-4" />
       </div>
     );
   }
@@ -296,6 +364,68 @@ export default function DataPage() {
           </div>
         </section>
       )}
+
+      {/* Data beheer */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Data beheer</h2>
+        <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
+          <p className="text-sm text-gray-500">
+            Exporteer je data als backup of importeer een eerder gemaakte backup.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                downloadExport();
+                markBackupDone();
+                setImportStatus({ type: 'success', msg: 'Backup gedownload!' });
+                setTimeout(() => setImportStatus(null), 3000);
+              }}
+              className="flex-1 py-3 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all text-sm"
+            >
+              Exporteer data
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 py-3 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm"
+            >
+              Importeer data
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              if (!confirm('Dit overschrijft alle huidige data. Doorgaan?')) {
+                e.target.value = '';
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = importAllData(reader.result as string);
+                if (result.success) {
+                  setImportStatus({ type: 'success', msg: 'Data succesvol geimporteerd! Pagina herlaadt...' });
+                  setTimeout(() => window.location.reload(), 1500);
+                } else {
+                  setImportStatus({ type: 'error', msg: result.error || 'Import mislukt' });
+                }
+              };
+              reader.readAsText(file);
+              e.target.value = '';
+            }}
+          />
+          {importStatus && (
+            <div className={`text-sm p-3 rounded-xl ${
+              importStatus.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+            }`}>
+              {importStatus.msg}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Bottom spacer for nav */}
       <div className="h-4" />

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, shouldAutoBackup, markBackupDone } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness } from '@/lib/types';
 
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [dailyMessage, setDailyMessage] = useState<string | null>(null);
   const [loadingDaily, setLoadingDaily] = useState(false);
+  const [showBackupReminder, setShowBackupReminder] = useState(false);
 
   const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null) => {
     // Check cache first
@@ -67,6 +68,7 @@ export default function Dashboard() {
     setTodayTraining(training);
     setRecentCheckIns(getRecentCheckIns(3));
     setGarmin(getGarminData());
+    setShowBackupReminder(shouldAutoBackup());
   }, []);
 
   async function handleGarminSync() {
@@ -127,6 +129,35 @@ export default function Dashboard() {
       {syncError && (
         <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">
           {syncError}
+        </div>
+      )}
+
+      {/* Backup herinnering */}
+      {showBackupReminder && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M4.93 4.93l14.14 14.14M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-700">Tijd voor een backup!</p>
+              <p className="text-xs text-gray-600 mt-0.5">Exporteer je data zodat je niets kwijtraakt.</p>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/data"
+                className="text-xs bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium"
+              >
+                Data
+              </Link>
+              <button
+                onClick={() => { markBackupDone(); setShowBackupReminder(false); }}
+                className="text-xs text-gray-400 px-1.5 py-1.5"
+              >
+                Later
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

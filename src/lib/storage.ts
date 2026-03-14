@@ -16,6 +16,9 @@ const KEYS = {
   DAILY_MESSAGE: 'tricoach_daily_message',
 } as const;
 
+const AUTO_BACKUP_KEY = 'tricoach_last_backup';
+const BACKUP_INTERVAL_DAYS = 7;
+
 function getItem<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
@@ -200,4 +203,77 @@ export function updateActivePlan(updatedPlan: TrainingWeek[]): boolean {
   plans[idx].plan = updatedPlan;
   setItem(KEYS.PLANS, plans);
   return true;
+}
+
+// ─── Data Export / Import / Backup ───────────────────────────────
+
+interface ExportData {
+  version: number;
+  exportedAt: string;
+  keys: Record<string, unknown>;
+}
+
+export function exportAllData(): string {
+  if (typeof window === 'undefined') return '{}';
+  const data: ExportData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    keys: {},
+  };
+  for (const key of Object.values(KEYS)) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) data.keys[key] = JSON.parse(raw);
+    } catch {
+      // skip corrupt keys
+    }
+  }
+  return JSON.stringify(data, null, 2);
+}
+
+export function importAllData(json: string): { success: boolean; error?: string } {
+  if (typeof window === 'undefined') return { success: false, error: 'Niet beschikbaar' };
+  try {
+    const data: ExportData = JSON.parse(json);
+    if (!data.version || !data.keys) {
+      return { success: false, error: 'Ongeldig bestandsformaat' };
+    }
+    // Schrijf alle keys naar localStorage
+    for (const [key, value] of Object.entries(data.keys)) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Kon bestand niet lezen' };
+  }
+}
+
+export function shouldAutoBackup(): boolean {
+  if (typeof window === 'undefined') return false;
+  const last = localStorage.getItem(AUTO_BACKUP_KEY);
+  if (!last) return true; // Nooit eerder gebackupt
+  const lastDate = new Date(last);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays >= BACKUP_INTERVAL_DAYS;
+}
+
+export function markBackupDone(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(AUTO_BACKUP_KEY, new Date().toISOString());
+}
+
+export function downloadExport(): void {
+  const json = exportAllData();
+  const today = new Date().toISOString().split('T')[0];
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sportcoach-backup-${today}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  markBackupDone();
 }
