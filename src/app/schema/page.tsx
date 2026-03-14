@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import TrainingCard from '@/components/TrainingCard';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan } from '@/lib/storage';
+import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone } from '@/lib/storage';
 import { HEART_RATE_ZONES, TrainingWeek, TrainingDay } from '@/lib/types';
 import { TRAINING_PHASES, getCurrentPhase, getPhaseProgress, getPhaseStatus, getPhaseDateRange, getDaysUntilRace as getDaysUntilRacePeriod } from '@/lib/periodization';
 
@@ -26,6 +27,7 @@ export default function SchemaPage() {
   const [adjustText, setAdjustText] = useState('');
   const [adjusting, setAdjusting] = useState(false);
   const [adjustError, setAdjustError] = useState<string | null>(null);
+  const [showBackupReminder, setShowBackupReminder] = useState(false);
 
   useEffect(() => {
     const active = getActivePlan();
@@ -35,6 +37,7 @@ export default function SchemaPage() {
     const currentWeek = getCurrentWeekNumber(active.cycleStartDate);
     setSelectedTab(currentWeek);
     setCycleDay(getDaysInCurrentCycle(active.cycleStartDate));
+    setShowBackupReminder(shouldAutoBackup());
   }, []);
 
   // Auto-scroll naar vandaag bij initieel laden
@@ -97,6 +100,35 @@ export default function SchemaPage() {
           </p>
         </div>
       </div>
+
+      {/* Backup herinnering */}
+      {showBackupReminder && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M4.93 4.93l14.14 14.14M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-700">Tijd voor een backup!</p>
+              <p className="text-xs text-gray-600 mt-0.5">Exporteer je data zodat je niets kwijtraakt.</p>
+            </div>
+            <div className="flex gap-2">
+              <Link
+                href="/data"
+                className="text-xs bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium"
+              >
+                Data
+              </Link>
+              <button
+                onClick={() => { markBackupDone(); setShowBackupReminder(false); }}
+                className="text-xs text-gray-400 px-1.5 py-1.5"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Nieuw schema prompt */}
       {showNewPlanPrompt && (
