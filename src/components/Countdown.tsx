@@ -26,9 +26,9 @@ export default function Countdown() {
           <p className="text-blue-200 text-sm mt-1">tot 1/4 Triatlon</p>
         </div>
         <div className="flex gap-2">
-          <SportIcon sport="zwemmen" size="sm" />
-          <SportIcon sport="fietsen" size="sm" />
-          <SportIcon sport="hardlopen" size="sm" />
+          <SportIcon sport="zwemmen" size="xl" />
+          <SportIcon sport="fietsen" size="xl" />
+          <SportIcon sport="hardlopen" size="xl" />
         </div>
       </div>
       <div className="mt-4 bg-blue-500/30 rounded-full h-2">
