@@ -1,19 +1,38 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { getGarminData, downloadExport, importAllData, markBackupDone } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
 import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setGarmin(getGarminData());
   }, []);
+
+  async function handleGarminSync() {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await fetch('/api/garmin/sync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Sync mislukt');
+      saveGarminData(data);
+      setGarmin(data);
+      markAutoSyncDone();
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : 'Sync mislukt');
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const trainingLoad = useMemo(() => {
     if (!garmin) return null;
@@ -50,15 +69,31 @@ export default function DataPage() {
   if (!garmin) {
     return (
       <div className="px-4 pt-6 space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Data</h1>
-          <p className="text-gray-500 text-sm">Garmin gegevens</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Data</h1>
+            <p className="text-gray-500 text-sm">Garmin gegevens</p>
+          </div>
+          <button
+            onClick={handleGarminSync}
+            disabled={syncing}
+            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+          >
+            {syncing ? 'Syncing...' : 'Sync'}
+          </button>
         </div>
+
+        {syncError && (
+          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">
+            {syncError}
+          </div>
+        )}
+
         <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
           <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
-          <p className="text-gray-500 text-sm">Sync eerst je Garmin op het dashboard</p>
+          <p className="text-gray-500 text-sm">Klik op Sync om je Garmin data op te halen</p>
         </div>
 
         {/* Data beheer — ook zonder Garmin beschikbaar */}
@@ -130,10 +165,25 @@ export default function DataPage() {
 
   return (
     <div className="px-4 pt-6 space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Data</h1>
-        <p className="text-gray-500 text-sm">Garmin gegevens {lastSync && `· ${lastSync}`}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Data</h1>
+          <p className="text-gray-500 text-sm">Garmin gegevens {lastSync && `· ${lastSync}`}</p>
+        </div>
+        <button
+          onClick={handleGarminSync}
+          disabled={syncing}
+          className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
+        >
+          {syncing ? 'Syncing...' : 'Sync'}
+        </button>
       </div>
+
+      {syncError && (
+        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">
+          {syncError}
+        </div>
+      )}
 
       {/* Trainingsgereedheid detail */}
       {readiness && (

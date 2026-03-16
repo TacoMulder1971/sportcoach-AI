@@ -126,23 +126,10 @@ export default function Dashboard() {
   return (
     <div className="px-4 pt-6 space-y-5">
       {/* Header + Sync */}
-      <div className="relative text-center">
+      <div className="text-center">
         <h1 className="text-[24px] font-bold text-gray-900">My Sport Coach AI</h1>
         <p className="text-gray-500 text-[14px]">Jouw persoonlijke trainingscoach</p>
-        <button
-          onClick={handleGarminSync}
-          disabled={syncing}
-          className="absolute right-0 top-1 text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
-        >
-          {syncing ? 'Syncing...' : 'Sync'}
-        </button>
       </div>
-
-      {syncError && (
-        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">
-          {syncError}
-        </div>
-      )}
 
       {/* Countdown */}
       <Countdown />
