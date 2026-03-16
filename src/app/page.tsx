@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, shouldAutoSync, markAutoSyncDone } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness } from '@/lib/types';
 
@@ -69,8 +69,10 @@ export default function Dashboard() {
     setRecentCheckIns(getRecentCheckIns(3));
     setGarmin(getGarminData());
 
-    // Auto-sync Garmin bij page load
-    handleGarminSync();
+    // Auto-sync Garmin max 1x per dag
+    if (shouldAutoSync()) {
+      handleGarminSync();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -83,6 +85,7 @@ export default function Dashboard() {
       if (!res.ok) throw new Error(data.error || 'Sync mislukt');
       saveGarminData(data);
       setGarmin(data);
+      markAutoSyncDone();
     } catch (e) {
       setSyncError(e instanceof Error ? e.message : 'Sync mislukt');
     } finally {

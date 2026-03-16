@@ -85,6 +85,22 @@ export function saveDailyMessage(message: string): void {
   setItem(KEYS.DAILY_MESSAGE, { date: today, message });
 }
 
+// Auto-sync throttle (1x per dag)
+const AUTO_SYNC_KEY = 'tricoach_last_auto_sync';
+
+export function shouldAutoSync(): boolean {
+  if (typeof window === 'undefined') return false;
+  const last = localStorage.getItem(AUTO_SYNC_KEY);
+  if (!last) return true;
+  const today = new Date().toISOString().split('T')[0];
+  return last !== today;
+}
+
+export function markAutoSyncDone(): void {
+  const today = new Date().toISOString().split('T')[0];
+  localStorage.setItem(AUTO_SYNC_KEY, today);
+}
+
 // Chat messages
 export function getChatMessages(): ChatMessage[] {
   return getItem<ChatMessage[]>(KEYS.CHAT_MESSAGES, []);
