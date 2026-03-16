@@ -66,7 +66,7 @@ export default function Dashboard() {
     const { plan, cycleStartDate } = getActivePlan();
     const training = getTodayTraining(plan, cycleStartDate);
     setTodayTraining(training);
-    setRecentCheckIns(getRecentCheckIns(3));
+    setRecentCheckIns(getRecentCheckIns(1));
     setGarmin(getGarminData());
 
     // Auto-sync Garmin max 1x per dag
@@ -275,7 +275,7 @@ export default function Dashboard() {
       {recentCheckIns.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
-            Recente check-outs
+            Laatste check-out
           </h2>
           <div className="space-y-2">
             {recentCheckIns.map((ci) => (
