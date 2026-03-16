@@ -68,6 +68,10 @@ export default function Dashboard() {
     setTodayTraining(training);
     setRecentCheckIns(getRecentCheckIns(3));
     setGarmin(getGarminData());
+
+    // Auto-sync Garmin bij page load
+    handleGarminSync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleGarminSync() {
@@ -96,8 +100,14 @@ export default function Dashboard() {
     return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, garmin.activities);
   }, [garmin, todayTraining]);
 
-  // Fetch daily message once (uses cache)
+  // Fetch daily message — alleen na sync (of als er een cache is)
   useEffect(() => {
+    const cached = getDailyMessage();
+    if (cached) {
+      setDailyMessage(cached.message);
+      return;
+    }
+    if (!garmin) return;
     fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness);
   }, [todayTraining, garmin, trainingLoad, readiness, fetchDailyMessage]);
 
@@ -206,17 +216,20 @@ export default function Dashboard() {
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold text-blue-600 mb-1">Coach van de dag</p>
-            {loadingDaily ? (
-              <div className="flex gap-1 py-1">
-                <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" />
-                <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce [animation-delay:0.1s]" />
-                <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce [animation-delay:0.2s]" />
+            {(syncing || loadingDaily) && !dailyMessage ? (
+              <div className="flex items-center gap-2 py-1">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" />
+                  <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce [animation-delay:0.1s]" />
+                  <span className="w-2 h-2 bg-blue-300 rounded-full animate-bounce [animation-delay:0.2s]" />
+                </div>
+                <span className="text-xs text-blue-400">{syncing ? 'Syncing...' : 'Coach denkt na...'}</span>
               </div>
             ) : dailyMessage ? (
               <p className="text-sm text-gray-700 leading-relaxed">{dailyMessage}</p>
             ) : (
               <p className="text-sm text-gray-700">
-                {readiness?.advice || trainingLoad?.advice || 'Open de app dagelijks voor persoonlijk coach-advies.'}
+                {readiness?.advice || trainingLoad?.advice || 'Even geduld, coach laadt...'}
               </p>
             )}
           </div>
