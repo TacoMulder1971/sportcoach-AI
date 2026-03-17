@@ -63,6 +63,16 @@ export function getDaysInCurrentCycle(cycleStartDate?: string): number {
   return (diffDays % 14) + 1; // dag 1-14 in de cyclus
 }
 
+export function getMondayOfCurrentWeek(): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - daysToMonday);
+  return monday.toISOString().split('T')[0];
+}
+
 export function getNextMonday(): string {
   const today = new Date();
   const dayOfWeek = today.getDay(); // 0=Sun

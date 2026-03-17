@@ -4,8 +4,9 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
+import RaceProgressMeter from '@/components/RaceProgressMeter';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, shouldAutoSync, markAutoSyncDone } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, shouldAutoSync, markAutoSyncDone, getWeeklyReport } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice } from '@/lib/types';
 
@@ -17,6 +18,7 @@ export default function Dashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [dailyMessage, setDailyMessage] = useState<string | null>(null);
   const [loadingDaily, setLoadingDaily] = useState(false);
+  const [weeklyReportPreview, setWeeklyReportPreview] = useState<string | null>(null);
 
 
   const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null) => {
@@ -68,6 +70,8 @@ export default function Dashboard() {
     setTodayTraining(training);
     setRecentCheckIns(getRecentCheckIns(1));
     setGarmin(getGarminData());
+    const cached = getWeeklyReport();
+    if (cached) setWeeklyReportPreview(cached.summary);
 
     // Auto-sync Garmin max 1x per dag
     if (shouldAutoSync()) {
@@ -159,6 +163,20 @@ export default function Dashboard() {
 
       {/* Countdown */}
       <Countdown />
+
+      {/* Voortgangsmeter race */}
+      <RaceProgressMeter garmin={garmin} />
+
+      {/* Weekrapport preview */}
+      {weeklyReportPreview && (
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-blue-800">Weekrapport</h2>
+            <Link href="/data" className="text-xs text-blue-600 font-medium">Bekijk alles →</Link>
+          </div>
+          <p className="text-sm text-blue-700 leading-relaxed line-clamp-3">{weeklyReportPreview}</p>
+        </div>
+      )}
 
       {/* Training Load + Battery Advies */}
       <div className="grid grid-cols-2 gap-3">

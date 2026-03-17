@@ -8,7 +8,7 @@ const REST_HR = 55; // geschatte rustHR, wordt overschreven door Garmin data
  * TRIMP = duur(min) × intensiteitsfactor
  * Intensiteitsfactor = (avgHR - restHR) / (maxHR - restHR)
  */
-function calcTRIMP(activity: GarminActivity, restingHR: number): number {
+export function calcTRIMP(activity: GarminActivity, restingHR: number): number {
   if (!activity.avgHR || activity.avgHR <= restingHR) return 0;
   const intensity = (activity.avgHR - restingHR) / (MAX_HR - restingHR);
   return Math.round(activity.durationMinutes * intensity);
@@ -306,4 +306,71 @@ export function getTrainingAdvice(readiness: TrainingReadiness, plannedTRIMP: nu
       ? 'Je lichaam heeft rust nodig. Sla deze zware training over of doe een licht hersteloefening.'
       : 'Je bent onvoldoende hersteld. Neem een rustdag voor beter herstel.',
   };
+}
+
+/**
+ * Dagelijkse TRIMP-geschiedenis over de afgelopen N dagen
+ * Dagdrempels: <21 laag, 21-50 optimaal, 50-71 hoog, >71 overbelast
+ */
+export function getDailyTRIMPHistory(
+  activities: GarminActivity[],
+  restingHR: number,
+  days = 42
+): { date: string; trimp: number; zone: 'laag' | 'optimaal' | 'hoog' | 'overbelast' }[] {
+  const result: { date: string; trimp: number; zone: 'laag' | 'optimaal' | 'hoog' | 'overbelast' }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayActivities = activities.filter((a) => a.date === dateStr);
+    const trimp = dayActivities.reduce((sum, a) => sum + calcTRIMP(a, restingHR), 0);
+
+    let zone: 'laag' | 'optimaal' | 'hoog' | 'overbelast';
+    if (trimp < 21) zone = 'laag';
+    else if (trimp < 50) zone = 'optimaal';
+    else if (trimp < 72) zone = 'hoog';
+    else zone = 'overbelast';
+
+    result.push({ date: dateStr, trimp, zone });
+  }
+  return result;
+}
+
+/**
+ * Wekelijkse TRIMP-totalen voor de afgelopen N weken (maandag t/m zondag)
+ */
+export function getWeeklyTRIMPTotals(
+  activities: GarminActivity[],
+  restingHR: number,
+  weeksBack = 6
+): { weekStart: string; weekLabel: string; trimp: number }[] {
+  const result: { weekStart: string; weekLabel: string; trimp: number }[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Maandag van huidige week
+  const dayOfWeek = today.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const thisMonday = new Date(today);
+  thisMonday.setDate(today.getDate() - daysToMonday);
+
+  for (let w = weeksBack - 1; w >= 0; w--) {
+    const monday = new Date(thisMonday);
+    monday.setDate(thisMonday.getDate() - w * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const mondayStr = monday.toISOString().split('T')[0];
+    const sundayStr = sunday.toISOString().split('T')[0];
+
+    const weekActivities = activities.filter((a) => a.date >= mondayStr && a.date <= sundayStr);
+    const trimp = weekActivities.reduce((sum, a) => sum + calcTRIMP(a, restingHR), 0);
+
+    const weekLabel = monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+    result.push({ weekStart: mondayStr, weekLabel, trimp });
+  }
+  return result;
 }

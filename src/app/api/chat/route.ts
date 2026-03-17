@@ -54,7 +54,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate } = await request.json();
+    const {
+      messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
+      weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes,
+    } = await request.json();
 
     // Bouw schema tekst dynamisch
     let planText = '';
@@ -123,10 +126,13 @@ Week 2:
       }
       if (garminData.activities && garminData.activities.length > 0) {
         contextMessage += '\nRECENTE GARMIN ACTIVITEITEN:\n';
-        for (const a of garminData.activities.slice(0, 7)) {
+        for (const a of garminData.activities.slice(0, 14)) {
           contextMessage += `- ${a.date}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
           if (a.distanceKm > 0) contextMessage += `, ${a.distanceKm}km`;
           if (a.avgHR > 0) contextMessage += `, gem HR ${a.avgHR}, max HR ${a.maxHR}`;
+          if (a.hrZones && a.hrZones.length > 0) {
+            contextMessage += ` | zones: ${a.hrZones.map((z: { zone: string; minutes: number }) => `${z.zone}: ${z.minutes}min`).join(', ')}`;
+          }
           contextMessage += '\n';
         }
       }
@@ -138,6 +144,32 @@ Week 2:
       contextMessage += `- Weekbelasting: ${trainingLoad.weekLoad} TRIMP\n`;
       contextMessage += `- Status: ${trainingLoad.status}\n`;
       contextMessage += `- Advies: ${trainingLoad.advice}\n`;
+    }
+
+    // Trainingsfase
+    if (currentPhase) {
+      contextMessage += `\nTRAININGSFASE: ${currentPhase.label} (nog ${daysUntilRaceBody} dagen tot wedstrijd)\n`;
+    }
+
+    // 4-weekse TRIMP-trend
+    if (weeklyTRIMP && weeklyTRIMP.length > 0) {
+      contextMessage += `\nTRIMP TREND (weekbelasting, laatste 4 weken):\n`;
+      for (const w of weeklyTRIMP) {
+        contextMessage += `- Week van ${w.weekLabel}: ${w.trimp} TRIMP\n`;
+      }
+    }
+
+    // Gemiddeld gevoel
+    if (avgFeeling !== null && avgFeeling !== undefined) {
+      contextMessage += `\nGEMIDDELD GEVOEL AFGELOPEN 4 WEKEN: ${avgFeeling}/5\n`;
+    }
+
+    // Recente notities
+    if (recentNotes && recentNotes.length > 0) {
+      contextMessage += `\nRECENTE NOTITIES ATLEET:\n`;
+      for (const n of recentNotes) {
+        contextMessage += `- ${n.date} (gevoel ${n.feeling}/5): "${n.note}"\n`;
+      }
     }
 
     const fullSystemPrompt = BASE_PROMPT + planText + contextMessage;

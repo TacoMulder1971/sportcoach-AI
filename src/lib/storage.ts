@@ -14,6 +14,7 @@ const KEYS = {
   PLANS: 'tricoach_plans',
   ACTIVE_PLAN_ID: 'tricoach_active_plan_id',
   DAILY_MESSAGE: 'tricoach_daily_message',
+  WEEKLY_REPORT: 'tricoach_weekly_report',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -286,6 +287,33 @@ export function shouldAutoBackup(): boolean {
 export function markBackupDone(): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(AUTO_BACKUP_KEY, new Date().toISOString());
+}
+
+// Wekelijks AI rapport — gecached per ISO-week (bijv. "2026-W12")
+interface WeeklyReport {
+  weekKey: string;
+  generatedAt: string;
+  summary: string;
+}
+
+function getISOWeekKey(): string {
+  const now = new Date();
+  const thursday = new Date(now);
+  thursday.setDate(now.getDate() - ((now.getDay() + 6) % 7) + 3);
+  const year = thursday.getFullYear();
+  const firstThursday = new Date(year, 0, 4);
+  const weekNum = 1 + Math.round(((thursday.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7);
+  return `${year}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+export function getWeeklyReport(): WeeklyReport | null {
+  const stored = getItem<WeeklyReport | null>(KEYS.WEEKLY_REPORT, null);
+  if (!stored) return null;
+  return stored.weekKey === getISOWeekKey() ? stored : null;
+}
+
+export function saveWeeklyReport(report: Omit<WeeklyReport, 'weekKey'>): void {
+  setItem(KEYS.WEEKLY_REPORT, { ...report, weekKey: getISOWeekKey() });
 }
 
 export function downloadExport(): void {

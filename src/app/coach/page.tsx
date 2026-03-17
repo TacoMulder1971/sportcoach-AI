@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import ChatMessage from '@/components/ChatMessage';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getGarminData, getActivePlan, generateId } from '@/lib/storage';
-import { calculateTrainingLoad } from '@/lib/training-load';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId } from '@/lib/storage';
+import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
+import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 
 export default function CoachPage() {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
@@ -60,6 +61,28 @@ export default function CoachPage() {
 
       const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
+      // Extra context voor diepere coaching
+      const restingHR = garminData?.health?.restingHR || 55;
+      const weeklyTRIMP = garminData
+        ? getWeeklyTRIMPTotals(garminData.activities, restingHR, 4)
+        : [];
+
+      const allCheckIns = getCheckIns();
+      const fourWeeksAgo = new Date();
+      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+      const fourWeeksAgoStr = fourWeeksAgo.toISOString().split('T')[0];
+      const last28CheckIns = allCheckIns.filter((ci) => ci.date >= fourWeeksAgoStr);
+      const avgFeeling = last28CheckIns.length > 0
+        ? Math.round((last28CheckIns.reduce((s, c) => s + c.feeling, 0) / last28CheckIns.length) * 10) / 10
+        : null;
+      const recentNotes = last28CheckIns
+        .filter((ci) => ci.note)
+        .slice(-7)
+        .map((ci) => ({ date: ci.date, feeling: ci.feeling, note: ci.note }));
+
+      const currentPhase = getCurrentPhase();
+      const daysUntilRace = getDaysUntilRace();
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -73,6 +96,11 @@ export default function CoachPage() {
           trainingLoad,
           currentPlan,
           cycleStartDate,
+          weeklyTRIMP,
+          currentPhase: { id: currentPhase.id, label: currentPhase.label },
+          daysUntilRace,
+          avgFeeling,
+          recentNotes,
         }),
       });
 

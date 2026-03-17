@@ -1,20 +1,26 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport } from '@/lib/storage';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
+import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
+import TrainingLoadChart from '@/components/TrainingLoadChart';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setGarmin(getGarminData());
+    const cached = getWeeklyReport();
+    if (cached) setWeeklyReport(cached.summary);
   }, []);
 
   async function handleGarminSync() {
@@ -77,6 +83,58 @@ export default function DataPage() {
       avgHR: recent.length > 0 ? Math.round(recent.reduce((s, a) => s + a.avgHR, 0) / recent.length) : 0,
     };
   }, [garmin]);
+
+  const dailyTRIMP = useMemo(() => {
+    if (!garmin) return [];
+    const restingHR = garmin.health?.restingHR || 55;
+    return getDailyTRIMPHistory(garmin.activities, restingHR, 42);
+  }, [garmin]);
+
+  const weeklyTRIMP = useMemo(() => {
+    if (!garmin) return [];
+    const restingHR = garmin.health?.restingHR || 55;
+    return getWeeklyTRIMPTotals(garmin.activities, restingHR, 6);
+  }, [garmin]);
+
+  const isMonday = new Date().getDay() === 1;
+
+  async function handleGenerateReport() {
+    if (!garmin) return;
+    setReportLoading(true);
+    try {
+      const currentPhase = getCurrentPhase();
+      const daysUntilRace = getDaysUntilRace();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const cutoff = sevenDaysAgo.toISOString().split('T')[0];
+      const recentCheckIns = JSON.parse(localStorage.getItem('tricoach_checkins') || '[]')
+        .filter((c: { date: string }) => c.date >= cutoff);
+      const recent = garmin.activities.filter((a) => a.date >= cutoff);
+      const totalVolumeMinutes = recent.reduce((s, a) => s + a.durationMinutes, 0);
+      const totalVolumeKm = recent.reduce((s, a) => s + a.distanceKm, 0);
+
+      const res = await fetch('/api/weekly-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          weeklyTRIMP,
+          checkIns: recentCheckIns,
+          currentPhase: currentPhase.label,
+          daysUntilRace,
+          totalVolumeMinutes,
+          totalVolumeKm,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setWeeklyReport(data.report);
+      saveWeeklyReport({ generatedAt: new Date().toISOString(), summary: data.report });
+    } catch (e) {
+      console.error('Weekrapport fout:', e);
+    } finally {
+      setReportLoading(false);
+    }
+  }
 
   const lastSync = garmin?.syncedAt
     ? new Date(garmin.syncedAt).toLocaleString('nl-NL', {
@@ -203,6 +261,30 @@ export default function DataPage() {
         </div>
       )}
 
+      {/* Weekrapport */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-900">Weekrapport</h2>
+          {isMonday && !weeklyReport && (
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Nieuw</span>
+          )}
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          {weeklyReport ? (
+            <p className="text-sm text-gray-700 leading-relaxed">{weeklyReport}</p>
+          ) : (
+            <p className="text-sm text-gray-400">Nog geen rapport gegenereerd voor deze week.</p>
+          )}
+          <button
+            onClick={handleGenerateReport}
+            disabled={reportLoading}
+            className="mt-3 w-full py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all"
+          >
+            {reportLoading ? 'Rapport genereren...' : weeklyReport ? 'Rapport vernieuwen' : 'Genereer rapport'}
+          </button>
+        </div>
+      </section>
+
       {/* Trainingsgereedheid detail */}
       {readiness && (
         <section>
@@ -317,6 +399,29 @@ export default function DataPage() {
               <span>Over</span>
             </div>
             <p className="text-sm text-gray-600 mt-3">{trainingLoad.advice}</p>
+          </div>
+        </section>
+      )}
+
+      {/* Trainingsbelasting grafiek */}
+      {dailyTRIMP.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Belasting (6 weken)</h2>
+          <div className="bg-white rounded-xl p-4 border border-gray-200">
+            <TrainingLoadChart data={dailyTRIMP} />
+            <div className="flex gap-3 mt-3 flex-wrap">
+              {[
+                { zone: 'laag', color: '#60a5fa', label: 'Laag' },
+                { zone: 'optimaal', color: '#22c55e', label: 'Optimaal' },
+                { zone: 'hoog', color: '#f97316', label: 'Hoog' },
+                { zone: 'overbelast', color: '#ef4444', label: 'Overbelast' },
+              ].map(({ color, label }) => (
+                <span key={label} className="flex items-center gap-1 text-[10px] text-gray-500">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         </section>
       )}
