@@ -62,8 +62,11 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           if (a.avgRunCadence > 0) feedbackPrompt += `, cadans ${a.avgRunCadence} spm`;
           if (a.avgBikeCadence > 0) feedbackPrompt += `, cadans ${a.avgBikeCadence} rpm`;
           feedbackPrompt += `, ${a.calories} kcal\n`;
+          if (a.hrZones && a.hrZones.length > 0) {
+            feedbackPrompt += `  HR zone verdeling: ${a.hrZones.map(z => `${z.zone}: ${z.minutes}min`).join(', ')}\n`;
+          }
         }
-        feedbackPrompt += '\nAnalyseer deze training diepgaand in 2-3 zinnen: vergelijk geplande zone met werkelijke HR-zone, beoordeel tempo en training effect. Was de intensiteit juist? Concrete verbeterpunten?';
+        feedbackPrompt += '\nAnalyseer deze training diepgaand in 2-3 zinnen: vergelijk geplande zone met werkelijke HR-zone verdeling, beoordeel tempo en training effect. Was de intensiteit juist? Concrete verbeterpunten?';
       } else {
         feedbackPrompt += '\nEr is geen Garmin activiteit beschikbaar voor vandaag. Geef korte feedback (2-3 zinnen) op basis van het gevoel en de geplande training.';
       }

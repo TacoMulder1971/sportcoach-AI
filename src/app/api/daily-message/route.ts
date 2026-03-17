@@ -77,8 +77,11 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
         if (a.avgRunCadence > 0) prompt += `, cadans ${a.avgRunCadence} spm`;
         if (a.avgBikeCadence > 0) prompt += `, cadans ${a.avgBikeCadence} rpm`;
         prompt += `, ${a.calories} kcal\n`;
+        if (a.hrZones && a.hrZones.length > 0) {
+          prompt += `  HR zone verdeling: ${a.hrZones.map((z: { zone: string; minutes: number }) => `${z.zone}: ${z.minutes}min`).join(', ')}\n`;
+        }
       }
-      prompt += 'Gebruik deze gedetailleerde data voor specifiek, inhoudelijk advies.\n';
+      prompt += 'Gebruik deze gedetailleerde data (incl. zone-verdeling) voor specifiek, inhoudelijk advies.\n';
     }
 
     // Load & readiness

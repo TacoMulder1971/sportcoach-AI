@@ -123,6 +123,7 @@ export interface GarminActivity {
   elevationLoss: number; // meters
   vo2Max: number;
   avgPace: string; // berekend: "5:23/km" of "28.5 km/h"
+  hrZones?: { zone: string; minutes: number }[]; // bijv. [{zone:"Z1", minutes:5}, {zone:"Z2", minutes:25}]
 }
 
 export interface GarminHealthStats {

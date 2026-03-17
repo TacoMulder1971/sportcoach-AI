@@ -21,9 +21,27 @@ export default function DataPage() {
     setSyncing(true);
     setSyncError(null);
     try {
-      const res = await fetch('/api/garmin/sync', { method: 'POST' });
+      const existingData = getGarminData();
+      const existingActivityIds = existingData?.activities?.map(a => a.id) || [];
+
+      const res = await fetch('/api/garmin/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ existingActivityIds }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync mislukt');
+
+      // Merge: behoud hrZones van bestaande activiteiten
+      if (existingData?.activities) {
+        const existingMap = new Map(existingData.activities.map(a => [a.id, a]));
+        for (const activity of data.activities) {
+          if (!activity.hrZones && existingMap.has(activity.id)) {
+            activity.hrZones = existingMap.get(activity.id)?.hrZones;
+          }
+        }
+      }
+
       saveGarminData(data);
       setGarmin(data);
       markAutoSyncDone();

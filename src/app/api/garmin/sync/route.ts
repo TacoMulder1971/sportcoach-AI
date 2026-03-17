@@ -22,7 +22,7 @@ function mapGarminSport(typeKey: string): Sport | 'overig' {
   return map[typeKey] || 'overig';
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const email = process.env.GARMIN_EMAIL;
     const password = process.env.GARMIN_PASSWORD;
@@ -32,6 +32,15 @@ export async function POST() {
         { error: 'Garmin credentials niet geconfigureerd' },
         { status: 500 }
       );
+    }
+
+    // Parse existing activity IDs from request body
+    let existingActivityIds: number[] = [];
+    try {
+      const body = await request.json();
+      existingActivityIds = body.existingActivityIds || [];
+    } catch {
+      // No body or invalid JSON — treat as no existing IDs
     }
 
     const GC = new GarminConnect({ username: email, password });
@@ -84,6 +93,28 @@ export async function POST() {
         avgPace,
       };
     });
+
+    // Fetch HR zone details voor nieuwe activiteiten (max 3)
+    const newActivities = activities.filter(a => !existingActivityIds.includes(a.id));
+    const toFetchDetails = newActivities.slice(0, 3);
+
+    for (const activity of toFetchDetails) {
+      try {
+        const details = await (GC as unknown as { getActivityDetails: (id: number) => Promise<Record<string, unknown>> }).getActivityDetails(activity.id);
+        const zones = (details as Record<string, unknown>).heartRateZones as Array<{ zoneLowBoundary: number; zoneNumber: number; secsInZone: number }> | undefined;
+        if (zones && Array.isArray(zones)) {
+          activity.hrZones = zones
+            .filter(z => z.secsInZone > 0)
+            .map(z => ({
+              zone: `Z${z.zoneNumber}`,
+              minutes: Math.round(z.secsInZone / 60),
+            }));
+        }
+      } catch (e) {
+        console.error(`Failed to fetch details for activity ${activity.id}:`, e);
+        // Continue without zone data
+      }
+    }
 
     // Fetch sleep + health data
     let health: GarminHealthStats | null = null;
