@@ -80,13 +80,16 @@ function getRecentTRIMP(activities: GarminActivity[], restingHR: number, hours: 
 }
 
 /**
- * Belasting-score op basis van recente TRIMP (0-3)
+ * Belasting-score op basis van recente TRIMP (0-5)
  * Hoe zwaarder de recente training, hoe lager de score
+ * Weegt zwaarder dan andere factoren (5 van 9 punten)
  */
 function getLoadScore(recentTRIMP: number): number {
-  if (recentTRIMP < 50) return 3;
-  if (recentTRIMP <= 100) return 2;
-  if (recentTRIMP <= 180) return 1;
+  if (recentTRIMP < 30) return 5;
+  if (recentTRIMP < 60) return 4;
+  if (recentTRIMP < 100) return 3;
+  if (recentTRIMP < 150) return 2;
+  if (recentTRIMP < 200) return 1;
   return 0;
 }
 
@@ -116,28 +119,24 @@ export function getTrainingReadiness(
     // --- VOLLEDIGE MODUS: HRV + Slaap + Lichaam ---
     mode = 'full';
 
-    // HRV (0-3)
+    // HRV (0-2)
     label1 = 'HRV';
     const hrvStatus = (health.hrvStatus || '').toLowerCase();
     if (hrvStatus === 'balanced' || hrvStatus === 'good' || hrvStatus === 'optimal') {
-      score1 = 3;
-    } else if (health.avgOvernightHrv > 40) {
       score1 = 2;
-    } else if (health.avgOvernightHrv > 25) {
+    } else if (health.avgOvernightHrv > 30) {
       score1 = 1;
     }
 
-    // Slaap (0-3)
+    // Slaap (0-2)
     label2 = 'Slaap';
-    if (health.sleepScore > 75) {
-      score2 = 3;
-    } else if (health.sleepScore > 55) {
+    if (health.sleepScore > 70) {
       score2 = 2;
-    } else if (health.sleepScore > 40) {
+    } else if (health.sleepScore > 45) {
       score2 = 1;
     }
 
-    // Belasting (0-3) — hoe zwaarder recent getraind, hoe lager
+    // Belasting (0-5) — hoe zwaarder recent getraind, hoe lager
     label3 = 'Belasting';
     const restingHR = health.restingHR || REST_HR;
     const recentTRIMP = getRecentTRIMP(activities, restingHR);
@@ -146,40 +145,40 @@ export function getTrainingReadiness(
     // --- FALLBACK MODUS: RustHR + Hersteltijd + Lichaam ---
     mode = 'fallback';
 
-    // Rust-hartslag (0-3)
+    // Rust-hartslag (0-2)
     label1 = 'Rust HR';
     if (health.restingHR > 0) {
-      if (health.restingHR < 52) {
-        score1 = 3;
-      } else if (health.restingHR < 56) {
+      if (health.restingHR < 54) {
         score1 = 2;
       } else if (health.restingHR < 60) {
         score1 = 1;
       }
     }
 
-    // Belasting (0-3) — hoe zwaarder recent getraind, hoe lager
+    // Belasting (0-5) — hoe zwaarder recent getraind, hoe lager
     label2 = 'Belasting';
     const restingHR = health.restingHR || REST_HR;
     const recentTRIMP = getRecentTRIMP(activities, restingHR);
     score2 = getLoadScore(recentTRIMP);
 
-    // Lichaam (0-3) — body battery als beschikbaar
+    // Lichaam (0-2) — body battery als beschikbaar
     label3 = 'Lichaam';
     if (health.bodyBatteryChange > 20) {
-      score3 += 2;
+      score3 = 2;
     } else if (health.bodyBatteryChange > 5) {
-      score3 += 1;
+      score3 = 1;
     }
     // In fallback: als geen battery data, geef 1 punt als rustHR laag
-    if (health.bodyBatteryChange === 0 && health.restingHR > 0 && health.restingHR < 55) {
-      score3 += 1;
+    if (score3 === 0 && health.restingHR > 0 && health.restingHR < 55) {
+      score3 = 1;
     }
-    score3 = Math.min(3, score3);
   }
 
   const total = score1 + score2 + score3;
-  const factors = { label1, score1, label2, score2, label3, score3 };
+  const max1 = hasSleepData ? 2 : 2;
+  const max2 = hasSleepData ? 2 : 5;
+  const max3 = hasSleepData ? 5 : 2;
+  const factors = { label1, score1, max1, label2, score2, max2, label3, score3, max3 };
 
   if (total >= 7) {
     return {

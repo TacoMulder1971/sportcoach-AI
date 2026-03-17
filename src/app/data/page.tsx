@@ -201,19 +201,19 @@ export default function DataPage() {
             </div>
             <div className="space-y-3">
               {[
-                { label: readiness.factors.label1, val: readiness.factors.score1, detail: readiness.mode === 'full' ? `${garmin?.health?.avgOvernightHrv || 0}ms · ${garmin?.health?.hrvStatus || ''}` : `${garmin?.health?.restingHR || ''} bpm` },
-                { label: readiness.factors.label2, val: readiness.factors.score2, detail: readiness.mode === 'full' ? `Score ${garmin?.health?.sleepScore || 0} · ${garmin?.health?.sleepDurationHours || 0}u` : 'Tijd sinds training' },
-                { label: readiness.factors.label3, val: readiness.factors.score3, detail: garmin?.health ? `Battery ${garmin.health.bodyBatteryChange > 0 ? '+' : ''}${garmin.health.bodyBatteryChange} · Rust HR ${garmin.health.restingHR}` : '' },
+                { label: readiness.factors.label1, val: readiness.factors.score1, max: readiness.factors.max1, detail: readiness.mode === 'full' ? `${garmin?.health?.avgOvernightHrv || 0}ms · ${garmin?.health?.hrvStatus || ''}` : `${garmin?.health?.restingHR || ''} bpm` },
+                { label: readiness.factors.label2, val: readiness.factors.score2, max: readiness.factors.max2, detail: readiness.mode === 'full' ? `Score ${garmin?.health?.sleepScore || 0} · ${garmin?.health?.sleepDurationHours || 0}u` : 'TRIMP laatste 48u' },
+                { label: readiness.factors.label3, val: readiness.factors.score3, max: readiness.factors.max3, detail: readiness.mode === 'full' ? 'TRIMP laatste 48u' : garmin?.health ? `Battery ${garmin.health.bodyBatteryChange > 0 ? '+' : ''}${garmin.health.bodyBatteryChange} · Rust HR ${garmin.health.restingHR}` : '' },
               ].map((f) => (
                 <div key={f.label} className="flex items-center gap-3">
                   <p className="text-xs text-gray-500 w-14">{f.label}</p>
                   <div className="flex gap-1 flex-1">
-                    {[1, 2, 3].map((i) => (
+                    {Array.from({ length: f.max }, (_, i) => i + 1).map((i) => (
                       <div
                         key={i}
                         className={`h-3 flex-1 rounded ${
                           i <= f.val
-                            ? f.val >= 3 ? 'bg-green-400' : f.val >= 2 ? 'bg-yellow-400' : 'bg-red-400'
+                            ? f.val >= f.max * 0.6 ? 'bg-green-400' : f.val >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
                             : 'bg-gray-100'
                         }`}
                       />

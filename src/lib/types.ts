@@ -151,7 +151,7 @@ export interface TrainingReadiness {
   score: number; // 0-9
   advice: string;
   mode: 'full' | 'fallback'; // full=met slaapdata, fallback=zonder
-  factors: { label1: string; score1: number; label2: string; score2: number; label3: string; score3: number };
+  factors: { label1: string; score1: number; max1: number; label2: string; score2: number; max2: number; label3: string; score3: number; max3: number };
 }
 
 // Dynamisch schema genereren

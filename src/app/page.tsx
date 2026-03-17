@@ -170,18 +170,18 @@ export default function Dashboard() {
               <p className={`text-xs ${readiness.color} font-semibold mb-2`}>{readiness.score}/9</p>
               <div className="flex gap-1">
                 {[
-                  { label: readiness.factors.label1, val: readiness.factors.score1 },
-                  { label: readiness.factors.label2, val: readiness.factors.score2 },
-                  { label: readiness.factors.label3, val: readiness.factors.score3 },
+                  { label: readiness.factors.label1, val: readiness.factors.score1, max: readiness.factors.max1 },
+                  { label: readiness.factors.label2, val: readiness.factors.score2, max: readiness.factors.max2 },
+                  { label: readiness.factors.label3, val: readiness.factors.score3, max: readiness.factors.max3 },
                 ].map((f) => (
                   <div key={f.label} className="flex-1 text-center">
                     <div className="flex gap-px justify-center mb-0.5">
-                      {[1, 2, 3].map((i) => (
+                      {Array.from({ length: f.max }, (_, i) => i + 1).map((i) => (
                         <div
                           key={i}
                           className={`w-2 h-2 rounded-sm ${
                             i <= f.val
-                              ? f.val >= 3 ? 'bg-green-400' : f.val >= 2 ? 'bg-yellow-400' : 'bg-red-400'
+                              ? f.val >= f.max * 0.6 ? 'bg-green-400' : f.val >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
                               : 'bg-gray-200'
                           }`}
                         />
