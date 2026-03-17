@@ -15,9 +15,14 @@ export async function POST(request: NextRequest) {
     const dayName = days[now.getDay()];
     const dateStr = now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    const hours = now.getHours();
+    const timeStr = `${hours}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const dagdeel = hours < 12 ? 'ochtend' : hours < 17 ? 'middag' : 'avond';
+
     // Bouw de prompt op
     let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
 Spreek informeel (je/jij), wees warm en motiverend. Geen emojis in lopende tekst, alleen eventueel aan het begin.
+BELANGRIJK: Het is nu ${timeStr} (${dagdeel}). Pas je begroeting aan: gebruik "goedemorgen" alleen 's ochtends, "goedemiddag" 's middags, "goedenavond" 's avonds.
 
 ATLEET: Traint voor 1/4 triatlon op 13 juni 2026 (nog ${daysUntilRace} dagen). Doel: onder 3 uur.
 
@@ -59,11 +64,21 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     }
 
     if (garminActivities && garminActivities.length > 0) {
-      const yesterday = garminActivities[0];
-      prompt += `\nLAATSTE ACTIVITEIT: ${yesterday.activityName} - ${yesterday.durationMinutes}min`;
-      if (yesterday.distanceKm > 0) prompt += `, ${yesterday.distanceKm}km`;
-      if (yesterday.avgHR > 0) prompt += `, gem HR ${yesterday.avgHR}`;
-      prompt += '\n';
+      prompt += `\nRECENTE ACTIVITEITEN:\n`;
+      for (const a of garminActivities.slice(0, 3)) {
+        prompt += `- ${a.activityName} (${a.date}): ${a.durationMinutes}min`;
+        if (a.distanceKm > 0) prompt += `, ${a.distanceKm}km`;
+        if (a.avgPace) prompt += `, tempo ${a.avgPace}`;
+        if (a.avgHR > 0) prompt += `, gem HR ${a.avgHR}`;
+        if (a.maxHR > 0) prompt += `, max HR ${a.maxHR}`;
+        if (a.trainingEffectAerobic > 0) prompt += `, TE aerobic ${a.trainingEffectAerobic}/5`;
+        if (a.trainingEffectAnaerobic > 0) prompt += `, TE anaerobic ${a.trainingEffectAnaerobic}/5`;
+        if (a.elevationGain > 0) prompt += `, ${a.elevationGain}m stijging`;
+        if (a.avgRunCadence > 0) prompt += `, cadans ${a.avgRunCadence} spm`;
+        if (a.avgBikeCadence > 0) prompt += `, cadans ${a.avgBikeCadence} rpm`;
+        prompt += `, ${a.calories} kcal\n`;
+      }
+      prompt += 'Gebruik deze gedetailleerde data voor specifiek, inhoudelijk advies.\n';
     }
 
     // Load & readiness

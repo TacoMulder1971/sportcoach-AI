@@ -115,6 +115,14 @@ export interface GarminActivity {
   maxHR: number;
   calories: number;
   avgSpeed: number; // km/h
+  trainingEffectAerobic: number; // 0-5
+  trainingEffectAnaerobic: number; // 0-5
+  avgRunCadence: number; // spm (hardlopen)
+  avgBikeCadence: number; // rpm (fietsen)
+  elevationGain: number; // meters
+  elevationLoss: number; // meters
+  vo2Max: number;
+  avgPace: string; // berekend: "5:23/km" of "28.5 km/h"
 }
 
 export interface GarminHealthStats {

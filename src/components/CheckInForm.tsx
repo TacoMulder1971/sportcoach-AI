@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
+import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, HEART_RATE_ZONES } from '@/lib/types';
 import { saveCheckIn, updateCheckIn, generateId, getGarminData, getRecentCheckIns, getActivePlan } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 
@@ -48,9 +48,22 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       if (garminActivities.length > 0) {
         feedbackPrompt += '\nWerkelijke Garmin data van vandaag:\n';
         for (const a of garminActivities) {
-          feedbackPrompt += `- ${a.activityName}: ${a.durationMinutes}min, ${a.distanceKm}km, gem HR ${a.avgHR}, max HR ${a.maxHR}\n`;
+          // Bepaal werkelijke zone op basis van avgHR
+          let actualZone = 'Onder Z1';
+          for (const z of [...HEART_RATE_ZONES].reverse()) {
+            if (a.avgHR >= z.min) { actualZone = `${z.zone} (${z.min}-${z.max} bpm)`; break; }
+          }
+          feedbackPrompt += `- ${a.activityName}: ${a.durationMinutes}min, ${a.distanceKm}km`;
+          if (a.avgPace) feedbackPrompt += `, tempo ${a.avgPace}`;
+          feedbackPrompt += `, gem HR ${a.avgHR} (${actualZone}), max HR ${a.maxHR}`;
+          if (a.trainingEffectAerobic > 0) feedbackPrompt += `, TE aerobic ${a.trainingEffectAerobic}/5`;
+          if (a.trainingEffectAnaerobic > 0) feedbackPrompt += `, TE anaerobic ${a.trainingEffectAnaerobic}/5`;
+          if (a.elevationGain > 0) feedbackPrompt += `, ${a.elevationGain}m stijging`;
+          if (a.avgRunCadence > 0) feedbackPrompt += `, cadans ${a.avgRunCadence} spm`;
+          if (a.avgBikeCadence > 0) feedbackPrompt += `, cadans ${a.avgBikeCadence} rpm`;
+          feedbackPrompt += `, ${a.calories} kcal\n`;
         }
-        feedbackPrompt += '\nGeef korte feedback (2-3 zinnen) over deze training. Vergelijk gepland vs gedaan. Was de intensiteit goed? Hoe past dit in het trainingsplan?';
+        feedbackPrompt += '\nAnalyseer deze training diepgaand in 2-3 zinnen: vergelijk geplande zone met werkelijke HR-zone, beoordeel tempo en training effect. Was de intensiteit juist? Concrete verbeterpunten?';
       } else {
         feedbackPrompt += '\nEr is geen Garmin activiteit beschikbaar voor vandaag. Geef korte feedback (2-3 zinnen) op basis van het gevoel en de geplande training.';
       }
