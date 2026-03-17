@@ -69,14 +69,25 @@ export function calculateTrainingLoad(
 }
 
 /**
- * Bereken uren sinds laatste training
+ * Bereken totale TRIMP van activiteiten binnen de laatste X uur
  */
-function hoursSinceLastActivity(activities: GarminActivity[]): number {
-  if (activities.length === 0) return 999;
-  const sorted = [...activities].sort((a, b) => b.date.localeCompare(a.date));
-  const lastDate = new Date(sorted[0].date + 'T18:00:00'); // schat einde training
-  const now = new Date();
-  return (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+function getRecentTRIMP(activities: GarminActivity[], restingHR: number, hours: number = 48): number {
+  const cutoff = new Date();
+  cutoff.setHours(cutoff.getHours() - hours);
+  const cutoffDate = cutoff.toISOString().split('T')[0];
+  const recent = activities.filter((a) => a.date >= cutoffDate);
+  return recent.reduce((sum, a) => sum + calcTRIMP(a, restingHR), 0);
+}
+
+/**
+ * Belasting-score op basis van recente TRIMP (0-3)
+ * Hoe zwaarder de recente training, hoe lager de score
+ */
+function getLoadScore(recentTRIMP: number): number {
+  if (recentTRIMP < 50) return 3;
+  if (recentTRIMP <= 100) return 2;
+  if (recentTRIMP <= 180) return 1;
+  return 0;
 }
 
 /**
@@ -126,17 +137,11 @@ export function getTrainingReadiness(
       score2 = 1;
     }
 
-    // Lichaam (0-3)
-    label3 = 'Lichaam';
-    if (health.bodyBatteryChange > 20) {
-      score3 += 2;
-    } else if (health.bodyBatteryChange > 5) {
-      score3 += 1;
-    }
-    if (health.restingHR > 0 && health.restingHR < 55) {
-      score3 += 1;
-    }
-    score3 = Math.min(3, score3);
+    // Belasting (0-3) — hoe zwaarder recent getraind, hoe lager
+    label3 = 'Belasting';
+    const restingHR = health.restingHR || REST_HR;
+    const recentTRIMP = getRecentTRIMP(activities, restingHR);
+    score3 = getLoadScore(recentTRIMP);
   } else {
     // --- FALLBACK MODUS: RustHR + Hersteltijd + Lichaam ---
     mode = 'fallback';
@@ -153,16 +158,11 @@ export function getTrainingReadiness(
       }
     }
 
-    // Hersteltijd sinds laatste training (0-3)
-    label2 = 'Herstel';
-    const hours = hoursSinceLastActivity(activities);
-    if (hours > 36) {
-      score2 = 3;
-    } else if (hours > 20) {
-      score2 = 2;
-    } else if (hours > 10) {
-      score2 = 1;
-    }
+    // Belasting (0-3) — hoe zwaarder recent getraind, hoe lager
+    label2 = 'Belasting';
+    const restingHR = health.restingHR || REST_HR;
+    const recentTRIMP = getRecentTRIMP(activities, restingHR);
+    score2 = getLoadScore(recentTRIMP);
 
     // Lichaam (0-3) — body battery als beschikbaar
     label3 = 'Lichaam';
