@@ -6,8 +6,8 @@ import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, shouldAutoSync, markAutoSyncDone } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
-import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness } from '@/lib/types';
+import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
+import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice } from '@/lib/types';
 
 export default function Dashboard() {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
@@ -102,6 +102,13 @@ export default function Dashboard() {
     if (!garmin) return null;
     return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, garmin.activities);
   }, [garmin, todayTraining]);
+
+  // Trainingsadvies: gereedheid vs. geplande training
+  const trainingAdvice: TrainingAdvice | null = useMemo(() => {
+    if (!readiness || !todayTraining || todayTraining.isRestDay) return null;
+    const plannedTRIMP = estimatePlannedTRIMP(todayTraining.sessions);
+    return getTrainingAdvice(readiness, plannedTRIMP);
+  }, [readiness, todayTraining]);
 
   // Fetch daily message — alleen na sync (of als er een cache is)
   useEffect(() => {
@@ -231,6 +238,25 @@ export default function Dashboard() {
         <h2 className="text-lg font-semibold text-gray-900 mb-3">
           Training vandaag
         </h2>
+        {trainingAdvice && (
+          <div className={`${trainingAdvice.bgColor} border ${trainingAdvice.borderColor} rounded-xl p-4 mb-3`}>
+            <div className="flex items-start gap-3">
+              <div className={`w-8 h-8 rounded-lg ${trainingAdvice.level === 'go' ? 'bg-green-100' : trainingAdvice.level === 'adjust' ? 'bg-amber-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
+                {trainingAdvice.level === 'go' ? (
+                  <svg className={`w-4 h-4 ${trainingAdvice.iconColor}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                ) : trainingAdvice.level === 'adjust' ? (
+                  <svg className={`w-4 h-4 ${trainingAdvice.iconColor}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01"/></svg>
+                ) : (
+                  <svg className={`w-4 h-4 ${trainingAdvice.iconColor}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                )}
+              </div>
+              <div>
+                <p className={`text-sm font-semibold ${trainingAdvice.color}`}>{trainingAdvice.label}</p>
+                <p className="text-xs text-gray-600 mt-0.5">{trainingAdvice.message}</p>
+              </div>
+            </div>
+          </div>
+        )}
         {todayTraining ? (
           <TrainingCard training={todayTraining} isToday />
         ) : (

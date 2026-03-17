@@ -154,6 +154,16 @@ export interface TrainingReadiness {
   factors: { label1: string; score1: number; max1: number; label2: string; score2: number; max2: number; label3: string; score3: number; max3: number };
 }
 
+export interface TrainingAdvice {
+  level: 'go' | 'adjust' | 'rest';
+  label: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  iconColor: string;
+  message: string;
+}
+
 // Dynamisch schema genereren
 export interface DayPreference {
   weekNumber: 1 | 2;

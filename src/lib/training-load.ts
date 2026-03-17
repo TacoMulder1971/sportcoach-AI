@@ -1,4 +1,4 @@
-import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness } from './types';
+import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HEART_RATE_ZONES } from './types';
 
 const MAX_HR = 172;
 const REST_HR = 55; // geschatte rustHR, wordt overschreven door Garmin data
@@ -219,5 +219,91 @@ export function getTrainingReadiness(
       ? 'Neem het rustig aan of kies voor een lichte hersteltraining.'
       : 'Focus op herstel: rust, voeding en slaap.',
     factors,
+  };
+}
+
+/**
+ * Schat de TRIMP van een geplande training op basis van zones en duur
+ */
+export function estimatePlannedTRIMP(sessions: TrainingSession[]): number {
+  const zoneAvgHR: Record<string, number> = {};
+  for (const z of HEART_RATE_ZONES) {
+    zoneAvgHR[z.zone] = Math.round((z.min + z.max) / 2);
+  }
+
+  let total = 0;
+  for (const s of sessions) {
+    const avgHR = zoneAvgHR[s.zone || 'Z2'] || 112;
+    const duration = s.durationMinutes || 30;
+    const intensity = (avgHR - REST_HR) / (MAX_HR - REST_HR);
+    if (intensity > 0) {
+      total += Math.round(duration * intensity);
+    }
+  }
+  return total;
+}
+
+/**
+ * Geeft concreet trainingsadvies: ga ervoor, pas aan, of neem rust
+ * Combineert gereedheid-score met zwaarte van de geplande training
+ */
+export function getTrainingAdvice(readiness: TrainingReadiness, plannedTRIMP: number): TrainingAdvice {
+  const score = readiness.score;
+  const isHeavy = plannedTRIMP > 80;
+  const isMedium = plannedTRIMP > 40;
+
+  // Bepaal advies op basis van matrix
+  let level: 'go' | 'adjust' | 'rest';
+
+  if (score >= 7) {
+    level = 'go';
+  } else if (score >= 5) {
+    level = isHeavy ? 'adjust' : 'go';
+  } else if (score === 4) {
+    level = isHeavy ? 'rest' : isMedium ? 'adjust' : 'go';
+  } else if (score >= 2) {
+    level = isMedium ? 'rest' : 'adjust';
+  } else {
+    level = 'rest';
+  }
+
+  if (level === 'go') {
+    return {
+      level: 'go',
+      label: 'Ga ervoor!',
+      color: 'text-green-700',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-200',
+      iconColor: 'text-green-600',
+      message: score >= 7
+        ? 'Je bent top hersteld. Voluit gaan vandaag!'
+        : 'Je bent voldoende hersteld voor deze training.',
+    };
+  }
+
+  if (level === 'adjust') {
+    return {
+      level: 'adjust',
+      label: 'Pas aan',
+      color: 'text-amber-700',
+      bgColor: 'bg-amber-50',
+      borderColor: 'border-amber-200',
+      iconColor: 'text-amber-600',
+      message: isHeavy
+        ? 'Zware training gepland, maar je bent niet optimaal hersteld. Verlaag de intensiteit of duur.'
+        : 'Je herstel is matig. Luister naar je lichaam en verlaag zo nodig het tempo.',
+    };
+  }
+
+  return {
+    level: 'rest',
+    label: 'Beter rusten',
+    color: 'text-red-700',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200',
+    iconColor: 'text-red-500',
+    message: isHeavy
+      ? 'Je lichaam heeft rust nodig. Sla deze zware training over of doe een licht hersteloefening.'
+      : 'Je bent onvoldoende hersteld. Neem een rustdag voor beter herstel.',
   };
 }
