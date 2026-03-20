@@ -68,31 +68,22 @@ export function updateCheckIn(id: string, updates: Partial<CheckIn>): void {
   }
 }
 
-// Daily message — cache per dagdeel (ochtend/middag/avond)
+// Daily message — cache 1x per dag
 interface DailyMessage {
-  key: string; // "2026-03-17_avond"
+  key: string; // "2026-03-17"
   message: string;
-}
-
-function getDagdeel(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'ochtend';
-  if (hour < 17) return 'middag';
-  return 'avond';
 }
 
 export function getDailyMessage(): DailyMessage | null {
   const stored = getItem<DailyMessage | null>(KEYS.DAILY_MESSAGE, null);
   if (!stored) return null;
   const today = new Date().toISOString().split('T')[0];
-  const currentKey = `${today}_${getDagdeel()}`;
-  return stored.key === currentKey ? stored : null;
+  return stored.key === today ? stored : null;
 }
 
 export function saveDailyMessage(message: string): void {
   const today = new Date().toISOString().split('T')[0];
-  const key = `${today}_${getDagdeel()}`;
-  setItem(KEYS.DAILY_MESSAGE, { key, message });
+  setItem(KEYS.DAILY_MESSAGE, { key: today, message });
 }
 
 // Auto-sync throttle (1x per dag)
