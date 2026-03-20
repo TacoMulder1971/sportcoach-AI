@@ -133,8 +133,21 @@ export default function CoachPage() {
     setIsListening(false);
   };
 
+  const unlockAudio = () => {
+    // iOS vereist een gebruikersactie om audio te starten — unlock hier
+    if ('speechSynthesis' in window) {
+      const unlock = new SpeechSynthesisUtterance('');
+      unlock.volume = 0;
+      window.speechSynthesis.speak(unlock);
+      window.speechSynthesis.cancel();
+    }
+  };
+
   const sendMessageWithText = async (text: string) => {
     if (!text.trim() || isLoading) return;
+
+    // Unlock audio op iOS direct bij gebruikersactie
+    unlockAudio();
 
     const userMessage: ChatMessageType = {
       id: generateId(),
