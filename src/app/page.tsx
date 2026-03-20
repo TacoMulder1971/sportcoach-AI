@@ -6,7 +6,7 @@ import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import RaceProgressMeter from '@/components/RaceProgressMeter';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, shouldAutoSync, markAutoSyncDone, getWeeklyReport } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice } from '@/lib/types';
 
@@ -18,7 +18,6 @@ export default function Dashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [dailyMessage, setDailyMessage] = useState<string | null>(null);
   const [loadingDaily, setLoadingDaily] = useState(false);
-  const [weeklyReportPreview, setWeeklyReportPreview] = useState<string | null>(null);
 
 
   const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null) => {
@@ -70,13 +69,9 @@ export default function Dashboard() {
     setTodayTraining(training);
     setRecentCheckIns(getRecentCheckIns(1));
     setGarmin(getGarminData());
-    const cached = getWeeklyReport();
-    if (cached) setWeeklyReportPreview(cached.summary);
 
-    // Auto-sync Garmin max 1x per dag
-    if (shouldAutoSync()) {
-      handleGarminSync();
-    }
+    // Altijd Garmin synchen bij openen — coach van de dag wacht op verse data
+    handleGarminSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -133,16 +128,17 @@ export default function Dashboard() {
     return getTrainingAdvice(readiness, plannedTRIMP);
   }, [readiness, todayTraining]);
 
-  // Fetch daily message — alleen na sync (of als er een cache is)
+  // Fetch daily message — wacht tot Garmin sync klaar is
   useEffect(() => {
+    if (syncing) return; // wacht op verse Garmin data
+    if (!garmin) return; // geen data beschikbaar
     const cached = getDailyMessage();
     if (cached) {
       setDailyMessage(cached.message);
       return;
     }
-    if (!garmin) return;
     fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness);
-  }, [todayTraining, garmin, trainingLoad, readiness, fetchDailyMessage]);
+  }, [syncing, todayTraining, garmin, trainingLoad, readiness, fetchDailyMessage]);
 
   // Load bar percentage (0-100, capped at 600 TRIMP)
   const loadPct = trainingLoad ? Math.min(100, (trainingLoad.weekLoad / 600) * 100) : 0;
@@ -166,17 +162,6 @@ export default function Dashboard() {
 
       {/* Voortgangsmeter race */}
       <RaceProgressMeter garmin={garmin} />
-
-      {/* Weekrapport preview */}
-      {weeklyReportPreview && (
-        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold text-blue-800">Weekrapport</h2>
-            <Link href="/data" className="text-xs text-blue-600 font-medium">Bekijk alles →</Link>
-          </div>
-          <p className="text-sm text-blue-700 leading-relaxed line-clamp-3">{weeklyReportPreview}</p>
-        </div>
-      )}
 
       {/* Training Load + Battery Advies */}
       <div className="grid grid-cols-2 gap-3">
