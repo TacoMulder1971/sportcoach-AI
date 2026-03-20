@@ -61,23 +61,37 @@ export default function CoachPage() {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'nl-NL';
-    utterance.rate = 0.95;
+    utterance.rate = 0.9;
     utterance.pitch = 1.1;
+    utterance.volume = 1;
 
-    // Kies beste beschikbare vrouwenstem
+    const doSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const femaleVoice =
+        voices.find(v => v.lang === 'nl-NL' && /female|vrouw|fem|fiona|ellen/i.test(v.name)) ||
+        voices.find(v => v.lang === 'nl-NL') ||
+        voices.find(v => v.lang.startsWith('nl')) ||
+        voices.find(v => v.default);
+
+      if (femaleVoice) utterance.voice = femaleVoice;
+
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+
+      window.speechSynthesis.speak(utterance);
+    };
+
+    // Wacht tot stemmen geladen zijn (belangrijk op iPhone!)
     const voices = window.speechSynthesis.getVoices();
-    const femaleVoice =
-      voices.find(v => v.lang === 'nl-NL' && /female|vrouw|fem/i.test(v.name)) ||
-      voices.find(v => v.lang === 'nl-NL') ||
-      voices.find(v => v.lang.startsWith('nl'));
-
-    if (femaleVoice) utterance.voice = femaleVoice;
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
+    if (voices.length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.onvoiceschanged = null;
+        doSpeak();
+      };
+    }
   }, []);
 
   const stopSpeaking = () => {
