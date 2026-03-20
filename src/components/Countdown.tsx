@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react';
 import { getDaysUntilRace } from '@/lib/schedule';
 import { getProfile } from '@/lib/storage';
 import SportIcon from './SportIcon';
-import { TRAINING_PHASES, getCurrentPhase, getPhaseStatus } from '@/lib/periodization';
+import { TRAINING_PHASES, getCurrentPhase, getPhaseStatus, getPhaseProgress } from '@/lib/periodization';
 
-const START_DATE = '2026-03-01';
 const RACE_DATE_STR = '2026-06-13';
 const TOTAL_PREP_DAYS = Math.round(
-  (new Date(RACE_DATE_STR).getTime() - new Date(START_DATE).getTime()) / (1000 * 60 * 60 * 24)
+  (new Date(RACE_DATE_STR).getTime() - new Date('2026-03-01').getTime()) / (1000 * 60 * 60 * 24)
 );
 const PHASE_DURATIONS: Record<string, number> = {
   basis: 50, opbouw: 28, piek: 21, taper: 14, wedstrijd: 7,
@@ -25,11 +24,8 @@ export default function Countdown() {
 
   if (days === null) return null;
 
-  const daysElapsed = Math.round(
-    (new Date().setHours(0, 0, 0, 0) - new Date(START_DATE).getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const prepCompleted = Math.min(100, Math.max(0, Math.round((daysElapsed / TOTAL_PREP_DAYS) * 100)));
   const currentPhase = getCurrentPhase();
+  const phaseProgress = getPhaseProgress();
 
   return (
     <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white">
@@ -61,8 +57,8 @@ export default function Countdown() {
                 key={phase.id}
                 style={{
                   width: `${widthPct}%`,
-                  backgroundColor: 'white',
-                  opacity: isDone ? 0.6 : isCurrent ? 1 : 0.2,
+                  backgroundColor: phase.color,
+                  opacity: isDone ? 0.9 : isCurrent ? 1 : 0.25,
                 }}
               />
             );
@@ -88,7 +84,7 @@ export default function Countdown() {
       </div>
 
       <p className="text-blue-200 text-xs mt-2">
-        13 juni 2026 · {currentPhase.label} · {prepCompleted}% voltooid
+        13 juni 2026 · {currentPhase.label} · {phaseProgress}% voltooid
       </p>
     </div>
   );
