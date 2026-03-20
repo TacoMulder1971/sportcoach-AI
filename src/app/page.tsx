@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
-import RaceProgressMeter from '@/components/RaceProgressMeter';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
@@ -159,9 +158,6 @@ export default function Dashboard() {
 
       {/* Countdown */}
       <Countdown />
-
-      {/* Voortgangsmeter race */}
-      <RaceProgressMeter garmin={garmin} />
 
       {/* Training Load + Battery Advies */}
       <div className="grid grid-cols-2 gap-3">

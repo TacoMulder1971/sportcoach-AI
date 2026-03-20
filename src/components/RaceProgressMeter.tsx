@@ -10,8 +10,14 @@ interface RaceProgressMeterProps {
   garmin: GarminSyncData | null;
 }
 
-// Totale trackbare voorbereiding: Basis(50) + Opbouw(28) + Piek(21) + Taper(14) + Wedstrijd(7) = 120 dagen
-const TOTAL_PREP_DAYS = 120;
+// Startdatum van de voorbereiding
+const START_DATE = '2026-03-01';
+const RACE_DATE_STR = '2026-06-13';
+
+// Totale voorbereidingsdagen: van startdatum tot racedag
+const TOTAL_PREP_DAYS = Math.round(
+  (new Date(RACE_DATE_STR).getTime() - new Date(START_DATE).getTime()) / (1000 * 60 * 60 * 24)
+);
 
 // Faseduur in dagen (voor proportionele weergave)
 const PHASE_DURATIONS: Record<string, number> = {
@@ -28,7 +34,10 @@ export default function RaceProgressMeter({ garmin }: RaceProgressMeterProps) {
   const daysUntilRace = getDaysUntilRace();
   const currentPhase = getCurrentPhase();
 
-  const prepCompleted = Math.min(100, Math.max(0, Math.round(((TOTAL_PREP_DAYS - daysUntilRace) / TOTAL_PREP_DAYS) * 100)));
+  const daysElapsed = Math.round(
+    (new Date().setHours(0,0,0,0) - new Date(START_DATE).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const prepCompleted = Math.min(100, Math.max(0, Math.round((daysElapsed / TOTAL_PREP_DAYS) * 100)));
   const weeksUntilRace = Math.ceil(daysUntilRace / 7);
 
   const { plannedMinutes, actualMinutes } = useMemo(() => {
