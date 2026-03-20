@@ -101,6 +101,7 @@ export default function CoachPage() {
           daysUntilRace,
           avgFeeling,
           recentNotes,
+          localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
         }),
       });
 

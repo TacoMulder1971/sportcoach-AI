@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
-      weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes,
+      weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, localDateTime,
     } = await request.json();
 
     // Bouw schema tekst dynamisch
@@ -85,8 +85,9 @@ Week 2:
 - Zo: Zwemmen (40min Z3) + Hardlopen duur (50min Z3)\n`;
     }
 
-    // Add current date/time context
-    const now = new Date();
+    // Add current date/time context — gebruik lokale tijd van de gebruiker (Amsterdam)
+    const rawNow = localDateTime ? new Date(localDateTime) : new Date();
+    const now = new Date(rawNow.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }));
     const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
     const dateStr = now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
     const timeStr = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });

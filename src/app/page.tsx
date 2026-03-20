@@ -47,6 +47,7 @@ export default function Dashboard() {
           daysUntilRace: getDaysUntilRace('2026-06-13'),
           weekNumber: getCurrentWeekNumber(cycleStartDate),
           dayInCycle: getDaysInCurrentCycle(cycleStartDate),
+          localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
         }),
       });
 
