@@ -117,10 +117,10 @@ export default function CoachPage() {
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
-      // Automatisch versturen na spreken
+      // Automatisch versturen via stem — coach praat terug
       setTimeout(() => {
         setInput('');
-        sendMessageWithText(transcript);
+        sendMessageWithText(transcript, true);
       }, 300);
     };
 
@@ -143,11 +143,11 @@ export default function CoachPage() {
     }
   };
 
-  const sendMessageWithText = async (text: string) => {
+  const sendMessageWithText = async (text: string, useVoice = false) => {
     if (!text.trim() || isLoading) return;
 
-    // Unlock audio op iOS direct bij gebruikersactie
-    unlockAudio();
+    // Unlock audio op iOS direct bij gebruikersactie (alleen bij stem)
+    if (useVoice) unlockAudio();
 
     const userMessage: ChatMessageType = {
       id: generateId(),
@@ -230,8 +230,8 @@ export default function CoachPage() {
       saveChatMessage(assistantMessage);
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Automatisch voorlezen als via stem gesteld
-      speakText(data.content);
+      // Alleen voorlezen als via stem gesteld
+      if (useVoice) speakText(data.content);
 
     } catch {
       const errorMessage: ChatMessageType = {
