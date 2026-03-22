@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone, shouldAutoSync } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice } from '@/lib/types';
 
@@ -70,8 +70,10 @@ export default function Dashboard() {
     setRecentCheckIns(getRecentCheckIns(1));
     setGarmin(getGarminData());
 
-    // Altijd Garmin synchen bij openen — coach van de dag wacht op verse data
-    handleGarminSync();
+    // Auto-sync max 1x per dag
+    if (shouldAutoSync()) {
+      handleGarminSync();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
