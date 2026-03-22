@@ -195,7 +195,7 @@ REGELS:
 ${JSON_FORMAT_SPEC}`;
 
       const response = await client.messages.create({
-        model: 'claude-3-5-haiku-20241022',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
         system: refinePrompt,
         messages: [{ role: 'user', content: 'Pas het trainingsschema aan volgens de feedback.' }],
@@ -291,7 +291,7 @@ REGELS:
 ${JSON_FORMAT_SPEC}`;
 
     const response = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: 'user', content: 'Genereer het trainingsschema.' }],
