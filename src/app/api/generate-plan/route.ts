@@ -109,7 +109,7 @@ interface TrainingSession {
   type: string      // bv "interval", "duur", "tempo", "herstel", "brick", "techniek", "rust"
   durationMinutes?: number  // verplicht behalve bij rust
   zone?: HeartRateZone      // verplicht behalve bij rust
-  description: string       // korte uitleg in het Nederlands
+  description: string       // max 10 woorden in het Nederlands
 }
 
 interface TrainingDay {
@@ -199,13 +199,13 @@ REGELS:
 - Geblokkeerde dagen (rustdagen) NIET wijzigen
 - Balanceer zwemmen/fietsen/hardlopen over de week
 - Maximaal 2 sessies per dag
-- Descriptions in het Nederlands
+- Descriptions max 10 woorden, Nederlands
 
 ${JSON_FORMAT_SPEC}`;
 
       const response = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
+        max_tokens: 1500,
         system: refinePrompt,
         messages: [{ role: 'user', content: 'Pas het trainingsschema aan volgens de feedback.' }],
       });
@@ -295,7 +295,7 @@ REGELS:
 - Balanceer zwemmen/fietsen/hardlopen over de week
 - Minimaal 1 brick-sessie (fietsen+lopen) per 2 weken
 - Maximaal 2 sessies per dag
-- Descriptions in het Nederlands
+- Descriptions max 10 woorden, Nederlands
 
 ${JSON_FORMAT_SPEC}`;
 
