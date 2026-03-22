@@ -205,7 +205,7 @@ ${JSON_FORMAT_SPEC}`;
 
       const response = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1500,
+        max_tokens: 2000,
         system: refinePrompt,
         messages: [{ role: 'user', content: 'Pas het trainingsschema aan volgens de feedback.' }],
       });
@@ -237,7 +237,7 @@ ${JSON_FORMAT_SPEC}`;
     }
     if (garminData?.activities?.length > 0) {
       performanceText += '\nRECENTE GARMIN ACTIVITEITEN:\n';
-      for (const a of garminData.activities.slice(0, 10)) {
+      for (const a of garminData.activities.slice(0, 3)) {
         performanceText += `- ${a.date}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
         if (a.distanceKm > 0) performanceText += `, ${a.distanceKm}km`;
         if (a.avgHR > 0) performanceText += `, gem HR ${a.avgHR}`;
