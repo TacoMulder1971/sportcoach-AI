@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek, DayPreference } from '@/lib/types';
 
+export const maxDuration = 30; // Vercel timeout verlengen naar 30 seconden
+
 const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'rust'];
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
 const DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -193,8 +195,8 @@ REGELS:
 ${JSON_FORMAT_SPEC}`;
 
       const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
+        model: 'claude-haiku-3-5',
+        max_tokens: 2000,
         system: refinePrompt,
         messages: [{ role: 'user', content: 'Pas het trainingsschema aan volgens de feedback.' }],
       });
