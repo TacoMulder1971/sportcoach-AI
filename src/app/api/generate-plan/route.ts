@@ -135,15 +135,24 @@ Output: TrainingWeek[] (array van exact 2 weken)
 \`\`\``;
 
 function parseAndValidate(text: string): { valid: boolean; plan?: TrainingWeek[]; errors: string[] } {
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-  const jsonStr = jsonMatch ? jsonMatch[1] : text;
-  try {
-    const parsed = JSON.parse(jsonStr);
-    const repaired = autoRepairPlan(parsed);
-    return validatePlan(repaired);
-  } catch {
-    return { valid: false, errors: ['Kon geen geldig JSON vinden in AI response'] };
+  // Probeer meerdere manieren om JSON te extraheren
+  const attempts = [
+    text.match(/```json\s*([\s\S]*?)\s*```/)?.[1],  // ```json ... ```
+    text.match(/```\s*(\[[\s\S]*?\])\s*```/)?.[1],  // ``` [ ... ] ```
+    text.match(/(\[[\s\S]*\])/)?.[1],                // eerste [ tot laatste ]
+    text,                                             // raw tekst
+  ];
+  for (const jsonStr of attempts) {
+    if (!jsonStr) continue;
+    try {
+      const parsed = JSON.parse(jsonStr);
+      const repaired = autoRepairPlan(parsed);
+      return validatePlan(repaired);
+    } catch {
+      continue;
+    }
   }
+  return { valid: false, errors: ['Kon geen geldig JSON vinden in AI response'] };
 }
 
 export async function POST(request: NextRequest) {
