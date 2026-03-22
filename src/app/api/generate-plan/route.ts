@@ -291,8 +291,8 @@ REGELS:
 ${JSON_FORMAT_SPEC}`;
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+      model: 'claude-haiku-3-5',
+      max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: 'user', content: 'Genereer het trainingsschema.' }],
     });
