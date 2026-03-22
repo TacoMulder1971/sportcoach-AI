@@ -10,6 +10,7 @@ import {
 } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { AgendaInput, DayPreference, TrainingWeek } from '@/lib/types';
+import { getCurrentPhase, getPhaseProgress, TRAINING_PHASES } from '@/lib/periodization';
 
 const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
 const FULL_DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -85,6 +86,10 @@ export default function NieuwSchemaPage() {
     const daysUntilRace = getDaysUntilRace('2026-06-13');
 
     try {
+      const currentPhase = getCurrentPhase();
+      const phaseProgress = getPhaseProgress();
+      const nextPhase = TRAINING_PHASES.find(p => p.minDays < currentPhase.minDays) || null;
+
       const res = await fetch('/api/generate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -96,6 +101,13 @@ export default function NieuwSchemaPage() {
           previousPlan,
           daysUntilRace,
           mode: 'generate',
+          currentPhase: {
+            label: currentPhase.label,
+            description: currentPhase.description,
+            goals: currentPhase.goals,
+            progressPercent: Math.round(phaseProgress),
+          },
+          nextPhase: nextPhase ? { label: nextPhase.label } : null,
         }),
       });
 

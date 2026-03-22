@@ -173,6 +173,8 @@ export async function POST(request: NextRequest) {
       mode = 'generate',
       currentProposal,
       refinementFeedback,
+      currentPhase,
+      nextPhase,
     } = body;
 
     const client = new Anthropic({ apiKey });
@@ -269,14 +271,21 @@ ${JSON_FORMAT_SPEC}`;
     const preferencesText = buildPreferencesText(agenda?.dayPreferences || []);
 
     let phaseAdvice = '';
-    if (daysUntilRace > 56) {
-      phaseAdvice = 'FASE: Opbouwfase — focus op volume opbouwen, basis uithouding, techniek.';
-    } else if (daysUntilRace > 28) {
-      phaseAdvice = 'FASE: Piekfase — hogere intensiteit, race-specifieke sessies, brick trainingen.';
-    } else if (daysUntilRace > 14) {
-      phaseAdvice = 'FASE: Pre-taper — begin volume te verlagen, behoud intensiteit.';
+    if (currentPhase) {
+      phaseAdvice = `HUIDIGE FASE: ${currentPhase.label} (${currentPhase.progressPercent}% voltooid)\n`;
+      phaseAdvice += `Beschrijving: ${currentPhase.description}\n`;
+      phaseAdvice += `Doelen deze fase:\n${currentPhase.goals.map((g: string) => `- ${g}`).join('\n')}`;
+      if (nextPhase) phaseAdvice += `\nVolgende fase: ${nextPhase.label} (bouw hier naartoe)`;
+    } else if (daysUntilRace > 56) {
+      phaseAdvice = 'FASE: Basisfase — focus op aerobe basis, techniek, volume opbouwen.';
+    } else if (daysUntilRace > 42) {
+      phaseAdvice = 'FASE: Opbouwfase — intensiteit verhogen, race-specifieke sessies.';
+    } else if (daysUntilRace > 21) {
+      phaseAdvice = 'FASE: Piekfase — maximale belasting, brick trainingen, race-tempo.';
+    } else if (daysUntilRace > 7) {
+      phaseAdvice = 'FASE: Taperfase — volume verlagen, scherpte behouden.';
     } else {
-      phaseAdvice = 'FASE: Taper — flink volume verlagen, korte scherpe sessies, focus op rust en frisheid.';
+      phaseAdvice = 'FASE: Wedstrijdweek — minimale belasting, rust en voorbereiding.';
     }
 
     const systemPrompt = `Je bent My Sport Coach AI planmaker. Genereer een 2-weekse trainingsplanning als JSON.
