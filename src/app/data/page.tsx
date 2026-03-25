@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getNutritionLogs, saveNutritionLogs, parseMFPCsv, getRecentNutritionLogs } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
-import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness, NutritionLog } from '@/lib/types';
+import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -16,15 +16,11 @@ export default function DataPage() {
   const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mfpInputRef = useRef<HTMLInputElement>(null);
-  const [nutritionLogs, setNutritionLogs] = useState<NutritionLog[]>([]);
-  const [mfpImportStatus, setMfpImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   useEffect(() => {
     setGarmin(getGarminData());
     const cached = getWeeklyReport();
     if (cached) setWeeklyReport(cached.summary);
-    setNutritionLogs(getNutritionLogs());
   }, []);
 
   async function handleGarminSync() {
@@ -234,73 +230,6 @@ export default function DataPage() {
                 importStatus.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
               }`}>
                 {importStatus.msg}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* MyFitnessPal import */}
-        <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Voeding (MyFitnessPal)</h2>
-          <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
-            <p className="text-sm text-gray-500">
-              Exporteer je voedingsdata uit MyFitnessPal en upload het <strong>Voedingsoverzicht</strong> CSV-bestand.
-            </p>
-            <button
-              onClick={() => mfpInputRef.current?.click()}
-              className="w-full py-3 rounded-xl font-semibold text-white bg-green-600 hover:bg-green-700 transition-all text-sm"
-            >
-              Importeer MyFitnessPal CSV
-            </button>
-            <input
-              ref={mfpInputRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                  try {
-                    const parsed = parseMFPCsv(reader.result as string);
-                    if (parsed.length === 0) {
-                      setMfpImportStatus({ type: 'error', msg: 'Geen geldige voedingsdata gevonden in het bestand.' });
-                    } else {
-                      // Merge met bestaande logs
-                      const existing = getNutritionLogs().filter(
-                        n => !parsed.find(p => p.date === n.date)
-                      );
-                      saveNutritionLogs([...existing, ...parsed]);
-                      setNutritionLogs(getNutritionLogs());
-                      setMfpImportStatus({ type: 'success', msg: `${parsed.length} dag(en) voedingsdata geïmporteerd!` });
-                    }
-                  } catch {
-                    setMfpImportStatus({ type: 'error', msg: 'Fout bij verwerken van het CSV-bestand.' });
-                  }
-                  setTimeout(() => setMfpImportStatus(null), 4000);
-                };
-                reader.readAsText(file);
-                e.target.value = '';
-              }}
-            />
-            {mfpImportStatus && (
-              <div className={`text-sm p-3 rounded-xl ${
-                mfpImportStatus.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-              }`}>
-                {mfpImportStatus.msg}
-              </div>
-            )}
-            {nutritionLogs.length > 0 && (
-              <div className="space-y-2 pt-1">
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Geïmporteerde dagen ({nutritionLogs.length})</p>
-                {nutritionLogs.slice(0, 7).map(log => (
-                  <div key={log.date} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
-                    <span className="text-gray-600">{new Date(log.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-                    <span className="text-gray-800 font-medium">{log.calories} kcal</span>
-                    <span className="text-blue-600 text-xs">{log.carbsG}g KH · {log.proteinG}g eiwit</span>
-                  </div>
-                ))}
               </div>
             )}
           </div>

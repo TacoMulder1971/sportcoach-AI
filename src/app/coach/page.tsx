@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import ChatMessage from '@/components/ChatMessage';
+import CheckInContent from './CheckInContent';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
 import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate } from '@/lib/storage';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 
 export default function CoachPage() {
+  const [activeTab, setActiveTab] = useState<'checkin' | 'chat'>('chat');
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -285,104 +287,132 @@ export default function CoachPage() {
           <h1 className="text-2xl font-bold text-gray-900">AI Coach</h1>
           <p className="text-gray-500 text-sm">Vraag advies aan je trainingscoach</p>
         </div>
-        <button
-          onClick={handleClearChat}
-          className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1"
-        >
-          Wis chat
-        </button>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 hide-scrollbar">
-        {messages.map((msg) => (
-          <ChatMessage key={msg.id} message={msg} />
-        ))}
-        {isLoading && (
-          <div className="flex justify-start mb-3">
-            <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
-              <p className="text-xs font-semibold text-blue-600 mb-1">Coach AI</p>
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div className="px-4 pb-20 pt-2 bg-gradient-to-t from-background">
-        <div className="flex items-end gap-2 bg-white rounded-2xl border border-gray-200 p-2 shadow-sm">
-          {/* Microfoon knop */}
-          {voiceSupported && (
-            <button
-              onClick={isListening ? stopListening : startListening}
-              disabled={isLoading}
-              className={`p-2 rounded-xl transition-all flex-shrink-0 ${
-                isListening
-                  ? 'bg-red-500 text-white animate-pulse'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
-              title={isListening ? 'Stop luisteren' : 'Spreek je vraag in'}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
-                <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
-              </svg>
-            </button>
-          )}
-
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isListening ? '🎤 Luisteren...' : 'Stel een vraag...'}
-            rows={1}
-            className="flex-1 resize-none text-sm p-2 outline-none max-h-32"
-            style={{ minHeight: '2.5rem' }}
-          />
-
-          {/* Stop spreken knop */}
-          {isSpeaking && (
-            <button
-              onClick={stopSpeaking}
-              className="p-2 rounded-xl bg-orange-100 text-orange-600 hover:bg-orange-200 transition-all flex-shrink-0"
-              title="Stop voorlezen"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                <path fillRule="evenodd" d="M4.5 7.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
-
-          {/* Verstuur knop */}
+        {activeTab === 'chat' && (
           <button
-            onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
-            className={`p-2 rounded-xl transition-all flex-shrink-0 ${
-              input.trim() && !isLoading
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-100 text-gray-400'
-            }`}
+            onClick={handleClearChat}
+            className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path d="M3.105 2.288a.75.75 0 0 0-.826.95l1.414 4.926A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.897 28.897 0 0 0 15.293-7.155.75.75 0 0 0 0-1.114A28.897 28.897 0 0 0 3.105 2.288Z" />
-            </svg>
+            Wis chat
+          </button>
+        )}
+      </div>
+
+      {/* Sub-tab switcher */}
+      <div className="px-4 pt-4">
+        <div className="flex bg-gray-100 rounded-xl p-1">
+          <button
+            onClick={() => setActiveTab('checkin')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'checkin' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+          >
+            Check-out
+          </button>
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'chat' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}
+          >
+            Chat met coach
           </button>
         </div>
-
-        {/* Status melding */}
-        {isListening && (
-          <p className="text-center text-xs text-red-500 mt-1 animate-pulse">🎤 Luisteren... tik op microfoon om te stoppen</p>
-        )}
-        {isSpeaking && (
-          <p className="text-center text-xs text-orange-500 mt-1">🔊 Coach spreekt... tik op stop om te onderbreken</p>
-        )}
       </div>
+
+      {activeTab === 'checkin' ? (
+        <div className="flex-1 overflow-y-auto">
+          <CheckInContent onComplete={() => setActiveTab('chat')} />
+        </div>
+      ) : (
+        <>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 hide-scrollbar">
+            {messages.map((msg) => (
+              <ChatMessage key={msg.id} message={msg} />
+            ))}
+            {isLoading && (
+              <div className="flex justify-start mb-3">
+                <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
+                  <p className="text-xs font-semibold text-blue-600 mb-1">Coach AI</p>
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="px-4 pb-20 pt-2 bg-gradient-to-t from-background">
+            <div className="flex items-end gap-2 bg-white rounded-2xl border border-gray-200 p-2 shadow-sm">
+              {/* Microfoon knop */}
+              {voiceSupported && (
+                <button
+                  onClick={isListening ? stopListening : startListening}
+                  disabled={isLoading}
+                  className={`p-2 rounded-xl transition-all flex-shrink-0 ${
+                    isListening
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                  title={isListening ? 'Stop luisteren' : 'Spreek je vraag in'}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
+                    <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-7.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
+                  </svg>
+                </button>
+              )}
+
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={isListening ? '🎤 Luisteren...' : 'Stel een vraag...'}
+                rows={1}
+                className="flex-1 resize-none text-sm p-2 outline-none max-h-32"
+                style={{ minHeight: '2.5rem' }}
+              />
+
+              {/* Stop spreken knop */}
+              {isSpeaking && (
+                <button
+                  onClick={stopSpeaking}
+                  className="p-2 rounded-xl bg-orange-100 text-orange-600 hover:bg-orange-200 transition-all flex-shrink-0"
+                  title="Stop voorlezen"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M4.5 7.5a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Verstuur knop */}
+              <button
+                onClick={sendMessage}
+                disabled={!input.trim() || isLoading}
+                className={`p-2 rounded-xl transition-all flex-shrink-0 ${
+                  input.trim() && !isLoading
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-100 text-gray-400'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                  <path d="M3.105 2.288a.75.75 0 0 0-.826.95l1.414 4.926A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.897 28.897 0 0 0 15.293-7.155.75.75 0 0 0 0-1.114A28.897 28.897 0 0 0 3.105 2.288Z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Status melding */}
+            {isListening && (
+              <p className="text-center text-xs text-red-500 mt-1 animate-pulse">🎤 Luisteren... tik op microfoon om te stoppen</p>
+            )}
+            {isSpeaking && (
+              <p className="text-center text-xs text-orange-500 mt-1">🔊 Coach spreekt... tik op stop om te onderbreken</p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
