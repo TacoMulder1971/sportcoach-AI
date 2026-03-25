@@ -194,3 +194,13 @@ export interface StoredPlan {
   agendaInput: AgendaInput;
   status: 'active' | 'archived';
 }
+
+export interface NutritionLog {
+  date: string;          // "2026-03-25"
+  calories: number;
+  carbsG: number;
+  proteinG: number;
+  fatG: number;
+  fiberG: number;
+  aiFeedback?: string;   // gecached AI-feedback
+}

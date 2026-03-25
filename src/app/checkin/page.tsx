@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CheckInForm from '@/components/CheckInForm';
 import { getTodayTraining } from '@/lib/schedule';
-import { getGarminData, getActivePlan, getCheckInsForDate, getRecentCheckIns } from '@/lib/storage';
-import { TrainingDay, GarminActivity, CheckIn, HEART_RATE_ZONES, FEELING_SCALE } from '@/lib/types';
+import { getGarminData, getActivePlan, getCheckInsForDate, getRecentCheckIns, getNutritionForDate, saveNutritionFeedback } from '@/lib/storage';
+import { TrainingDay, GarminActivity, CheckIn, HEART_RATE_ZONES, FEELING_SCALE, NutritionLog } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 
 function getHRZoneLabel(avgHR: number): string {
@@ -21,6 +21,9 @@ export default function CheckInPage() {
   const [todayActivities, setTodayActivities] = useState<GarminActivity[]>([]);
   const [alreadyCheckedOut, setAlreadyCheckedOut] = useState(false);
   const [recentCheckIns, setRecentCheckIns] = useState<CheckIn[]>([]);
+  const [nutritionLog, setNutritionLog] = useState<NutritionLog | null>(null);
+  const [nutritionFeedback, setNutritionFeedback] = useState<string | null>(null);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
 
   useEffect(() => {
     const { plan, cycleStartDate } = getActivePlan();
@@ -39,6 +42,13 @@ export default function CheckInPage() {
     if (garmin) {
       const matched = garmin.activities.filter((a) => a.date === today);
       setTodayActivities(matched);
+    }
+
+    // Voedingsdata van vandaag
+    const nutrition = getNutritionForDate(today);
+    if (nutrition) {
+      setNutritionLog(nutrition);
+      if (nutrition.aiFeedback) setNutritionFeedback(nutrition.aiFeedback);
     }
   }, []);
 
@@ -176,6 +186,68 @@ export default function CheckInPage() {
                 })()}
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Voeding van vandaag (MyFitnessPal) */}
+      {nutritionLog && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Voeding vandaag</h2>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-orange-50 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-orange-600">{nutritionLog.calories}</p>
+                <p className="text-xs text-gray-500">kcal</p>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-blue-600">{nutritionLog.carbsG}g</p>
+                <p className="text-xs text-gray-500">koolhydraten</p>
+              </div>
+              <div className="bg-green-50 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-green-600">{nutritionLog.proteinG}g</p>
+                <p className="text-xs text-gray-500">eiwit</p>
+              </div>
+              <div className="bg-yellow-50 rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-yellow-600">{nutritionLog.fatG}g</p>
+                <p className="text-xs text-gray-500">vet</p>
+              </div>
+            </div>
+
+            {nutritionFeedback ? (
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-sm text-gray-700 leading-relaxed">{nutritionFeedback}</p>
+              </div>
+            ) : (
+              <button
+                onClick={async () => {
+                  setLoadingFeedback(true);
+                  try {
+                    const garmin = getGarminData();
+                    const res = await fetch('/api/nutrition-feedback', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        nutritionLog,
+                        todayTraining,
+                        garminHealth: garmin?.health || null,
+                        daysUntilRace: Math.ceil((new Date('2026-06-13').getTime() - new Date().getTime()) / 86400000),
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.feedback) {
+                      setNutritionFeedback(data.feedback);
+                      saveNutritionFeedback(nutritionLog.date, data.feedback);
+                    }
+                  } catch { /* silently fail */ }
+                  finally { setLoadingFeedback(false); }
+                }}
+                disabled={loadingFeedback}
+                className="w-full py-3 rounded-xl font-semibold text-white bg-green-600 hover:bg-green-700 transition-all text-sm disabled:opacity-50"
+              >
+                {loadingFeedback ? 'Feedback ophalen...' : 'Coach-feedback op mijn voeding'}
+              </button>
+            )}
           </div>
         </section>
       )}

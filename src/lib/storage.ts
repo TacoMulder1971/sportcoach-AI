@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -15,6 +15,7 @@ const KEYS = {
   ACTIVE_PLAN_ID: 'tricoach_active_plan_id',
   DAILY_MESSAGE: 'tricoach_daily_message',
   WEEKLY_REPORT: 'tricoach_weekly_report',
+  NUTRITION: 'tricoach_nutrition',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -307,6 +308,83 @@ export function getWeeklyReport(): WeeklyReport | null {
 
 export function saveWeeklyReport(report: Omit<WeeklyReport, 'weekKey'>): void {
   setItem(KEYS.WEEKLY_REPORT, { ...report, weekKey: getISOWeekKey() });
+}
+
+// Nutrition logs (MyFitnessPal import)
+export function getNutritionLogs(): NutritionLog[] {
+  return getItem<NutritionLog[]>(KEYS.NUTRITION, []);
+}
+
+export function getNutritionForDate(date: string): NutritionLog | null {
+  return getNutritionLogs().find(n => n.date === date) ?? null;
+}
+
+export function saveNutritionLogs(logs: NutritionLog[]): void {
+  // Bewaar laatste 60 dagen
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 60);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const filtered = logs.filter(n => n.date >= cutoffStr);
+  setItem(KEYS.NUTRITION, filtered);
+}
+
+export function saveNutritionFeedback(date: string, feedback: string): void {
+  const logs = getNutritionLogs();
+  const idx = logs.findIndex(n => n.date === date);
+  if (idx >= 0) {
+    logs[idx] = { ...logs[idx], aiFeedback: feedback };
+    setItem(KEYS.NUTRITION, logs);
+  }
+}
+
+export function getRecentNutritionLogs(days: number = 7): NutritionLog[] {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().split('T')[0];
+  return getNutritionLogs()
+    .filter(n => n.date >= cutoffStr)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// Parse MyFitnessPal Dutch Voedingsoverzicht CSV
+export function parseMFPCsv(csvText: string): NutritionLog[] {
+  const lines = csvText.split('\n').map(l => l.trim()).filter(Boolean);
+  const dayMap = new Map<string, NutritionLog>();
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    const date = cols[0]?.trim();
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+
+    const calories = parseFloat(cols[3]) || 0;
+    const fat = parseFloat(cols[4]) || 0;
+    const carbs = parseFloat(cols[12]) || 0;
+    const fiber = parseFloat(cols[13]) || 0;
+    const protein = parseFloat(cols[15]) || 0;
+
+    if (dayMap.has(date)) {
+      const existing = dayMap.get(date)!;
+      dayMap.set(date, {
+        ...existing,
+        calories: existing.calories + calories,
+        carbsG: existing.carbsG + carbs,
+        proteinG: existing.proteinG + protein,
+        fatG: existing.fatG + fat,
+        fiberG: existing.fiberG + fiber,
+      });
+    } else {
+      dayMap.set(date, { date, calories, carbsG: carbs, proteinG: protein, fatG: fat, fiberG: fiber });
+    }
+  }
+
+  return Array.from(dayMap.values()).map(log => ({
+    ...log,
+    calories: Math.round(log.calories),
+    carbsG: Math.round(log.carbsG),
+    proteinG: Math.round(log.proteinG),
+    fatG: Math.round(log.fatG),
+    fiberG: Math.round(log.fiberG),
+  }));
 }
 
 export function downloadExport(): void {
