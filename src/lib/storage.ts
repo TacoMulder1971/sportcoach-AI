@@ -74,16 +74,18 @@ interface DailyMessage {
   message: string;
 }
 
+function getTodayAmsterdam(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
+}
+
 export function getDailyMessage(): DailyMessage | null {
   const stored = getItem<DailyMessage | null>(KEYS.DAILY_MESSAGE, null);
   if (!stored) return null;
-  const today = new Date().toISOString().split('T')[0];
-  return stored.key === today ? stored : null;
+  return stored.key === getTodayAmsterdam() ? stored : null;
 }
 
 export function saveDailyMessage(message: string): void {
-  const today = new Date().toISOString().split('T')[0];
-  setItem(KEYS.DAILY_MESSAGE, { key: today, message });
+  setItem(KEYS.DAILY_MESSAGE, { key: getTodayAmsterdam(), message });
 }
 
 // Auto-sync throttle (1x per dag)

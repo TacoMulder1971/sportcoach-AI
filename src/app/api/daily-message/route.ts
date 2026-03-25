@@ -10,16 +10,20 @@ export async function POST(request: NextRequest) {
 
     const { todayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime } = await request.json();
 
-    // Gebruik lokale tijd van de gebruiker (Amsterdam), niet UTC van de server
-    const now = localDateTime ? new Date(localDateTime) : new Date();
-    const localNow = new Date(now.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }));
-    const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
-    const dayName = days[localNow.getDay()];
-    const dateStr = localNow.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const hours = localNow.getHours();
-    const timeStr = `${hours}:${localNow.getMinutes().toString().padStart(2, '0')}`;
+    // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
+    const now = new Date();
+    const hours = parseInt(new Intl.DateTimeFormat('nl-NL', {
+      timeZone: 'Europe/Amsterdam', hour: 'numeric', hour12: false
+    }).format(now), 10);
+    const minutes = parseInt(new Intl.DateTimeFormat('nl-NL', {
+      timeZone: 'Europe/Amsterdam', minute: 'numeric'
+    }).format(now), 10);
+    const timeStr = `${hours}:${minutes.toString().padStart(2, '0')}`;
     const dagdeel = hours < 12 ? 'ochtend' : hours < 17 ? 'middag' : 'avond';
+    const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
+    const amsterdamDate = new Date(now.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' }));
+    const dayName = days[amsterdamDate.getDay()];
+    const dateStr = now.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long', year: 'numeric' });
 
     // Bouw de prompt op
     let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).

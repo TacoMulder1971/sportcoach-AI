@@ -130,15 +130,14 @@ export default function Dashboard() {
     return getTrainingAdvice(readiness, plannedTRIMP);
   }, [readiness, todayTraining]);
 
-  // Fetch daily message — wacht tot Garmin sync klaar is
+  // Fetch daily message — laad cache direct, genereer alleen als nodig
   useEffect(() => {
-    if (syncing) return; // wacht op verse Garmin data
-    if (!garmin) return; // geen data beschikbaar
     const cached = getDailyMessage();
     if (cached) {
       setDailyMessage(cached.message);
       return;
     }
+    if (syncing || !garmin) return; // wacht op verse Garmin data voor nieuwe generatie
     fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness);
   }, [syncing, todayTraining, garmin, trainingLoad, readiness, fetchDailyMessage]);
 
