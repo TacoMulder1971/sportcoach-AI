@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     const {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
-      weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, localDateTime,
+      weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
     } = await request.json();
 
     // Bouw schema tekst dynamisch
@@ -171,6 +171,11 @@ Week 2:
       for (const n of recentNotes) {
         contextMessage += `- ${n.date} (gevoel ${n.feeling}/5): "${n.note}"\n`;
       }
+    }
+
+    // Voeding van vandaag
+    if (todayNutrition) {
+      contextMessage += `\nVOEDING VANDAAG: ${todayNutrition.calories} kcal | KH: ${todayNutrition.carbsG}g | Eiwit: ${todayNutrition.proteinG}g | Vet: ${todayNutrition.fatG}g\n`;
     }
 
     const fullSystemPrompt = BASE_PROMPT + planText + contextMessage;

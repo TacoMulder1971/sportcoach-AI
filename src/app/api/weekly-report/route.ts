@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
       daysUntilRace,
       totalVolumeMinutes,
       totalVolumeKm,
+      weeklyNutrition,
     } = await request.json();
 
     let prompt = `Je bent My Sport Coach AI. Schrijf een beknopt wekelijks trainingsrapport in het Nederlands (6-8 zinnen).
@@ -55,13 +56,23 @@ HUIDIGE FASE: ${currentPhase}\n`;
       prompt += `Gemiddeld gevoel deze week: ${avgFeeling.toFixed(1)}/5\n`;
     }
 
+    if (weeklyNutrition && weeklyNutrition.length > 0) {
+      const avgCal = Math.round(weeklyNutrition.reduce((s: number, n: { calories: number }) => s + n.calories, 0) / weeklyNutrition.length);
+      const avgCarbs = Math.round(weeklyNutrition.reduce((s: number, n: { carbsG: number }) => s + n.carbsG, 0) / weeklyNutrition.length);
+      const avgProtein = Math.round(weeklyNutrition.reduce((s: number, n: { proteinG: number }) => s + n.proteinG, 0) / weeklyNutrition.length);
+      const lowCalDays = weeklyNutrition.filter((n: { calories: number }) => n.calories < 1500).length;
+      prompt += `\nVOEDING DEZE WEEK (${weeklyNutrition.length} dagen geregistreerd):
+- Gemiddeld: ${avgCal} kcal | KH: ${avgCarbs}g | Eiwit: ${avgProtein}g
+${lowCalDays > 0 ? `- Waarschuwing: ${lowCalDays} dag(en) met minder dan 1500 kcal\n` : ''}`;
+    }
+
     prompt += `
 STRUCTUUR VAN HET RAPPORT:
 1. Kort overzicht van het trainingsvolume en de belasting (TRIMP)
 2. Bespreek de belastingtrend (stijgend/dalend/stabiel) en wat dat betekent
 3. Noem 1-2 concrete hoogtepunten of aandachtspunten uit de check-ins
-4. Sluit af met één concrete focus voor de komende week, passend bij de ${currentPhase}
-Houd het bij 6-8 zinnen totaal. Geen opsommingstekens, gewone tekst.`;
+${weeklyNutrition && weeklyNutrition.length > 0 ? '4. Geef 1-2 zinnen voedingsfeedback: zijn calorieën/koolhydraten/eiwit passend bij het trainingsvolume? Geef een concreet verbeterpunt.\n5.' : '4.'} Sluit af met één concrete focus voor de komende week, passend bij de ${currentPhase}
+Houd het bij 7-9 zinnen totaal. Geen opsommingstekens, gewone tekst.`;
 
     const client = new Anthropic({ apiKey });
 

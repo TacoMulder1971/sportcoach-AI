@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import ChatMessage from '@/components/ChatMessage';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId } from '@/lib/storage';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate } from '@/lib/storage';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 
@@ -190,6 +190,9 @@ export default function CoachPage() {
       const currentPhase = getCurrentPhase();
       const daysUntilRace = getDaysUntilRace();
 
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
+      const todayNutrition = getNutritionForDate(today);
+
       const currentMessages = await new Promise<ChatMessageType[]>((resolve) => {
         setMessages((prev) => { resolve(prev); return prev; });
       });
@@ -212,6 +215,7 @@ export default function CoachPage() {
           daysUntilRace,
           avgFeeling,
           recentNotes,
+          todayNutrition,
           localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
         }),
       });
