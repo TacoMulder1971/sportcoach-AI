@@ -35,19 +35,21 @@ ATLEET: Traint voor 1/4 triatlon op 13 juni 2026 (nog ${daysUntilRace} dagen). D
 VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCycle}/14).\n`;
 
     // Training van vandaag
-    if (todayTraining && !todayTraining.isRestDay) {
+    const isRestDay = !todayTraining || todayTraining.isRestDay;
+    if (!isRestDay) {
       prompt += `\nTRAINING VANDAAG:\n`;
       for (const s of todayTraining.sessions) {
         prompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min in ${s.zone}\n`;
       }
     } else {
-      prompt += `\nVANDAAG: Rustdag\n`;
+      prompt += `\nVANDAAG: Rustdag — herstel staat centraal. Geen geplande training.\n`;
     }
 
     // Recap gisteren
     if (yesterdayCheckOut) {
       prompt += `\nGISTEREN (recap):\n`;
-      prompt += `- Training: ${yesterdayCheckOut.trainingDay}\n`;
+      const gisterenWasRust = !yesterdayCheckOut.trainingDay || yesterdayCheckOut.trainingDay === 'Rustdag';
+      prompt += `- ${gisterenWasRust ? 'Rustdag' : `Training: ${yesterdayCheckOut.trainingDay}`}\n`;
       prompt += `- Gevoel: ${yesterdayCheckOut.feeling}/5`;
       if (yesterdayCheckOut.note) prompt += ` - "${yesterdayCheckOut.note}"`;
       prompt += '\n';
@@ -99,15 +101,26 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     }
 
     // Instructies voor afwisseling
-    const topics = ['techniek', 'voeding/hydratatie', 'herstel', 'mentale kracht', 'motivatie', 'wedstrijdvoorbereiding'];
-    const topicIndex = now.getDate() % topics.length;
-    prompt += `\nVERPLICHT ONDERWERP VOOR TIP: ${topics[topicIndex]}. Wissel af met andere onderwerpen op andere dagen.`;
+    const trainingTopics = ['techniek', 'voeding/hydratatie', 'mentale kracht', 'motivatie', 'wedstrijdvoorbereiding', 'pacing-strategie'];
+    const restTopics = ['slaap en herstel', 'voeding op rustdagen', 'mobiliteit/stretching', 'mentale rust', 'hydratatie'];
+    const topicIndex = now.getDate() % (isRestDay ? restTopics.length : trainingTopics.length);
+    const topic = isRestDay ? restTopics[topicIndex] : trainingTopics[topicIndex];
+    prompt += `\nVERPLICHT ONDERWERP VOOR TIP: ${topic}.`;
 
-    prompt += `\n\nSTRUCTUUR:
+    if (isRestDay) {
+      prompt += `\n\nSTRUCTUUR (RUSTDAG):
+1. Erken kort dat het een rustdag is — positief framen als bewuste keuze voor herstel
+2. Verwijs eventueel naar gisteren (als er data is): was het zwaar, is rust nu logisch?
+3. Geef een concrete tip over "${topic}" die past bij een rustdag
+BELANGRIJK: Geef GEEN aansporing om te trainen. Niet aanmoedigen iets extra's te doen. Rust IS de training vandaag.
+Houd het bij 3-5 zinnen totaal. Niet meer.`;
+    } else {
+      prompt += `\n\nSTRUCTUUR (TRAININGSDAG):
 1. Begin met een recap van gisteren (als er data is)
 2. Benoem kort wat vandaag op het programma staat
-3. Geef een korte, concrete tip over "${topics[topicIndex]}"
+3. Geef een korte, concrete tip over "${topic}"
 Houd het bij 3-5 zinnen totaal. Niet meer.`;
+    }
 
     const client = new Anthropic({ apiKey });
 
