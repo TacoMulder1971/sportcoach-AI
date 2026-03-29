@@ -74,7 +74,7 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     if (garminActivities && garminActivities.length > 0) {
       prompt += `\nRECENTE ACTIVITEITEN:\n`;
       for (const a of garminActivities.slice(0, 3)) {
-        prompt += `- ${a.activityName} (${a.date}): ${a.durationMinutes}min`;
+        prompt += `- ${a.activityName} (${a.date}${a.startTime ? ` om ${a.startTime}` : ''}): ${a.durationMinutes}min`;
         if (a.distanceKm > 0) prompt += `, ${a.distanceKm}km`;
         if (a.avgPace) prompt += `, tempo ${a.avgPace}`;
         if (a.avgHR > 0) prompt += `, gem HR ${a.avgHR}`;

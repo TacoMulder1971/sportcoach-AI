@@ -106,7 +106,8 @@ export const DEFAULT_PROFILE: UserProfile = {
 // Garmin types
 export interface GarminActivity {
   id: number;
-  date: string; // ISO date
+  date: string; // ISO date "2026-03-29"
+  startTime?: string; // "07:45" lokale tijd
   sport: Sport | 'overig';
   activityName: string;
   durationMinutes: number;

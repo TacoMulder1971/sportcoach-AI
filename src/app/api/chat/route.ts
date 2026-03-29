@@ -85,13 +85,12 @@ Week 2:
 - Zo: Zwemmen (40min Z3) + Hardlopen duur (50min Z3)\n`;
     }
 
-    // Add current date/time context — gebruik lokale tijd van de gebruiker (Amsterdam)
-    const rawNow = localDateTime ? new Date(localDateTime) : new Date();
-    const now = new Date(rawNow.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }));
+    // Add current date/time context — gebruik Amsterdam tijdzone direct op de server
+    const now = new Date();
     const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
-    const dateStr = now.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
-    const timeStr = now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
-    const dayName = days[now.getDay()];
+    const dateStr = now.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeStr = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' }).format(now);
+    const dayName = days[new Date(now.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })).getDay()];
 
     // Determine current week in cycle
     const startStr = cycleStartDate || '2026-02-23';
@@ -128,7 +127,7 @@ Week 2:
       if (garminData.activities && garminData.activities.length > 0) {
         contextMessage += '\nRECENTE GARMIN ACTIVITEITEN:\n';
         for (const a of garminData.activities.slice(0, 14)) {
-          contextMessage += `- ${a.date}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
+          contextMessage += `- ${a.date}${a.startTime ? ` om ${a.startTime}` : ''}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
           if (a.distanceKm > 0) contextMessage += `, ${a.distanceKm}km`;
           if (a.avgHR > 0) contextMessage += `, gem HR ${a.avgHR}, max HR ${a.maxHR}`;
           if (a.hrZones && a.hrZones.length > 0) {

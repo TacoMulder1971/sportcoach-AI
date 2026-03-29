@@ -75,6 +75,7 @@ export async function POST(request: Request) {
       return {
         id: a.activityId,
         date: a.startTimeLocal?.split(' ')[0] || '',
+        startTime: a.startTimeLocal?.split(' ')[1]?.substring(0, 5) || undefined,
         sport,
         activityName: a.activityName || '',
         durationMinutes,
