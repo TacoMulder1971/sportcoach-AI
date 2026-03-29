@@ -4,13 +4,14 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
-import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle } from '@/lib/schedule';
+import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone, shouldAutoSync } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice } from '@/lib/types';
 
 export default function Dashboard() {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
+  const [yesterdayTraining, setYesterdayTraining] = useState<TrainingDay | null>(null);
   const [recentCheckIns, setRecentCheckIns] = useState<CheckIn[]>([]);
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -19,7 +20,7 @@ export default function Dashboard() {
   const [loadingDaily, setLoadingDaily] = useState(false);
 
 
-  const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null) => {
+  const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null, prevDayTraining: TrainingDay | null = null) => {
     // Check cache first
     const cached = getDailyMessage();
     if (cached) {
@@ -39,6 +40,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           todayTraining: training,
+          yesterdayTraining: prevDayTraining,
           yesterdayCheckOut,
           garminHealth: garminData?.health || null,
           garminActivities: garminData?.activities?.slice(0, 3) || null,
@@ -66,7 +68,9 @@ export default function Dashboard() {
   useEffect(() => {
     const { plan, cycleStartDate } = getActivePlan();
     const training = getTodayTraining(plan, cycleStartDate);
+    const yt = getTrainingForDayOffset(-1, plan, cycleStartDate);
     setTodayTraining(training);
+    setYesterdayTraining(yt);
     setRecentCheckIns(getRecentCheckIns(1));
     setGarmin(getGarminData());
 
@@ -138,8 +142,8 @@ export default function Dashboard() {
       return;
     }
     if (syncing || !garmin) return; // wacht op verse Garmin data voor nieuwe generatie
-    fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness);
-  }, [syncing, todayTraining, garmin, trainingLoad, readiness, fetchDailyMessage]);
+    fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness, yesterdayTraining);
+  }, [syncing, todayTraining, garmin, trainingLoad, readiness, yesterdayTraining, fetchDailyMessage]);
 
   // Load bar percentage (0-100, capped at 600 TRIMP)
   const loadPct = trainingLoad ? Math.min(100, (trainingLoad.weekLoad / 600) * 100) : 0;

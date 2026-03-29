@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { todayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime } = await request.json();
+    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime } = await request.json();
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
     const now = new Date();
@@ -92,6 +92,37 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
       prompt += 'Gebruik deze gedetailleerde data (incl. zone-verdeling) voor specifiek, inhoudelijk advies.\n';
     }
 
+    // Detecteer afwijking van schema
+    if (garminActivities && garminActivities.length > 0) {
+      const amsterdamToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(now);
+      const yesterdayDate = new Date(now);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const amsterdamYesterday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(yesterdayDate);
+
+      const gisterenActiviteiten = garminActivities.filter((a: { date: string }) => a.date === amsterdamYesterday);
+      const vandaagActiviteiten = garminActivities.filter((a: { date: string }) => a.date === amsterdamToday);
+
+      const deviations: string[] = [];
+
+      // Gisteren training gepland maar geen activiteit geregistreerd?
+      if (yesterdayTraining && !yesterdayTraining.isRestDay && gisterenActiviteiten.length === 0) {
+        const sports = yesterdayTraining.sessions?.map((s: { sport: string }) => s.sport).join('/') ?? 'training';
+        deviations.push(`Gisteren stond ${sports} gepland maar er is geen activiteit in Garmin geregistreerd.`);
+      }
+
+      // Vandaag al getraind terwijl de dag nog niet begonnen lijkt (schema niet afgevinkt)?
+      if (!isRestDay && vandaagActiviteiten.length > 0) {
+        const names = vandaagActiviteiten.map((a: { activityName: string }) => a.activityName).join(', ');
+        deviations.push(`Vandaag is al een activiteit geregistreerd: ${names}. Vergeet niet in te checken.`);
+      }
+
+      if (deviations.length > 0) {
+        prompt += `\nSCHEMA-AFWIJKING GEDETECTEERD:\n`;
+        for (const d of deviations) prompt += `- ${d}\n`;
+        prompt += `Benoem dit vriendelijk. Als er trainingen zijn verschoven, stel dan voor of het schema aangepast moet worden.\n`;
+      }
+    }
+
     // Load & readiness
     if (trainingLoad) {
       prompt += `\nTRAINING LOAD: ${trainingLoad.weekLoad} TRIMP (${trainingLoad.status})\n`;
@@ -112,13 +143,15 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
 1. Erken kort dat het een rustdag is — positief framen als bewuste keuze voor herstel
 2. Verwijs eventueel naar gisteren (als er data is): was het zwaar, is rust nu logisch?
 3. Geef een concrete tip over "${topic}" die past bij een rustdag
-BELANGRIJK: Geef GEEN aansporing om te trainen. Niet aanmoedigen iets extra's te doen. Rust IS de training vandaag.
+4. Als er een schema-afwijking is: benoem het vriendelijk en stel voor of het schema aangepast moet worden
+BELANGRIJK: Geef GEEN aansporing om te trainen. Rust IS de training vandaag.
 Houd het bij 3-5 zinnen totaal. Niet meer.`;
     } else {
       prompt += `\n\nSTRUCTUUR (TRAININGSDAG):
 1. Begin met een recap van gisteren (als er data is)
 2. Benoem kort wat vandaag op het programma staat
 3. Geef een korte, concrete tip over "${topic}"
+4. Als er een schema-afwijking is: benoem het vriendelijk en stel voor of aanpassing nodig is (bijv. "wil je dat ik het schema aanpas?")
 Houd het bij 3-5 zinnen totaal. Niet meer.`;
     }
 

@@ -63,6 +63,22 @@ export function getDaysInCurrentCycle(cycleStartDate?: string): number {
   return (diffDays % 14) + 1; // dag 1-14 in de cyclus
 }
 
+export function getTrainingForDayOffset(
+  offset: number,
+  plan?: TrainingWeek[],
+  cycleStartDate?: string
+): TrainingDay | null {
+  const p = plan || trainingPlan;
+  const target = new Date();
+  target.setDate(target.getDate() + offset);
+  const dayIndex = target.getDay() === 0 ? 6 : target.getDay() - 1;
+  const startDate = new Date(cycleStartDate || DEFAULT_CYCLE_START);
+  const diffDays = Math.floor((target.getTime() - startDate.getTime()) / 86400000);
+  const weekNum: 1 | 2 = (Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2) as 1 | 2;
+  const week = p.find((w) => w.weekNumber === weekNum);
+  return week?.days.find((d) => d.dayIndex === dayIndex) ?? null;
+}
+
 export function getMondayOfCurrentWeek(): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
