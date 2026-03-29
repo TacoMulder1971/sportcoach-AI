@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
@@ -18,7 +18,10 @@ export default function Dashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [dailyMessage, setDailyMessage] = useState<string | null>(null);
   const [loadingDaily, setLoadingDaily] = useState(false);
-
+  const [pullDistance, setPullDistance] = useState(0);
+  const [pulling, setPulling] = useState(false);
+  const touchStartY = useRef(0);
+  const PULL_THRESHOLD = 65;
 
   const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null, prevDayTraining: TrainingDay | null = null) => {
     // Check cache first
@@ -154,8 +157,52 @@ export default function Dashboard() {
     : 'bg-red-500'
     : 'bg-gray-300';
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      touchStartY.current = e.touches[0].clientY;
+      setPulling(true);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!pulling) return;
+    const dist = Math.max(0, e.touches[0].clientY - touchStartY.current);
+    setPullDistance(Math.min(dist, PULL_THRESHOLD * 1.5));
+  };
+
+  const handleTouchEnd = () => {
+    if (pullDistance >= PULL_THRESHOLD && !syncing) {
+      handleGarminSync();
+    }
+    setPullDistance(0);
+    setPulling(false);
+  };
+
   return (
-    <div className="px-4 pt-6 space-y-5">
+    <div
+      className="px-4 pt-6 space-y-5"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 10 || syncing) && (
+        <div
+          className="fixed top-0 left-0 right-0 flex justify-center items-center z-50 pointer-events-none transition-all"
+          style={{ height: syncing ? 48 : Math.min(pullDistance, 48) }}
+        >
+          <div className={`bg-white rounded-full shadow p-2 transition-transform ${syncing ? 'animate-spin' : ''}`}
+            style={{ transform: syncing ? undefined : `rotate(${Math.min(pullDistance / PULL_THRESHOLD, 1) * 180}deg)` }}>
+            <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {syncing
+                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              }
+            </svg>
+          </div>
+        </div>
+      )}
+
       {/* Header + Sync */}
       <div className="text-center">
         <h1 className="text-[24px] font-bold text-gray-900">My Sport Coach AI</h1>
