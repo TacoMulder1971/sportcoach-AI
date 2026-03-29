@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
@@ -15,7 +15,11 @@ export default function DataPage() {
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [pulling, setPulling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const touchStartY = useRef(0);
+  const PULL_THRESHOLD = 65;
 
   useEffect(() => {
     setGarmin(getGarminData());
@@ -137,6 +141,27 @@ export default function DataPage() {
     }
   }
 
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (window.scrollY === 0) {
+      touchStartY.current = e.touches[0].clientY;
+      setPulling(true);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!pulling) return;
+    const dist = Math.max(0, e.touches[0].clientY - touchStartY.current);
+    setPullDistance(Math.min(dist, PULL_THRESHOLD * 1.5));
+  }, [pulling]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (pullDistance >= PULL_THRESHOLD && !syncing) {
+      handleGarminSync();
+    }
+    setPullDistance(0);
+    setPulling(false);
+  }, [pullDistance, syncing]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const lastSync = garmin?.syncedAt
     ? new Date(garmin.syncedAt).toLocaleString('nl-NL', {
         day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
@@ -145,19 +170,30 @@ export default function DataPage() {
 
   if (!garmin) {
     return (
-      <div className="px-4 pt-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Data</h1>
-            <p className="text-gray-500 text-sm">Garmin gegevens</p>
+      <div
+        className="px-4 pt-6 space-y-5"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {(pullDistance > 10 || syncing) && (
+          <div className="fixed top-0 left-0 right-0 flex justify-center items-center z-50 pointer-events-none"
+            style={{ height: syncing ? 56 : Math.min(pullDistance, 56) }}>
+            <div className="bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2">
+              <svg className={`w-4 h-4 text-blue-500 ${syncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                style={{ transform: syncing ? undefined : `rotate(${Math.min(pullDistance / PULL_THRESHOLD, 1) * 180}deg)` }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="text-xs font-medium text-gray-600">
+                {syncing ? 'Garmin syncing...' : pullDistance >= PULL_THRESHOLD ? 'Loslaten om te syncen' : 'Trek omlaag om te syncen'}
+              </span>
+            </div>
           </div>
-          <button
-            onClick={handleGarminSync}
-            disabled={syncing}
-            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
-          >
-            {syncing ? 'Syncing...' : 'Sync'}
-          </button>
+        )}
+
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Data</h1>
+          <p className="text-gray-500 text-sm">Garmin gegevens</p>
         </div>
 
         {syncError && (
@@ -166,11 +202,22 @@ export default function DataPage() {
           </div>
         )}
 
+        <button
+          onClick={handleGarminSync}
+          disabled={syncing}
+          className="w-full py-3 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+        >
+          <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {syncing ? 'Garmin data ophalen...' : 'Synchroniseer Garmin'}
+        </button>
+
         <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
           <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           </div>
-          <p className="text-gray-500 text-sm">Klik op Sync om je Garmin data op te halen</p>
+          <p className="text-gray-500 text-sm">Trek omlaag of tik de knop om je Garmin data op te halen</p>
         </div>
 
         {/* Data beheer — ook zonder Garmin beschikbaar */}
@@ -241,19 +288,41 @@ export default function DataPage() {
   }
 
   return (
-    <div className="px-4 pt-6 space-y-5">
+    <div
+      className="px-4 pt-6 space-y-5"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 10 || syncing) && (
+        <div
+          className="fixed top-0 left-0 right-0 flex justify-center items-center z-50 pointer-events-none"
+          style={{ height: syncing ? 56 : Math.min(pullDistance, 56) }}
+        >
+          <div className={`bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 ${syncing ? '' : ''}`}>
+            <svg
+              className={`w-4 h-4 text-blue-500 ${syncing ? 'animate-spin' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              style={{ transform: syncing ? undefined : `rotate(${Math.min(pullDistance / PULL_THRESHOLD, 1) * 180}deg)` }}
+            >
+              {syncing
+                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              }
+            </svg>
+            <span className="text-xs font-medium text-gray-600">
+              {syncing ? 'Garmin syncing...' : pullDistance >= PULL_THRESHOLD ? 'Loslaten om te syncen' : 'Trek omlaag om te syncen'}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Data</h1>
           <p className="text-gray-500 text-sm">Garmin gegevens {lastSync && `· ${lastSync}`}</p>
         </div>
-        <button
-          onClick={handleGarminSync}
-          disabled={syncing}
-          className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg disabled:opacity-50"
-        >
-          {syncing ? 'Syncing...' : 'Sync'}
-        </button>
       </div>
 
       {syncError && (
@@ -496,6 +565,18 @@ export default function DataPage() {
           </div>
         </section>
       )}
+
+      {/* Garmin sync knop */}
+      <button
+        onClick={handleGarminSync}
+        disabled={syncing}
+        className="w-full py-3 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+      >
+        <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        {syncing ? 'Garmin data ophalen...' : 'Synchroniseer Garmin'}
+      </button>
 
       {/* Hartslagzones referentie */}
       <section>
