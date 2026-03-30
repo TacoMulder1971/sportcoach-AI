@@ -45,21 +45,40 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
       prompt += `\nVANDAAG: Rustdag — herstel staat centraal. Geen geplande training.\n`;
     }
 
-    // Recap gisteren
+    // Recap laatste check-out — met correcte datum-labeling
     if (yesterdayCheckOut) {
-      prompt += `\nGISTEREN (recap):\n`;
+      const amsterdamToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(now);
+      const checkOutDate = yesterdayCheckOut.date; // "2026-03-26"
+      const todayDateObj = new Date(amsterdamToday);
+      const checkOutDateObj = new Date(checkOutDate);
+      const daysAgo = Math.round((todayDateObj.getTime() - checkOutDateObj.getTime()) / 86400000);
+      const checkOutDayName = days[checkOutDateObj.getDay()];
+      const checkOutDateNl = checkOutDateObj.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+
+      let checkOutLabel: string;
+      if (daysAgo <= 1) {
+        checkOutLabel = 'GISTEREN (recap)';
+      } else {
+        checkOutLabel = `LAATSTE CHECK-OUT (${checkOutDayName} ${checkOutDateNl}, ${daysAgo} dagen geleden)`;
+      }
+
+      prompt += `\n${checkOutLabel}:\n`;
       const gisterenWasRust = !yesterdayCheckOut.trainingDay || yesterdayCheckOut.trainingDay === 'Rustdag';
       prompt += `- ${gisterenWasRust ? 'Rustdag' : `Training: ${yesterdayCheckOut.trainingDay}`}\n`;
       prompt += `- Gevoel: ${yesterdayCheckOut.feeling}/5`;
       if (yesterdayCheckOut.note) prompt += ` - "${yesterdayCheckOut.note}"`;
       prompt += '\n';
-      // Laatste coach-bericht uit gesprek
+
+      if (daysAgo > 1) {
+        prompt += `BELANGRIJK: Er zaten ${daysAgo - 1} dag(en) zonder check-out. Houd rekening met de gap — de atleet heeft mogelijk ook in die periode getraind (zie Garmin-activiteiten).\n`;
+      }
+
       const lastCoachMsg = yesterdayCheckOut.messages?.filter((m: { role: string }) => m.role === 'assistant').slice(-1)[0];
       if (lastCoachMsg) {
-        prompt += `- Conclusie coach: "${lastCoachMsg.content.substring(0, 200)}"\n`;
+        prompt += `- Conclusie coach destijds: "${lastCoachMsg.content.substring(0, 200)}"\n`;
       }
     } else {
-      prompt += `\nGISTEREN: Geen check-out data beschikbaar.\n`;
+      prompt += `\nGEEN CHECK-OUT DATA beschikbaar. Baseer je bericht alleen op Garmin en het schema.\n`;
     }
 
     // Garmin data
@@ -74,7 +93,8 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     if (garminActivities && garminActivities.length > 0) {
       prompt += `\nRECENTE ACTIVITEITEN:\n`;
       for (const a of garminActivities.slice(0, 3)) {
-        prompt += `- ${a.activityName} (${a.date}${a.startTime ? ` om ${a.startTime}` : ''}): ${a.durationMinutes}min`;
+        const actDayName = days[new Date(a.date).getDay()];
+        prompt += `- ${a.activityName} (${actDayName} ${a.date}${a.startTime ? ` om ${a.startTime}` : ''}): ${a.durationMinutes}min`;
         if (a.distanceKm > 0) prompt += `, ${a.distanceKm}km`;
         if (a.avgPace) prompt += `, tempo ${a.avgPace}`;
         if (a.avgHR > 0) prompt += `, gem HR ${a.avgHR}`;
