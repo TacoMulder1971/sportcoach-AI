@@ -20,10 +20,10 @@ export async function POST(request: NextRequest) {
     }).format(now), 10);
     const timeStr = `${hours}:${minutes.toString().padStart(2, '0')}`;
     const dagdeel = hours < 12 ? 'ochtend' : hours < 17 ? 'middag' : 'avond';
+    // Gebruik Intl.DateTimeFormat exclusief — toLocaleDateString is onbetrouwbaar in Node.js/Vercel
     const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
-    const amsterdamDate = new Date(now.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' }));
-    const dayName = days[amsterdamDate.getDay()];
-    const dateStr = now.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long', year: 'numeric' });
+    const dayName = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'long' }).format(now);
+    const dateStr = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 
     // Bouw de prompt op
     let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
