@@ -106,26 +106,7 @@ export default function DataPage() {
   // Wekelijkse trenddata voor grafieken (8 weken)
   const weeklyTrends = useMemo(() => {
     if (!garmin || garmin.activities.length === 0) return null;
-    const weeks: { label: string; weekStart: string }[] = [];
     const now = new Date();
-    for (let i = 7; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i * 7);
-      // maandag van die week
-      const day = d.getDay();
-      const monday = new Date(d);
-      monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-      const weekStart = monday.toISOString().split('T')[0];
-      const weekEnd = new Date(monday);
-      weekEnd.setDate(monday.getDate() + 6);
-      const weekEndStr = weekEnd.toISOString().split('T')[0];
-      const weekActivities = garmin.activities.filter(a => a.date >= weekStart && a.date <= weekEndStr);
-      if (weekActivities.length === 0) {
-        weeks.push({ label: `W${monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' })}`, weekStart });
-        return { weeks, hrData: [], runTempoData: [], bikeSpeedData: [], powerData: [] };
-      }
-      weeks.push({ label: monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' }), weekStart });
-    }
 
     const hrData: { label: string; value: number }[] = [];
     const runTempoData: { label: string; value: number }[] = [];
