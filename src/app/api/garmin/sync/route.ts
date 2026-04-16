@@ -150,9 +150,11 @@ export async function POST(request: Request) {
       // Lactaatdrempel zit genest onder userData
       const userData = (userSettings?.userData as Record<string, unknown> | undefined);
 
-      // Lactaatdrempel tempo omzetten van m/s naar min/km
+      // Lactaatdrempel tempo omzetten naar min/km
+      // Garmin geeft de waarde terug in een 0.1-m/s eenheid (bv. 0.32 = 3.2 m/s), dus ×10
       let lactateThresholdPace: string | undefined;
-      const ltSpeed = Number(userData?.lactateThresholdSpeed) || 0;
+      const ltSpeedRaw = Number(userData?.lactateThresholdSpeed) || 0;
+      const ltSpeed = ltSpeedRaw * 10;
       if (ltSpeed > 0) {
         const paceMin = 1000 / 60 / ltSpeed;
         const mins = Math.floor(paceMin);
