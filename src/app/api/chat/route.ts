@@ -130,8 +130,19 @@ Week 2:
           contextMessage += `- ${a.date}${a.startTime ? ` om ${a.startTime}` : ''}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
           if (a.distanceKm > 0) contextMessage += `, ${a.distanceKm}km`;
           if (a.avgHR > 0) contextMessage += `, gem HR ${a.avgHR}, max HR ${a.maxHR}`;
+          if ((a.avgPower || 0) > 0) contextMessage += `, ${a.avgPower}W${(a.normalizedPower || 0) > 0 ? ` (NP ${a.normalizedPower}W)` : ''}`;
+          if ((a.trainingStressScore || 0) > 0) contextMessage += `, TSS ${a.trainingStressScore}`;
           if (a.hrZones && a.hrZones.length > 0) {
             contextMessage += ` | zones: ${a.hrZones.map((z: { zone: string; minutes: number }) => `${z.zone}: ${z.minutes}min`).join(', ')}`;
+          }
+          if (a.splits && a.splits.length > 1) {
+            const splitStr = a.splits.map((s: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number }, i: number) => {
+              const m = Math.floor(s.durationSeconds / 60);
+              const sec = s.durationSeconds % 60;
+              const dist = s.distance > 0 ? (s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance}km`) : '';
+              return `${i + 1}) ${dist} ${m}:${sec.toString().padStart(2, '0')}${s.avgHR > 0 ? ` HR${s.avgHR}` : ''}${(s.avgPower || 0) > 0 ? ` ${s.avgPower}W` : ''}`;
+            }).join(', ');
+            contextMessage += ` | blokken: ${splitStr}`;
           }
           contextMessage += '\n';
         }

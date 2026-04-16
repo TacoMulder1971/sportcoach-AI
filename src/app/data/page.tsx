@@ -7,6 +7,7 @@ import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
+import TrendLineChart from '@/components/TrendLineChart';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -101,6 +102,64 @@ export default function DataPage() {
   }, [garmin]);
 
   const isMonday = new Date().getDay() === 1;
+
+  // Wekelijkse trenddata voor grafieken (8 weken)
+  const weeklyTrends = useMemo(() => {
+    if (!garmin || garmin.activities.length === 0) return null;
+    const weeks: { label: string; weekStart: string }[] = [];
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i * 7);
+      // maandag van die week
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+      const weekStart = monday.toISOString().split('T')[0];
+      const weekEnd = new Date(monday);
+      weekEnd.setDate(monday.getDate() + 6);
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      const weekActivities = garmin.activities.filter(a => a.date >= weekStart && a.date <= weekEndStr);
+      if (weekActivities.length === 0) {
+        weeks.push({ label: `W${monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' })}`, weekStart });
+        return { weeks, hrData: [], runTempoData: [], bikeSpeedData: [], powerData: [] };
+      }
+      weeks.push({ label: monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' }), weekStart });
+    }
+
+    const hrData: { label: string; value: number }[] = [];
+    const runTempoData: { label: string; value: number }[] = [];
+    const bikeSpeedData: { label: string; value: number }[] = [];
+    const powerData: { label: string; value: number }[] = [];
+
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i * 7);
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+      const weekStart = monday.toISOString().split('T')[0];
+      const weekEnd = new Date(monday);
+      weekEnd.setDate(monday.getDate() + 6);
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      const label = monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' });
+
+      const weekActivities = garmin.activities.filter(a => a.date >= weekStart && a.date <= weekEndStr);
+      const withHR = weekActivities.filter(a => a.avgHR > 0);
+      const runs = weekActivities.filter(a => a.sport === 'hardlopen' && a.avgSpeed > 0);
+      const bikes = weekActivities.filter(a => (a.sport === 'fietsen' || a.sport === 'mountainbike') && a.avgSpeed > 0);
+      const withPower = weekActivities.filter(a => (a.avgPower || 0) > 0);
+
+      hrData.push({ label, value: withHR.length > 0 ? Math.round(withHR.reduce((s, a) => s + a.avgHR, 0) / withHR.length) : 0 });
+      // Tempo in sec/km voor hardlopen (lagere = sneller)
+      const avgRunPace = runs.length > 0 ? runs.reduce((s, a) => s + (1 / a.avgSpeed) * 60, 0) / runs.length : 0;
+      runTempoData.push({ label, value: Math.round(avgRunPace * 10) / 10 });
+      bikeSpeedData.push({ label, value: bikes.length > 0 ? Math.round(bikes.reduce((s, a) => s + a.avgSpeed, 0) / bikes.length * 10) / 10 : 0 });
+      powerData.push({ label, value: withPower.length > 0 ? Math.round(withPower.reduce((s, a) => s + (a.avgPower || 0), 0) / withPower.length) : 0 });
+    }
+
+    return { hrData, runTempoData, bikeSpeedData, powerData };
+  }, [garmin]);
 
   async function handleGenerateReport() {
     if (!garmin) return;
@@ -578,6 +637,21 @@ export default function DataPage() {
         {syncing ? 'Garmin data ophalen...' : 'Synchroniseer Garmin'}
       </button>
 
+      {/* Trends grafieken */}
+      {weeklyTrends && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Trends (8 weken)</h2>
+          <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-5">
+            <TrendLineChart data={weeklyTrends.hrData} color="#ef4444" unit="bpm" title="Gemiddelde hartslag per week" />
+            <TrendLineChart data={weeklyTrends.runTempoData} color="#22c55e" unit="min/km" title="Hardlooptempo per week (min/km)" invertY={true} />
+            <TrendLineChart data={weeklyTrends.bikeSpeedData} color="#3b82f6" unit="km/h" title="Fietssnelheid per week" />
+            {weeklyTrends.powerData.some(d => d.value > 0) && (
+              <TrendLineChart data={weeklyTrends.powerData} color="#f59e0b" unit="W" title="Gemiddeld vermogen fietsen per week" />
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Hartslagzones referentie */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-3">Hartslagzones</h2>
@@ -593,6 +667,16 @@ export default function DataPage() {
               <p className="text-sm text-gray-500">{z.min}–{z.max} bpm</p>
             </div>
           ))}
+          {(garmin.health?.lactateThresholdHR || garmin.health?.lactateThresholdPace) && (
+            <div className="border-t border-gray-100 pt-2 mt-2">
+              <p className="text-xs text-gray-400">Lactaatdrempel</p>
+              <p className="text-sm font-semibold text-gray-700">
+                {garmin.health.lactateThresholdHR ? `${garmin.health.lactateThresholdHR} bpm` : ''}
+                {garmin.health.lactateThresholdHR && garmin.health.lactateThresholdPace ? ' · ' : ''}
+                {garmin.health.lactateThresholdPace || ''}
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -602,18 +686,40 @@ export default function DataPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Activiteiten</h2>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {garmin.activities.map((a) => (
-              <div key={a.id} className="p-3 flex items-center gap-3">
-                <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="md" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{a.activityName}</p>
-                  <p className="text-xs text-gray-500">
-                    {a.durationMinutes}min
-                    {a.distanceKm > 0 && ` · ${a.distanceKm}km`}
-                    {a.avgHR > 0 && ` · HR ${a.avgHR}/${a.maxHR}`}
-                    {a.calories > 0 && ` · ${a.calories}kcal`}
-                  </p>
+              <div key={a.id} className="p-3">
+                <div className="flex items-center gap-3">
+                  <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{a.activityName}</p>
+                    <p className="text-xs text-gray-500">
+                      {a.durationMinutes}min
+                      {a.distanceKm > 0 && ` · ${a.distanceKm}km`}
+                      {a.avgHR > 0 && ` · HR ${a.avgHR}/${a.maxHR}`}
+                      {(a.avgPower || 0) > 0 && ` · ${a.avgPower}W`}
+                      {(a.normalizedPower || 0) > 0 && ` (NP ${a.normalizedPower}W)`}
+                      {a.calories > 0 && ` · ${a.calories}kcal`}
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{a.date}</span>
                 </div>
-                <span className="text-xs text-gray-400 flex-shrink-0">{a.date}</span>
+                {/* Splits/blokken voor intervaltraining */}
+                {a.splits && a.splits.length > 1 && (
+                  <div className="mt-2 ml-10 space-y-0.5">
+                    {a.splits.map((s, i) => {
+                      const mins = Math.floor(s.durationSeconds / 60);
+                      const secs = s.durationSeconds % 60;
+                      return (
+                        <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                          <span className="w-4 text-gray-400 text-right">{i + 1}.</span>
+                          {s.distance > 0 && <span>{s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance}km`}</span>}
+                          <span>{mins}:{secs.toString().padStart(2, '0')}</span>
+                          {s.avgHR > 0 && <span className="text-red-400">HR {s.avgHR}</span>}
+                          {(s.avgPower || 0) > 0 && <span className="text-amber-500">{s.avgPower}W</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>

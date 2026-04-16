@@ -104,9 +104,19 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
         if (a.elevationGain > 0) prompt += `, ${a.elevationGain}m stijging`;
         if (a.avgRunCadence > 0) prompt += `, cadans ${a.avgRunCadence} spm`;
         if (a.avgBikeCadence > 0) prompt += `, cadans ${a.avgBikeCadence} rpm`;
+        if ((a.avgPower || 0) > 0) prompt += `, ${a.avgPower}W${(a.normalizedPower || 0) > 0 ? ` (NP ${a.normalizedPower}W)` : ''}`;
+        if ((a.trainingStressScore || 0) > 0) prompt += `, TSS ${a.trainingStressScore}`;
         prompt += `, ${a.calories} kcal\n`;
         if (a.hrZones && a.hrZones.length > 0) {
           prompt += `  HR zone verdeling: ${a.hrZones.map((z: { zone: string; minutes: number }) => `${z.zone}: ${z.minutes}min`).join(', ')}\n`;
+        }
+        if (a.splits && a.splits.length > 1) {
+          prompt += `  Blokken: ${a.splits.map((s: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number }, i: number) => {
+            const m = Math.floor(s.durationSeconds / 60);
+            const sec = s.durationSeconds % 60;
+            const dist = s.distance > 0 ? (s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance}km`) : '';
+            return `${i + 1}) ${dist} ${m}:${sec.toString().padStart(2, '0')}${s.avgHR > 0 ? ` HR${s.avgHR}` : ''}${(s.avgPower || 0) > 0 ? ` ${s.avgPower}W` : ''}`;
+          }).join(', ')}\n`;
         }
       }
       prompt += 'Gebruik deze gedetailleerde data (incl. zone-verdeling) voor specifiek, inhoudelijk advies.\n';

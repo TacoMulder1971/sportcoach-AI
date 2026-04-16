@@ -125,6 +125,10 @@ export interface GarminActivity {
   vo2Max: number;
   avgPace: string; // berekend: "5:23/km" of "28.5 km/h"
   hrZones?: { zone: string; minutes: number }[]; // bijv. [{zone:"Z1", minutes:5}, {zone:"Z2", minutes:25}]
+  avgPower?: number;           // watt (fietsen met Edge 530)
+  normalizedPower?: number;    // gecorrigeerd vermogen in watt
+  trainingStressScore?: number; // TSS per activiteit
+  splits?: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number }[]; // rondes/blokken
 }
 
 export interface GarminHealthStats {
@@ -138,6 +142,9 @@ export interface GarminHealthStats {
   restingHR: number;
   bodyBatteryChange: number;
   steps: number;
+  avgRespirationRate?: number;   // ademhalingen/minuut tijdens slaap
+  lactateThresholdHR?: number;   // lactaatdrempel hartslag (bpm)
+  lactateThresholdPace?: string; // lactaatdrempel tempo (bijv. "4:35/km")
 }
 
 export interface TrainingLoadData {

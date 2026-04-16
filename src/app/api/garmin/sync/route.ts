@@ -46,8 +46,8 @@ export async function POST(request: Request) {
     const GC = new GarminConnect({ username: email, password });
     await GC.login();
 
-    // Fetch activities (last 10)
-    const rawActivities = await GC.getActivities(0, 10);
+    // Fetch activities (last 30)
+    const rawActivities = await GC.getActivities(0, 30);
     const activities: GarminActivity[] = rawActivities.map((a) => {
       const sport = mapGarminSport(a.activityType?.typeKey || '');
       const durationMinutes = Math.round((a.duration || 0) / 60);
@@ -92,16 +92,20 @@ export async function POST(request: Request) {
         elevationLoss: Math.round(((a as unknown as Record<string, unknown>).elevationLoss as number || 0)),
         vo2Max: Math.round(((a as unknown as Record<string, unknown>).vO2MaxValue as number || 0)),
         avgPace,
+        avgPower: Math.round((a as unknown as Record<string, unknown>).avgPower as number || 0) || undefined,
+        normalizedPower: Math.round((a as unknown as Record<string, unknown>).normPower as number || 0) || undefined,
+        trainingStressScore: Math.round(((a as unknown as Record<string, unknown>).trainingStressScore as number || 0) * 10) / 10 || undefined,
       };
     });
 
-    // Fetch HR zone details voor nieuwe activiteiten (max 3)
+    // Fetch HR zone details + splits voor nieuwe activiteiten (max 5)
     const newActivities = activities.filter(a => !existingActivityIds.includes(a.id));
-    const toFetchDetails = newActivities.slice(0, 3);
+    const toFetchDetails = newActivities.slice(0, 5);
 
     for (const activity of toFetchDetails) {
       try {
         const details = await (GC as unknown as { getActivityDetails: (id: number) => Promise<Record<string, unknown>> }).getActivityDetails(activity.id);
+        // HR zones
         const zones = (details as Record<string, unknown>).heartRateZones as Array<{ zoneLowBoundary: number; zoneNumber: number; secsInZone: number }> | undefined;
         if (zones && Array.isArray(zones)) {
           activity.hrZones = zones
@@ -111,18 +115,40 @@ export async function POST(request: Request) {
               minutes: Math.round(z.secsInZone / 60),
             }));
         }
+        // Splits/laps voor intervaltraining
+        const splits = (details as Record<string, unknown>).splitSummaries as Array<Record<string, unknown>> | undefined;
+        if (splits && Array.isArray(splits) && splits.length > 1) {
+          activity.splits = splits.map(s => ({
+            distance: Math.round(((s.distance as number || 0) / 1000) * 100) / 100,
+            durationSeconds: Math.round(s.duration as number || 0),
+            avgHR: Math.round(s.averageHR as number || 0),
+            avgPower: Math.round(s.averagePower as number || 0) || undefined,
+          }));
+        }
       } catch (e) {
         console.error(`Failed to fetch details for activity ${activity.id}:`, e);
-        // Continue without zone data
       }
     }
 
-    // Fetch sleep + health data
+    // Fetch sleep + health data + lactaatdrempel
     let health: GarminHealthStats | null = null;
     try {
-      const sleepData = await GC.getSleepData();
-      const steps = await GC.getSteps();
-      const today = new Date().toISOString().split('T')[0];
+      const [sleepData, steps, userSettings] = await Promise.all([
+        GC.getSleepData(),
+        GC.getSteps(),
+        (GC as unknown as { getUserSettings: () => Promise<Record<string, unknown>> }).getUserSettings().catch(() => null),
+      ]);
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+
+      // Lactaatdrempel tempo omzetten van m/s naar min/km
+      let lactateThresholdPace: string | undefined;
+      const ltSpeed = userSettings?.lactateThresholdSpeed as number || 0;
+      if (ltSpeed > 0) {
+        const paceMin = 1000 / 60 / ltSpeed;
+        const mins = Math.floor(paceMin);
+        const secs = Math.round((paceMin - mins) * 60);
+        lactateThresholdPace = `${mins}:${secs.toString().padStart(2, '0')}/km`;
+      }
 
       health = {
         date: today,
@@ -135,6 +161,9 @@ export async function POST(request: Request) {
         restingHR: Math.round(sleepData?.restingHeartRate || 0),
         bodyBatteryChange: sleepData?.bodyBatteryChange || 0,
         steps: steps || 0,
+        avgRespirationRate: Math.round((sleepData as unknown as Record<string, number>)?.avgWakingRespirationValue || (sleepData as unknown as Record<string, number>)?.averageRespirationValue || 0) || undefined,
+        lactateThresholdHR: Math.round(userSettings?.lactateThresholdHeartRate as number || 0) || undefined,
+        lactateThresholdPace,
       };
     } catch (e) {
       console.error('Garmin health data error:', e);
