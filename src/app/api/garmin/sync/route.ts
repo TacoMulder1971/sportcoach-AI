@@ -98,37 +98,44 @@ export async function POST(request: Request) {
       };
     });
 
-    // Fetch HR zone details + splits voor nieuwe activiteiten (max 5)
+    // Fetch HR zone details + splits voor nieuwe activiteiten (max 5, parallel)
     const newActivities = activities.filter(a => !existingActivityIds.includes(a.id));
     const toFetchDetails = newActivities.slice(0, 5);
 
-    for (const activity of toFetchDetails) {
+    const gcGet = (GC as unknown as { get: <T = unknown>(url: string) => Promise<T> }).get.bind(GC);
+    const API_BASE = 'https://connectapi.garmin.com';
+
+    await Promise.all(toFetchDetails.map(async (activity) => {
       try {
-        const details = await (GC as unknown as { getActivityDetails: (id: number) => Promise<Record<string, unknown>> }).getActivityDetails(activity.id);
+        const [zonesResp, lapsResp] = await Promise.all([
+          gcGet<Array<{ zoneNumber: number; secsInZone: number }>>(`${API_BASE}/activity-service/activity/${activity.id}/hrTimeInZones`).catch(() => null),
+          gcGet<{ lapDTOs?: Array<Record<string, unknown>> }>(`${API_BASE}/activity-service/activity/${activity.id}/splits`).catch(() => null),
+        ]);
+
         // HR zones
-        const zones = (details as Record<string, unknown>).heartRateZones as Array<{ zoneLowBoundary: number; zoneNumber: number; secsInZone: number }> | undefined;
-        if (zones && Array.isArray(zones)) {
-          activity.hrZones = zones
-            .filter(z => z.secsInZone > 0)
+        if (zonesResp && Array.isArray(zonesResp)) {
+          activity.hrZones = zonesResp
+            .filter(z => (z.secsInZone || 0) > 0)
             .map(z => ({
               zone: `Z${z.zoneNumber}`,
               minutes: Math.round(z.secsInZone / 60),
             }));
         }
+
         // Splits/laps voor intervaltraining
-        const splits = (details as Record<string, unknown>).splitSummaries as Array<Record<string, unknown>> | undefined;
-        if (splits && Array.isArray(splits) && splits.length > 1) {
-          activity.splits = splits.map(s => ({
-            distance: Math.round(((s.distance as number || 0) / 1000) * 100) / 100,
-            durationSeconds: Math.round(s.duration as number || 0),
-            avgHR: Math.round(s.averageHR as number || 0),
-            avgPower: Math.round(s.averagePower as number || 0) || undefined,
+        const laps = lapsResp?.lapDTOs;
+        if (laps && Array.isArray(laps) && laps.length > 1) {
+          activity.splits = laps.map(s => ({
+            distance: Math.round(((Number(s.distance) || 0) / 1000) * 100) / 100,
+            durationSeconds: Math.round(Number(s.duration) || 0),
+            avgHR: Math.round(Number(s.averageHR) || 0),
+            avgPower: Math.round(Number(s.averagePower) || 0) || undefined,
           }));
         }
       } catch (e) {
         console.error(`Failed to fetch details for activity ${activity.id}:`, e);
       }
-    }
+    }));
 
     // Fetch sleep + health data + lactaatdrempel
     let health: GarminHealthStats | null = null;
@@ -140,9 +147,12 @@ export async function POST(request: Request) {
       ]);
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date());
 
+      // Lactaatdrempel zit genest onder userData
+      const userData = (userSettings?.userData as Record<string, unknown> | undefined);
+
       // Lactaatdrempel tempo omzetten van m/s naar min/km
       let lactateThresholdPace: string | undefined;
-      const ltSpeed = userSettings?.lactateThresholdSpeed as number || 0;
+      const ltSpeed = Number(userData?.lactateThresholdSpeed) || 0;
       if (ltSpeed > 0) {
         const paceMin = 1000 / 60 / ltSpeed;
         const mins = Math.floor(paceMin);
@@ -162,7 +172,7 @@ export async function POST(request: Request) {
         bodyBatteryChange: sleepData?.bodyBatteryChange || 0,
         steps: steps || 0,
         avgRespirationRate: Math.round((sleepData as unknown as Record<string, number>)?.avgWakingRespirationValue || (sleepData as unknown as Record<string, number>)?.averageRespirationValue || 0) || undefined,
-        lactateThresholdHR: Math.round(userSettings?.lactateThresholdHeartRate as number || 0) || undefined,
+        lactateThresholdHR: Math.round(Number(userData?.lactateThresholdHeartRate) || 0) || undefined,
         lactateThresholdPace,
       };
     } catch (e) {
