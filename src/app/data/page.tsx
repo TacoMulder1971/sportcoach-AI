@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
-import { GarminSyncData, HEART_RATE_ZONES, TrainingReadiness } from '@/lib/types';
+import { GarminSyncData, TrainingReadiness } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -632,34 +632,6 @@ export default function DataPage() {
           </div>
         </section>
       )}
-
-      {/* Hartslagzones referentie */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Hartslagzones</h2>
-        <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-2">
-          {HEART_RATE_ZONES.map((z) => (
-            <div key={z.zone} className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: z.color }}>
-                {z.zone}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{z.label}</p>
-              </div>
-              <p className="text-sm text-gray-500">{z.min}–{z.max} bpm</p>
-            </div>
-          ))}
-          {(garmin.health?.lactateThresholdHR || garmin.health?.lactateThresholdPace) && (
-            <div className="border-t border-gray-100 pt-2 mt-2">
-              <p className="text-xs text-gray-400">Lactaatdrempel</p>
-              <p className="text-sm font-semibold text-gray-700">
-                {garmin.health.lactateThresholdHR ? `${garmin.health.lactateThresholdHR} bpm` : ''}
-                {garmin.health.lactateThresholdHR && garmin.health.lactateThresholdPace ? ' · ' : ''}
-                {garmin.health.lactateThresholdPace || ''}
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
 
       {/* Alle activiteiten */}
       {garmin.activities.length > 0 && (

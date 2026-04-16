@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import TrainingCard from '@/components/TrainingCard';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone } from '@/lib/storage';
-import { HEART_RATE_ZONES, TrainingWeek, TrainingDay } from '@/lib/types';
+import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData } from '@/lib/storage';
+import { HEART_RATE_ZONES, TrainingWeek, TrainingDay, GarminHealthStats } from '@/lib/types';
 import { TRAINING_PHASES, getCurrentPhase, getPhaseProgress, getPhaseStatus, getPhaseDateRange, getDaysUntilRace as getDaysUntilRacePeriod } from '@/lib/periodization';
 
 type TabSelection = 1 | 2 | 'longterm';
@@ -28,6 +28,7 @@ export default function SchemaPage() {
   const [adjusting, setAdjusting] = useState(false);
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [showBackupReminder, setShowBackupReminder] = useState(false);
+  const [health, setHealth] = useState<GarminHealthStats | null>(null);
 
   useEffect(() => {
     const active = getActivePlan();
@@ -38,6 +39,7 @@ export default function SchemaPage() {
     setSelectedTab(currentWeek);
     setCycleDay(getDaysInCurrentCycle(active.cycleStartDate));
     setShowBackupReminder(shouldAutoBackup());
+    setHealth(getGarminData()?.health || null);
   }, []);
 
   // Auto-scroll naar vandaag bij initieel laden
@@ -319,6 +321,16 @@ export default function SchemaPage() {
                   </span>
                 </div>
               ))}
+              {(health?.lactateThresholdHR || health?.lactateThresholdPace) && (
+                <div className="flex items-center justify-between p-3 border-t border-gray-100 bg-gray-50">
+                  <span className="text-sm font-medium text-gray-700">Lactaatdrempel</span>
+                  <span className="text-sm text-gray-700 font-semibold">
+                    {health.lactateThresholdHR ? `${health.lactateThresholdHR} bpm` : ''}
+                    {health.lactateThresholdHR && health.lactateThresholdPace ? ' · ' : ''}
+                    {health.lactateThresholdPace || ''}
+                  </span>
+                </div>
+              )}
             </div>
           </section>
         </>
