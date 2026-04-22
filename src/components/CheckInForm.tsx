@@ -24,8 +24,15 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // Scroll alleen naar beneden als de coach antwoordt of aan het typen is,
+    // niet direct na het versturen van een eigen bericht (anders schiet het beeld
+    // op mobiel weg door keyboard-close + viewport resize).
+    const lastMessage = messages[messages.length - 1];
+    const shouldScroll = lastMessage?.role === 'assistant' || loadingFeedback || sending;
+    if (shouldScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages, loadingFeedback, sending]);
 
   async function fetchFeedback(checkIn: CheckIn) {
     setLoadingFeedback(true);
