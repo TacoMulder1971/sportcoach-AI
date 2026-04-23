@@ -36,13 +36,37 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
 
     // Training van vandaag
     const isRestDay = !todayTraining || todayTraining.isRestDay;
+
+    // Bepaal of training van vandaag al is gedaan (activiteit in Garmin van vandaag)
+    const amsterdamTodayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(now);
+    const todayGarminActs = (garminActivities || []).filter((a: { date: string }) => a.date === amsterdamTodayStr);
+    const plannedSports: string[] = !isRestDay && todayTraining?.sessions
+      ? todayTraining.sessions.map((s: { sport: string }) => s.sport.toLowerCase())
+      : [];
+    const todayCompletedActs = todayGarminActs.filter((a: { sport: string }) =>
+      plannedSports.includes((a.sport || '').toLowerCase())
+    );
+    const trainingAlGedaan = !isRestDay && todayCompletedActs.length > 0;
+
     if (!isRestDay) {
-      prompt += `\nTRAINING VANDAAG:\n`;
+      prompt += `\nTRAINING VANDAAG (gepland):\n`;
       for (const s of todayTraining.sessions) {
         prompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min in ${s.zone}\n`;
       }
+      if (trainingAlGedaan) {
+        prompt += `\nSTATUS: TRAINING VAN VANDAAG IS AL GEDAAN. Zie de volgende Garmin-activiteit(en) van vandaag:\n`;
+        for (const a of todayCompletedActs) {
+          prompt += `- ${a.activityName}: ${a.durationMinutes}min, gem HR ${a.avgHR}${a.distanceKm > 0 ? `, ${a.distanceKm}km` : ''}${a.avgPace ? `, ${a.avgPace}` : ''}\n`;
+        }
+        prompt += `BELANGRIJK: De atleet heeft de training van vandaag AL afgerond. Spreek NIET over de training in toekomende tijd. Geef feedback op de geleverde prestatie en richt je verder op herstel voor de rest van de dag of op de volgende trainingsdag.\n`;
+      } else if (todayGarminActs.length > 0) {
+        prompt += `\nLET OP: er is vandaag al een activiteit geregistreerd (${todayGarminActs.map((a: { activityName: string }) => a.activityName).join(', ')}) maar die matcht niet met de geplande sport. De geplande training staat mogelijk nog open.\n`;
+      }
     } else {
       prompt += `\nVANDAAG: Rustdag — herstel staat centraal. Geen geplande training.\n`;
+      if (todayGarminActs.length > 0) {
+        prompt += `NB: er is vandaag wel een activiteit geregistreerd (${todayGarminActs.map((a: { activityName: string }) => a.activityName).join(', ')}).\n`;
+      }
     }
 
     // Recap laatste check-out — met correcte datum-labeling
@@ -140,10 +164,12 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
         deviations.push(`Gisteren stond ${sports} gepland maar er is geen activiteit in Garmin geregistreerd.`);
       }
 
-      // Vandaag al getraind terwijl de dag nog niet begonnen lijkt (schema niet afgevinkt)?
-      if (!isRestDay && vandaagActiviteiten.length > 0) {
+      // Vandaag al getraind maar nog geen check-out gedaan? (alleen als het daadwerkelijk matcht met schema)
+      if (trainingAlGedaan) {
+        deviations.push(`De training van vandaag is al gedaan maar er is nog geen check-out — vraag de atleet vriendelijk om in te checken.`);
+      } else if (!isRestDay && vandaagActiviteiten.length > 0) {
         const names = vandaagActiviteiten.map((a: { activityName: string }) => a.activityName).join(', ');
-        deviations.push(`Vandaag is al een activiteit geregistreerd: ${names}. Vergeet niet in te checken.`);
+        deviations.push(`Vandaag is al een activiteit (${names}) geregistreerd die niet matcht met de geplande sport. Vraag of het schema aangepast moet worden.`);
       }
 
       if (deviations.length > 0) {
@@ -175,6 +201,14 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
 3. Geef een concrete tip over "${topic}" die past bij een rustdag
 4. Als er een schema-afwijking is: benoem het vriendelijk en stel voor of het schema aangepast moet worden
 BELANGRIJK: Geef GEEN aansporing om te trainen. Rust IS de training vandaag.
+Houd het bij 3-5 zinnen totaal. Niet meer.`;
+    } else if (trainingAlGedaan) {
+      prompt += `\n\nSTRUCTUUR (TRAINING VANDAAG AL GEDAAN):
+1. Feliciteer/bevestig dat de training van vandaag gedaan is (gebruik de Garmin-data voor een concrete observatie)
+2. Korte feedback op de prestatie (HR, pace, etc.) — wat ging goed of kan beter
+3. Geef een concrete tip over "${topic}" gericht op herstel of de rest van de dag
+4. Vermeld eventueel kort wat er morgen op het schema staat
+BELANGRIJK: Spreek NOOIT over de training in toekomende tijd ("ga ervoor", "zet door", "blijf kalm in het begin"). De training is al afgerond.
 Houd het bij 3-5 zinnen totaal. Niet meer.`;
     } else {
       prompt += `\n\nSTRUCTUUR (TRAININGSDAG):
