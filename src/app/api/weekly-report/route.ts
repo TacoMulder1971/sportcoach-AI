@@ -16,12 +16,13 @@ export async function POST(request: NextRequest) {
       totalVolumeMinutes,
       totalVolumeKm,
       weeklyNutrition,
+      raceContext,
     } = await request.json();
 
     let prompt = `Je bent My Sport Coach AI. Schrijf een beknopt wekelijks trainingsrapport in het Nederlands (6-8 zinnen).
 Spreek de atleet informeel aan (je/jij). Wees concreet en op data gebaseerd. Geen emojis.
 
-WEDSTRIJD: 1/4 triatlon op 13 juni 2026, nog ${daysUntilRace} dagen. Doel: onder 3 uur.
+WEDSTRIJD: ${raceContext || `nog ${daysUntilRace} dagen tot wedstrijd`}
 HUIDIGE FASE: ${currentPhase}\n`;
 
     if (totalVolumeMinutes > 0 || totalVolumeKm > 0) {

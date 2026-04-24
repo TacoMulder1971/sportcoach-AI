@@ -1,20 +1,33 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
+import GoalsSection from '@/components/GoalsSection';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData } from '@/lib/storage';
+import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText } from '@/lib/storage';
 import { HEART_RATE_ZONES, TrainingWeek, TrainingDay, GarminHealthStats } from '@/lib/types';
-import { TRAINING_PHASES, getCurrentPhase, getPhaseProgress, getPhaseStatus, getPhaseDateRange, getDaysUntilRace as getDaysUntilRacePeriod } from '@/lib/periodization';
+import { TRAINING_PHASES, getPhaseProgress, getPhaseStatus, getPhaseDateRange } from '@/lib/periodization';
 
 type TabSelection = 1 | 2 | 'longterm';
 
 export default function SchemaPage() {
+  return (
+    <Suspense fallback={null}>
+      <SchemaPageInner />
+    </Suspense>
+  );
+}
+
+function SchemaPageInner() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const goalParam = searchParams.get('goal');
   const [plan, setPlan] = useState<TrainingWeek[] | null>(null);
   const [cycleStartDate, setCycleStartDate] = useState<string>('');
   const [planId, setPlanId] = useState<string>('default');
-  const [selectedTab, setSelectedTab] = useState<TabSelection>(1);
+  const [selectedTab, setSelectedTab] = useState<TabSelection>(tabParam === 'longterm' ? 'longterm' : 1);
   const [cycleDay, setCycleDay] = useState(1);
   const todayDayIndex = getTodayDayIndex();
 
@@ -29,6 +42,7 @@ export default function SchemaPage() {
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [showBackupReminder, setShowBackupReminder] = useState(false);
   const [health, setHealth] = useState<GarminHealthStats | null>(null);
+  const [raceDate, setRaceDate] = useState<string>('2026-06-13');
 
   useEffect(() => {
     const active = getActivePlan();
@@ -36,11 +50,13 @@ export default function SchemaPage() {
     setCycleStartDate(active.cycleStartDate);
     setPlanId(active.id);
     const currentWeek = getCurrentWeekNumber(active.cycleStartDate);
-    setSelectedTab(currentWeek);
+    // Alleen default naar currentWeek als er geen tab-param is
+    if (tabParam !== 'longterm') setSelectedTab(currentWeek);
     setCycleDay(getDaysInCurrentCycle(active.cycleStartDate));
     setShowBackupReminder(shouldAutoBackup());
     setHealth(getGarminData()?.health || null);
-  }, []);
+    setRaceDate(getActiveRaceDate());
+  }, [tabParam]);
 
   // Auto-scroll naar vandaag bij initieel laden
   useEffect(() => {
@@ -71,7 +87,8 @@ export default function SchemaPage() {
           weekNumber: adjustDay.weekNumber,
           dayIndex: adjustDay.day.dayIndex,
           adjustmentRequest: adjustText.trim(),
-          daysUntilRace: getDaysUntilRace('2026-06-13'),
+          daysUntilRace: getDaysUntilRace(getActiveRaceDate()),
+          raceContext: buildRaceContextText(),
         }),
       });
 
@@ -339,21 +356,17 @@ export default function SchemaPage() {
       {/* Lange termijn seizoensoverzicht */}
       {selectedTab === 'longterm' && (
         <div className="space-y-4">
-          {/* Countdown */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <p className="text-sm text-gray-500">Nog</p>
-            <p className="text-3xl font-bold text-gray-900">{getDaysUntilRacePeriod()} dagen</p>
-            <p className="text-sm text-gray-500">tot de 1/4 triatlon</p>
-          </div>
+          {/* Doelen (actief + archief + nieuw doel) */}
+          <GoalsSection autoOpenResult={goalParam || undefined} />
 
           {/* Fasen tijdlijn */}
           <div className="relative">
             {TRAINING_PHASES.map((phase, idx) => {
-              const status = getPhaseStatus(phase);
-              const dateRange = getPhaseDateRange(phase);
+              const status = getPhaseStatus(phase, raceDate);
+              const dateRange = getPhaseDateRange(phase, raceDate);
               const isCurrent = status === 'current';
               const isDone = status === 'done';
-              const progress = isCurrent ? getPhaseProgress() : isDone ? 100 : 0;
+              const progress = isCurrent ? getPhaseProgress(raceDate) : isDone ? 100 : 0;
 
               return (
                 <div key={phase.id} className="flex gap-3 relative">

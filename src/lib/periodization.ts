@@ -1,5 +1,5 @@
-// Periodisering voor 1/4 triatlon — 13 juni 2026
-const RACE_DATE = '2026-06-13';
+// Periodisering — fallback datum voor migratie; echte datum komt nu van actief doel.
+const FALLBACK_RACE_DATE = '2026-06-13';
 
 export interface TrainingPhase {
   id: string;
@@ -71,16 +71,16 @@ export const TRAINING_PHASES: TrainingPhase[] = [
   },
 ];
 
-export function getDaysUntilRace(): number {
-  const race = new Date(RACE_DATE);
+export function getDaysUntilRace(raceDate: string = FALLBACK_RACE_DATE): number {
+  const race = new Date(raceDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   race.setHours(0, 0, 0, 0);
   return Math.ceil((race.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export function getCurrentPhase(): TrainingPhase {
-  const days = getDaysUntilRace();
+export function getCurrentPhase(raceDate: string = FALLBACK_RACE_DATE): TrainingPhase {
+  const days = getDaysUntilRace(raceDate);
   // Vind de fase waar dagen tot race in valt
   for (const phase of TRAINING_PHASES) {
     if (days > phase.minDays && days <= phase.maxDays) {
@@ -91,24 +91,24 @@ export function getCurrentPhase(): TrainingPhase {
   return TRAINING_PHASES[TRAINING_PHASES.length - 1];
 }
 
-export function getPhaseProgress(): number {
-  const days = getDaysUntilRace();
-  const phase = getCurrentPhase();
+export function getPhaseProgress(raceDate: string = FALLBACK_RACE_DATE): number {
+  const days = getDaysUntilRace(raceDate);
+  const phase = getCurrentPhase(raceDate);
   const totalDays = phase.maxDays - phase.minDays;
   const daysInPhase = phase.maxDays - days;
   if (totalDays <= 0) return 100;
   return Math.min(100, Math.max(0, Math.round((daysInPhase / totalDays) * 100)));
 }
 
-export function getPhaseStatus(phase: TrainingPhase): 'done' | 'current' | 'future' {
-  const days = getDaysUntilRace();
+export function getPhaseStatus(phase: TrainingPhase, raceDate: string = FALLBACK_RACE_DATE): 'done' | 'current' | 'future' {
+  const days = getDaysUntilRace(raceDate);
   if (days <= phase.minDays) return 'done';
   if (days > phase.minDays && days <= phase.maxDays) return 'current';
   return 'future';
 }
 
-export function getPhaseDateRange(phase: TrainingPhase): { start: string; end: string } {
-  const race = new Date(RACE_DATE);
+export function getPhaseDateRange(phase: TrainingPhase, raceDate: string = FALLBACK_RACE_DATE): { start: string; end: string } {
+  const race = new Date(raceDate);
   race.setHours(0, 0, 0, 0);
 
   const startDate = new Date(race);

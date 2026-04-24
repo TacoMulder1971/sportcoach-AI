@@ -1,23 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TRAINING_PHASES, getCurrentPhase, getDaysUntilRace, getPhaseStatus } from '@/lib/periodization';
-import { getActivePlan } from '@/lib/storage';
+import { getActivePlan, getActiveRaceDate } from '@/lib/storage';
 import { getWeekTrainings, getCurrentWeekNumber, getMondayOfCurrentWeek } from '@/lib/schedule';
 import { GarminSyncData } from '@/lib/types';
 
 interface RaceProgressMeterProps {
   garmin: GarminSyncData | null;
 }
-
-// Startdatum van de voorbereiding
-const START_DATE = '2026-03-01';
-const RACE_DATE_STR = '2026-06-13';
-
-// Totale voorbereidingsdagen: van startdatum tot racedag
-const TOTAL_PREP_DAYS = Math.round(
-  (new Date(RACE_DATE_STR).getTime() - new Date(START_DATE).getTime()) / (1000 * 60 * 60 * 24)
-);
 
 // Faseduur in dagen (voor proportionele weergave)
 const PHASE_DURATIONS: Record<string, number> = {
@@ -30,13 +21,18 @@ const PHASE_DURATIONS: Record<string, number> = {
 
 export default function RaceProgressMeter({ garmin }: RaceProgressMeterProps) {
   const [goalsOpen, setGoalsOpen] = useState(false);
+  const [raceDate, setRaceDate] = useState<string>('2026-06-13');
 
-  const daysUntilRace = getDaysUntilRace();
-  const currentPhase = getCurrentPhase();
+  useEffect(() => {
+    setRaceDate(getActiveRaceDate());
+  }, []);
 
-  const daysElapsed = Math.round(
-    (new Date().setHours(0,0,0,0) - new Date(START_DATE).getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const daysUntilRace = getDaysUntilRace(raceDate);
+  const currentPhase = getCurrentPhase(raceDate);
+
+  // Voorbereidingsstart: 104 dagen voor race (default) of langer als race verder weg is
+  const TOTAL_PREP_DAYS = Math.max(104, daysUntilRace + 7);
+  const daysElapsed = Math.max(0, TOTAL_PREP_DAYS - daysUntilRace);
   const prepCompleted = Math.min(100, Math.max(0, Math.round((daysElapsed / TOTAL_PREP_DAYS) * 100)));
   const weeksUntilRace = Math.ceil(daysUntilRace / 7);
 
@@ -76,7 +72,7 @@ export default function RaceProgressMeter({ garmin }: RaceProgressMeterProps) {
       <div className="mb-3">
         <div className="flex rounded-full overflow-hidden h-3">
           {TRAINING_PHASES.map((phase) => {
-            const status = getPhaseStatus(phase);
+            const status = getPhaseStatus(phase, raceDate);
             const widthPct = ((PHASE_DURATIONS[phase.id] || 0) / TOTAL_PREP_DAYS) * 100;
             const isCurrent = status === 'current';
             const isDone = status === 'done';
@@ -98,7 +94,7 @@ export default function RaceProgressMeter({ garmin }: RaceProgressMeterProps) {
         {/* Fasenlabels */}
         <div className="flex mt-1">
           {TRAINING_PHASES.map((phase) => {
-            const status = getPhaseStatus(phase);
+            const status = getPhaseStatus(phase, raceDate);
             const widthPct = ((PHASE_DURATIONS[phase.id] || 0) / TOTAL_PREP_DAYS) * 100;
             const isCurrent = status === 'current';
 

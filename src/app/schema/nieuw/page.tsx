@@ -7,6 +7,7 @@ import { getDaysUntilRace, getNextMonday } from '@/lib/schedule';
 import {
   getActivePlan, getGarminData, getRecentCheckIns,
   saveStoredPlan, setActivePlanId, generateId,
+  getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText,
 } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { AgendaInput, DayPreference, TrainingWeek } from '@/lib/types';
@@ -83,7 +84,7 @@ export default function NieuwSchemaPage() {
     const trainingLoad = garminData
       ? calculateTrainingLoad(garminData.activities, garminData.health)
       : null;
-    const daysUntilRace = getDaysUntilRace('2026-06-13');
+    const daysUntilRace = getDaysUntilRace(getActiveRaceDate());
 
     try {
       const currentPhase = getCurrentPhase();
@@ -108,6 +109,8 @@ export default function NieuwSchemaPage() {
             progressPercent: Math.round(phaseProgress),
           },
           nextPhase: nextPhase ? { label: nextPhase.label } : null,
+          raceContext: buildRaceContextText(),
+          goalsHistory: buildGoalsHistoryText(),
         }),
       });
 
@@ -130,7 +133,7 @@ export default function NieuwSchemaPage() {
     setRefining(true);
     setError(null);
 
-    const daysUntilRace = getDaysUntilRace('2026-06-13');
+    const daysUntilRace = getDaysUntilRace(getActiveRaceDate());
 
     try {
       const res = await fetch('/api/generate-plan', {
@@ -141,6 +144,7 @@ export default function NieuwSchemaPage() {
           currentProposal: proposal,
           refinementFeedback: feedback.trim(),
           daysUntilRace,
+          raceContext: buildRaceContextText(),
         }),
       });
 

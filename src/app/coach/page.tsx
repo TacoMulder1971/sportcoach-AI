@@ -4,9 +4,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from './CheckInContent';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate } from '@/lib/storage';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace } from '@/lib/storage';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
-import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
+import { getCurrentPhase } from '@/lib/periodization';
 
 export default function CoachPage() {
   const [activeTab, setActiveTab] = useState<'checkin' | 'chat'>('chat');
@@ -31,11 +31,13 @@ export default function CoachPage() {
   useEffect(() => {
     const saved = getChatMessages();
     if (saved.length === 0) {
+      const raceLabel = getActiveRaceLabel();
+      const raceDate = formatRaceDateNL();
       const welcome: ChatMessageType = {
         id: generateId(),
         role: 'assistant',
         content:
-          'Hoi! Ik ben je My Sport Coach AI. Ik ken je trainingsschema en help je richting je 1/4 triatlon op 13 juni.\n\nJe kunt me alles vragen over:\n- Je trainingsschema en aanpassingen\n- Hartslagzones en intensiteit\n- Herstel en periodisering\n- Motivatie en mentale tips\n\nHoe kan ik je helpen?',
+          `Hoi! Ik ben je My Sport Coach AI. Ik ken je trainingsschema en help je richting je ${raceLabel} op ${raceDate}.\n\nJe kunt me alles vragen over:\n- Je trainingsschema en aanpassingen\n- Hartslagzones en intensiteit\n- Herstel en periodisering\n- Motivatie en mentale tips\n\nHoe kan ik je helpen?`,
         createdAt: new Date().toISOString(),
       };
       saveChatMessage(welcome);
@@ -190,7 +192,7 @@ export default function CoachPage() {
         .map((ci) => ({ date: ci.date, feeling: ci.feeling, note: ci.note }));
 
       const currentPhase = getCurrentPhase();
-      const daysUntilRace = getDaysUntilRace();
+      const daysUntilRace = getDaysUntilActiveRace();
 
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
       const todayNutrition = getNutritionForDate(today);
@@ -219,6 +221,8 @@ export default function CoachPage() {
           recentNotes,
           todayNutrition,
           localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
+          raceContext: buildRaceContextText(),
+          goalsHistory: buildGoalsHistoryText(),
         }),
       });
 

@@ -2,30 +2,34 @@
 
 import { useEffect, useState } from 'react';
 import { getDaysUntilRace } from '@/lib/schedule';
-import { getProfile } from '@/lib/storage';
+import { getActiveRaceDate, getActiveRaceLabel, formatRaceDateNL } from '@/lib/storage';
 import SportIcon from './SportIcon';
 import { TRAINING_PHASES, getCurrentPhase, getPhaseStatus, getPhaseProgress } from '@/lib/periodization';
 
-const RACE_DATE_STR = '2026-06-13';
-const TOTAL_PREP_DAYS = Math.round(
-  (new Date(RACE_DATE_STR).getTime() - new Date('2026-03-01').getTime()) / (1000 * 60 * 60 * 24)
-);
+const TOTAL_PREP_DAYS_DEFAULT = 104; // ~3,5 maanden (fallback bij korte trajecten)
 const PHASE_DURATIONS: Record<string, number> = {
   basis: 50, opbouw: 28, piek: 21, taper: 14, wedstrijd: 7,
 };
 
 export default function Countdown() {
   const [days, setDays] = useState<number | null>(null);
+  const [raceDate, setRaceDate] = useState<string>('2026-06-13');
+  const [raceLabel, setRaceLabel] = useState<string>('1/4 triatlon');
+  const [raceDateFmt, setRaceDateFmt] = useState<string>('');
 
   useEffect(() => {
-    const profile = getProfile();
-    setDays(getDaysUntilRace(profile.raceDate));
+    const d = getActiveRaceDate();
+    setRaceDate(d);
+    setDays(getDaysUntilRace(d));
+    setRaceLabel(getActiveRaceLabel());
+    setRaceDateFmt(formatRaceDateNL(d));
   }, []);
 
   if (days === null) return null;
 
-  const currentPhase = getCurrentPhase();
-  const phaseProgress = getPhaseProgress();
+  const currentPhase = getCurrentPhase(raceDate);
+  const phaseProgress = getPhaseProgress(raceDate);
+  const totalPrep = Math.max(TOTAL_PREP_DAYS_DEFAULT, days + 7);
 
   return (
     <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white">
@@ -35,7 +39,7 @@ export default function Countdown() {
           <p className="text-3xl font-bold mt-1">
             {days > 0 ? `${days} dagen` : days === 0 ? 'Vandaag!' : 'Voltooid'}
           </p>
-          <p className="text-blue-200 text-sm mt-1">tot 1/4 Triatlon</p>
+          <p className="text-blue-200 text-sm mt-1">tot {raceLabel}</p>
         </div>
         <div className="flex gap-2">
           <SportIcon sport="zwemmen" size="xl" />
@@ -48,8 +52,8 @@ export default function Countdown() {
       <div className="mt-4">
         <div className="flex rounded-full overflow-hidden h-2">
           {TRAINING_PHASES.map((phase) => {
-            const status = getPhaseStatus(phase);
-            const widthPct = ((PHASE_DURATIONS[phase.id] || 0) / TOTAL_PREP_DAYS) * 100;
+            const status = getPhaseStatus(phase, raceDate);
+            const widthPct = ((PHASE_DURATIONS[phase.id] || 0) / totalPrep) * 100;
             const isCurrent = status === 'current';
             const isDone = status === 'done';
             return (
@@ -66,8 +70,8 @@ export default function Countdown() {
         </div>
         <div className="flex mt-1">
           {TRAINING_PHASES.map((phase) => {
-            const status = getPhaseStatus(phase);
-            const widthPct = ((PHASE_DURATIONS[phase.id] || 0) / TOTAL_PREP_DAYS) * 100;
+            const status = getPhaseStatus(phase, raceDate);
+            const widthPct = ((PHASE_DURATIONS[phase.id] || 0) / totalPrep) * 100;
             const isCurrent = status === 'current';
             return (
               <div key={phase.id} style={{ width: `${widthPct}%` }} className="text-center">
@@ -84,7 +88,7 @@ export default function Countdown() {
       </div>
 
       <p className="text-blue-200 text-xs mt-2">
-        13 juni 2026 · {currentPhase.label} · {phaseProgress}% voltooid
+        {raceDateFmt} · {currentPhase.label} · {phaseProgress}% voltooid
       </p>
     </div>
   );

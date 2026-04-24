@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace } = await request.json();
+    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace, raceContext } = await request.json();
 
     if (!currentPlan || !adjustmentRequest) {
       return NextResponse.json({ error: 'Verplichte velden ontbreken' }, { status: 400 });
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = `Je bent My Sport Coach AI planmaker. De atleet wil een ad-hoc aanpassing aan zijn trainingsschema.
 
 ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
-DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
+DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
 HUIDIG SCHEMA:

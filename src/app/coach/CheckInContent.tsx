@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import CheckInForm from '@/components/CheckInForm';
 import { getTodayTraining } from '@/lib/schedule';
-import { getGarminData, getActivePlan, getCheckInsForDate, getRecentCheckIns, getNutritionForDate, saveNutritionFeedback } from '@/lib/storage';
+import { getGarminData, getActivePlan, getCheckInsForDate, getRecentCheckIns, getNutritionForDate, saveNutritionFeedback, getActiveRaceDate, buildRaceContextText } from '@/lib/storage';
 import { TrainingDay, GarminActivity, CheckIn, HEART_RATE_ZONES, FEELING_SCALE, NutritionLog } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 
@@ -229,7 +229,8 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
                         nutritionLog,
                         todayTraining,
                         garminHealth: garmin?.health || null,
-                        daysUntilRace: Math.ceil((new Date('2026-06-13').getTime() - new Date().getTime()) / 86400000),
+                        daysUntilRace: Math.ceil((new Date(getActiveRaceDate()).getTime() - new Date().getTime()) / 86400000),
+                        raceContext: buildRaceContextText(),
                       }),
                     });
                     const data = await res.json();

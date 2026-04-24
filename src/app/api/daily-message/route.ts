@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime } = await request.json();
+    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory } = await request.json();
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
     const now = new Date();
@@ -30,9 +30,13 @@ export async function POST(request: NextRequest) {
 Spreek informeel (je/jij), wees warm en motiverend. Geen emojis in lopende tekst, alleen eventueel aan het begin.
 BELANGRIJK: Het is nu ${timeStr} (${dagdeel}). Pas je begroeting aan: gebruik "goedemorgen" alleen 's ochtends, "goedemiddag" 's middags, "goedenavond" 's avonds.
 
-ATLEET: Traint voor 1/4 triatlon op 13 juni 2026 (nog ${daysUntilRace} dagen). Doel: onder 3 uur.
+ATLEET: ${raceContext || `Traint voor een wedstrijd (nog ${daysUntilRace} dagen).`}
 
 VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCycle}/14).\n`;
+
+    if (goalsHistory) {
+      prompt += `\n${goalsHistory}\n`;
+    }
 
     // Training van vandaag
     const isRestDay = !todayTraining || todayTraining.isRestDay;

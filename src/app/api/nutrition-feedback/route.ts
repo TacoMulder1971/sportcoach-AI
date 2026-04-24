@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'API key ontbreekt' }, { status: 500 });
 
-    const { nutritionLog, todayTraining, garminHealth, daysUntilRace } = await request.json();
+    const { nutritionLog, todayTraining, garminHealth, daysUntilRace, raceContext } = await request.json();
     if (!nutritionLog) return NextResponse.json({ error: 'Geen voedingsdata' }, { status: 400 });
 
     const client = new Anthropic({ apiKey });
@@ -35,7 +35,7 @@ VOEDING VANDAAG:
       prompt += `\nSLAAP: ${garminHealth.sleepDurationHours}u, HRV: ${garminHealth.avgOvernightHrv || '?'}ms\n`;
     }
 
-    prompt += `\nNog ${daysUntilRace} dagen tot de wedstrijd (1/4 triatlon, doel <3 uur).`;
+    prompt += `\n${raceContext || `Nog ${daysUntilRace} dagen tot de wedstrijd.`}`;
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',

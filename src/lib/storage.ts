@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -16,6 +16,9 @@ const KEYS = {
   DAILY_MESSAGE: 'tricoach_daily_message',
   WEEKLY_REPORT: 'tricoach_weekly_report',
   NUTRITION: 'tricoach_nutrition',
+  GOALS: 'tricoach_goals',
+  GOALS_MIGRATED: 'tricoach_goals_migrated',
+  GOAL_RESULT_DISMISSED: 'tricoach_goal_result_dismissed',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -400,4 +403,257 @@ export function downloadExport(): void {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   markBackupDone();
+}
+
+// ─── Goals (wedstrijddoelen) ─────────────────────────────────────
+
+// Eenmalige migratie: als er nog geen goals zijn, maak eerste goal aan
+// op basis van het profiel (backward compat met hardcoded 1/4 triatlon).
+function runGoalsMigration(): void {
+  if (typeof window === 'undefined') return;
+  if (localStorage.getItem(KEYS.GOALS_MIGRATED)) return;
+  try {
+    const existing = getItem<Goal[]>(KEYS.GOALS, []);
+    if (existing.length === 0) {
+      const profile = getProfile();
+      const raceType = profile.raceType?.toLowerCase() || '';
+      let type: Goal['type'] = 'eigen';
+      if (raceType.includes('1/4') || raceType.includes('kwart')) type = 'kwart_triatlon';
+      else if (raceType.includes('1/2') && raceType.includes('tri')) type = 'halve_triatlon';
+      else if (raceType.includes('hele') && raceType.includes('tri')) type = 'hele_triatlon';
+      else if (raceType.includes('marathon') && raceType.includes('1/2')) type = 'halve_marathon';
+      else if (raceType.includes('marathon')) type = 'marathon';
+
+      // Streeftijd parsen uit "Onder de 3 uur" of "2:55"
+      let targetTimeSeconds: number | undefined;
+      const goal = profile.raceGoal || '';
+      const hourMatch = goal.match(/(\d+)\s*uur/i);
+      if (hourMatch) targetTimeSeconds = parseInt(hourMatch[1]) * 3600;
+      const hmsMatch = goal.match(/(\d+):(\d{2})(?::(\d{2}))?/);
+      if (hmsMatch) {
+        const h = parseInt(hmsMatch[1]);
+        const m = parseInt(hmsMatch[2]);
+        const s = hmsMatch[3] ? parseInt(hmsMatch[3]) : 0;
+        targetTimeSeconds = h * 3600 + m * 60 + s;
+      }
+
+      const firstGoal: Goal = {
+        id: generateId(),
+        type,
+        name: profile.raceType || '1/4 Triatlon',
+        date: profile.raceDate || '2026-06-13',
+        targetTimeSeconds,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+      };
+      setItem(KEYS.GOALS, [firstGoal]);
+    }
+    localStorage.setItem(KEYS.GOALS_MIGRATED, 'true');
+  } catch {
+    console.error('Goals migration failed');
+  }
+}
+
+export function getGoals(): Goal[] {
+  runGoalsMigration();
+  return getItem<Goal[]>(KEYS.GOALS, []);
+}
+
+/**
+ * Actief doel = meest nabije actieve goal met datum ≥ vandaag,
+ * of indien geen toekomstige: meest recente actieve goal.
+ */
+export function getActiveGoal(): Goal | null {
+  const goals = getGoals().filter(g => g.status === 'active');
+  if (goals.length === 0) return null;
+  const today = new Date().toISOString().split('T')[0];
+  const upcoming = goals.filter(g => g.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  if (upcoming.length > 0) return upcoming[0];
+  // Geen toekomstige meer: geef meest recente terug (wacht op resultaat)
+  return goals.sort((a, b) => b.date.localeCompare(a.date))[0];
+}
+
+export function getArchivedGoals(): Goal[] {
+  return getGoals()
+    .filter(g => g.status === 'archived')
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function saveGoal(goal: Goal): void {
+  const goals = getGoals();
+  const idx = goals.findIndex(g => g.id === goal.id);
+  if (idx >= 0) goals[idx] = goal;
+  else goals.push(goal);
+  setItem(KEYS.GOALS, goals);
+}
+
+export function deleteGoal(id: string): void {
+  const goals = getGoals().filter(g => g.id !== id);
+  setItem(KEYS.GOALS, goals);
+}
+
+export function archiveGoal(id: string, result: GoalResult): void {
+  const goals = getGoals();
+  const idx = goals.findIndex(g => g.id === id);
+  if (idx >= 0) {
+    goals[idx] = {
+      ...goals[idx],
+      status: 'archived',
+      result,
+      archivedAt: new Date().toISOString(),
+    };
+    setItem(KEYS.GOALS, goals);
+  }
+}
+
+/**
+ * Check of een actief doel al voorbij is (datum < vandaag)
+ * en er nog geen resultaat is ingevuld. Gebruikt voor popup.
+ */
+export function getPendingResultGoal(): Goal | null {
+  const active = getActiveGoal();
+  if (!active || active.result) return null;
+  const today = new Date().toISOString().split('T')[0];
+  if (active.date >= today) return null;
+  // Check of user de popup al weggeklikt heeft
+  const dismissed = getItem<string[]>(KEYS.GOAL_RESULT_DISMISSED, []);
+  if (dismissed.includes(active.id)) return null;
+  return active;
+}
+
+export function dismissGoalResultPrompt(goalId: string): void {
+  const dismissed = getItem<string[]>(KEYS.GOAL_RESULT_DISMISSED, []);
+  if (!dismissed.includes(goalId)) {
+    dismissed.push(goalId);
+    setItem(KEYS.GOAL_RESULT_DISMISSED, dismissed);
+  }
+}
+
+/**
+ * Is dit een multi-sport doel (voor splits)?
+ */
+export function goalIsMultiSport(goal: Goal): boolean {
+  return GOAL_TYPES.find(t => t.type === goal.type)?.multiSport ?? false;
+}
+
+/**
+ * Formatteer seconden → "hh:mm:ss" of "mm:ss"
+ */
+export function formatDuration(seconds: number): string {
+  if (!seconds || seconds < 0) return '—';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Parse "1:23:45" / "23:45" / "45" → seconden
+ */
+export function parseDuration(input: string): number {
+  const parts = input.trim().split(':').map(p => parseInt(p));
+  if (parts.some(isNaN)) return 0;
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 1) return parts[0];
+  return 0;
+}
+
+// ─── Race-context helpers (voor AI prompts en UI countdowns) ─────────
+
+/**
+ * ISO-datum van actief doel, met fallback naar profiel/defaults.
+ */
+export function getActiveRaceDate(): string {
+  const active = getActiveGoal();
+  if (active) return active.date;
+  const profile = getProfile();
+  return profile.raceDate || '2026-06-13';
+}
+
+/**
+ * Korte label van actief doel (bv. "1/4 triatlon").
+ */
+export function getActiveRaceLabel(): string {
+  const active = getActiveGoal();
+  if (active) {
+    const info = GOAL_TYPES.find(t => t.type === active.type);
+    return (info?.label || active.name).toLowerCase();
+  }
+  const profile = getProfile();
+  return (profile.raceType || '1/4 triatlon').toLowerCase();
+}
+
+/**
+ * Naam van actief doel (bv. "1/4 Triatlon Eindhoven" of "1/4 Triatlon").
+ */
+export function getActiveRaceName(): string {
+  const active = getActiveGoal();
+  if (active) return active.name;
+  const profile = getProfile();
+  return profile.raceType || '1/4 Triatlon';
+}
+
+/**
+ * Streeftijd-tekst van actief doel (bv. "onder 3:00:00").
+ */
+export function getActiveRaceGoalText(): string {
+  const active = getActiveGoal();
+  if (active?.targetTimeSeconds) {
+    return `onder ${formatDuration(active.targetTimeSeconds)}`;
+  }
+  const profile = getProfile();
+  return profile.raceGoal || 'persoonlijk record';
+}
+
+/**
+ * Dagen tot actief doel (negatief als in verleden).
+ */
+export function getDaysUntilActiveRace(): number {
+  const dateStr = getActiveRaceDate();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const race = new Date(dateStr);
+  race.setHours(0, 0, 0, 0);
+  return Math.ceil((race.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Race datum in NL-formaat (bv. "13 juni 2026").
+ */
+export function formatRaceDateNL(dateStr?: string): string {
+  const d = new Date(dateStr || getActiveRaceDate());
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+/**
+ * Context-string voor AI prompts.
+ * Bv. "1/4 triatlon op 13 juni 2026, nog 51 dagen. Doel: onder 3:00:00."
+ */
+export function buildRaceContextText(): string {
+  const label = getActiveRaceLabel();
+  const dateFmt = formatRaceDateNL();
+  const days = getDaysUntilActiveRace();
+  const goalText = getActiveRaceGoalText();
+  const daysText = days >= 0 ? `, nog ${days} dagen` : ` (voorbij)`;
+  return `${label} op ${dateFmt}${daysText}. Doel: ${goalText}.`;
+}
+
+/**
+ * Korte archief-samenvatting voor AI-context ("recente doelen & resultaten").
+ * Max 3 archieven, oudste laatst.
+ */
+export function buildGoalsHistoryText(): string {
+  const archived = getArchivedGoals().slice(0, 3);
+  if (archived.length === 0) return '';
+  const lines = archived.map(g => {
+    const info = GOAL_TYPES.find(t => t.type === g.type);
+    const label = info?.label || g.name;
+    const dateFmt = formatRaceDateNL(g.date);
+    const time = g.result?.totalTimeSeconds ? formatDuration(g.result.totalTimeSeconds) : '?';
+    const reflection = g.result?.trainingReflection ? ` — ${g.result.trainingReflection.slice(0, 120)}` : '';
+    return `- ${label} (${dateFmt}): ${time}${reflection}`;
+  });
+  return `RECENTE DOELEN:\n${lines.join('\n')}`;
 }

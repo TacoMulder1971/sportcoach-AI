@@ -212,3 +212,70 @@ export interface NutritionLog {
   fiberG: number;
   aiFeedback?: string;   // gecached AI-feedback
 }
+
+// ============================================================
+// Doelen (Goals) — wedstrijddoelen met resultaatarchief
+// ============================================================
+
+export type GoalType =
+  | '5km'
+  | '10km'
+  | 'halve_marathon'
+  | 'marathon'
+  | 'kwart_triatlon'    // 1/4 (sprint-achtig)
+  | 'halve_triatlon'    // 1/2 (70.3)
+  | 'hele_triatlon'     // hele (140.6)
+  | 'duatlon'
+  | 'fietstocht'
+  | 'zwemtocht'
+  | 'eigen';
+
+export interface GoalTypeInfo {
+  type: GoalType;
+  label: string;
+  multiSport: boolean;                        // heeft splits per onderdeel
+  disciplines?: ('zwemmen' | 'fietsen' | 'hardlopen')[]; // volgorde voor splits
+}
+
+export const GOAL_TYPES: GoalTypeInfo[] = [
+  { type: '5km',              label: '5 km',              multiSport: false },
+  { type: '10km',             label: '10 km',             multiSport: false },
+  { type: 'halve_marathon',   label: '1/2 marathon',      multiSport: false },
+  { type: 'marathon',         label: 'Marathon',          multiSport: false },
+  { type: 'kwart_triatlon',   label: '1/4 triatlon',      multiSport: true,  disciplines: ['zwemmen', 'fietsen', 'hardlopen'] },
+  { type: 'halve_triatlon',   label: '1/2 triatlon',      multiSport: true,  disciplines: ['zwemmen', 'fietsen', 'hardlopen'] },
+  { type: 'hele_triatlon',    label: 'Hele triatlon',     multiSport: true,  disciplines: ['zwemmen', 'fietsen', 'hardlopen'] },
+  { type: 'duatlon',          label: 'Duatlon',           multiSport: true,  disciplines: ['hardlopen', 'fietsen', 'hardlopen'] },
+  { type: 'fietstocht',       label: 'Fietstocht',        multiSport: false },
+  { type: 'zwemtocht',        label: 'Zwemtocht',         multiSport: false },
+  { type: 'eigen',            label: 'Eigen doel',        multiSport: false },
+];
+
+export interface GoalSplit {
+  discipline: string;        // "zwemmen" / "fietsen" / "hardlopen" / "T1" / "T2" / etc.
+  timeSeconds: number;       // duur van dit onderdeel in seconden
+  distanceKm?: number;       // optioneel
+}
+
+export interface GoalResult {
+  totalTimeSeconds: number;  // eindtijd in seconden
+  splits?: GoalSplit[];      // per onderdeel (alleen multi-sport)
+  rating: 1 | 2 | 3 | 4 | 5; // beoordeling
+  timeReflection: string;    // reflectie over tijd vs doel
+  trainingReflection: string;// reflectie over trainingen (langer)
+  filledAt: string;          // ISO datum dat resultaat is ingevuld
+}
+
+export interface Goal {
+  id: string;                  // UUID — forward-compatible met multi-user DB
+  type: GoalType;
+  name: string;                // bv. "1/4 Triatlon Eindhoven"
+  date: string;                // ISO "2026-06-13"
+  targetTimeSeconds?: number;  // streeftijd in seconden (optioneel)
+  location?: string;
+  note?: string;
+  status: 'active' | 'archived';
+  result?: GoalResult;         // gevuld bij archiveren
+  createdAt: string;           // ISO
+  archivedAt?: string;         // ISO
+}

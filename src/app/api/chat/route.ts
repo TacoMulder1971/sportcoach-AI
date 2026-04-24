@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-const BASE_PROMPT = `Je bent My Sport Coach AI, een persoonlijke trainingscoach voor triatlon. Je spreekt Nederlands.
+const BASE_PROMPT = `Je bent My Sport Coach AI, een persoonlijke trainingscoach voor duursporters (hardlopen, fietsen, zwemmen, triatlon). Je spreekt Nederlands.
 
 ATLEET PROFIEL:
-- Traint voor een 1/4 triatlon op 13 juni 2026
-- Doel: onder de 3 uur finishen
 - Max hartslag: 172 bpm
 - Hartslagzones: Z1 (86-103 Herstel), Z2 (103-120 Basis), Z3 (120-138 Aeroob), Z4 (138-155 Drempel), Z5 (155-172 VO2max)
 
 JE TAKEN:
-1. Geef concreet, praktisch trainingsadvies
+1. Geef concreet, praktisch trainingsadvies afgestemd op het actieve doel
 2. Pas het schema aan als de atleet moe is, slecht slaapt, of zich niet goed voelt
 3. Stel verdiepende vragen als informatie onduidelijk is
 4. Geef motiverende berichten afgestemd op de fase in de training
@@ -57,6 +55,7 @@ export async function POST(request: NextRequest) {
     const {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
       weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
+      raceContext, goalsHistory,
     } = await request.json();
 
     // Bouw schema tekst dynamisch
@@ -98,9 +97,16 @@ Week 2:
     const diffDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const weekNum = Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2;
 
-    const daysUntilRace = Math.ceil((new Date('2026-06-13').getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysUntilRace = typeof daysUntilRaceBody === 'number' ? daysUntilRaceBody : 0;
 
     let contextMessage = `\n\nHUIDIGE CONTEXT:\n- Datum: ${dayName} ${dateStr}\n- Tijd: ${timeStr}\n- Week in cyclus: Week ${weekNum}\n- Dagen tot wedstrijd: ${daysUntilRace}\n`;
+
+    if (raceContext) {
+      contextMessage += `- Actief doel: ${raceContext}\n`;
+    }
+    if (goalsHistory) {
+      contextMessage += `\n${goalsHistory}\n`;
+    }
 
     // Build context with check-in data
     if (checkIns && checkIns.length > 0) {

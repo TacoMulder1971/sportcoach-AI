@@ -175,6 +175,8 @@ export async function POST(request: NextRequest) {
       refinementFeedback,
       currentPhase,
       nextPhase,
+      raceContext,
+      goalsHistory,
     } = body;
 
     const client = new Anthropic({ apiKey });
@@ -186,7 +188,7 @@ export async function POST(request: NextRequest) {
       const refinePrompt = `Je bent My Sport Coach AI planmaker. Je hebt eerder een 2-weekse trainingsplanning gemaakt.
 
 ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
-DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
+DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
 HUIDIG VOORSTEL:
@@ -291,10 +293,10 @@ ${JSON_FORMAT_SPEC}`;
     const systemPrompt = `Je bent My Sport Coach AI planmaker. Genereer een 2-weekse trainingsplanning als JSON.
 
 ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
-DOEL: 1/4 triatlon op 13 juni 2026, finish onder 3 uur
+DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 ${phaseAdvice}
-${blockedText}${preferencesText}${previousPlanText}${performanceText}
+${goalsHistory ? `\n${goalsHistory}\n` : ''}${blockedText}${preferencesText}${previousPlanText}${performanceText}
 REGELS:
 - Geblokkeerde dagen MOETEN rustdagen zijn (sport:"rust", type:"rust", isRestDay:true)
 - Respecteer de dagvoorkeuren van de atleet (tijdstippen, specifieke sporten)

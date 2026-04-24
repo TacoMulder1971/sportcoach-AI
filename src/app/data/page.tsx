@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
@@ -146,8 +146,9 @@ export default function DataPage() {
     if (!garmin) return;
     setReportLoading(true);
     try {
-      const currentPhase = getCurrentPhase();
-      const daysUntilRace = getDaysUntilRace();
+      const raceDate = getActiveRaceDate();
+      const currentPhase = getCurrentPhase(raceDate);
+      const daysUntilRace = getDaysUntilRace(raceDate);
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const cutoff = sevenDaysAgo.toISOString().split('T')[0];
@@ -168,6 +169,7 @@ export default function DataPage() {
           totalVolumeMinutes,
           totalVolumeKm,
           weeklyNutrition: getRecentNutritionLogs(7),
+          raceContext: buildRaceContextText(),
         }),
       });
       const data = await res.json();

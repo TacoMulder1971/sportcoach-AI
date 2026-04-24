@@ -5,9 +5,9 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone, shouldAutoSync } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
-import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice } from '@/lib/types';
+import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
 
 export default function Dashboard() {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [dailyMessage, setDailyMessage] = useState<string | null>(null);
   const [loadingDaily, setLoadingDaily] = useState(false);
+  const [pendingResultGoal, setPendingResultGoal] = useState<Goal | null>(null);
 
   const fetchDailyMessage = useCallback(async (training: TrainingDay | null, garminData: GarminSyncData | null, load: TrainingLoadData | null, ready: TrainingReadiness | null, prevDayTraining: TrainingDay | null = null) => {
     // Check cache first
@@ -45,10 +46,12 @@ export default function Dashboard() {
           garminActivities: garminData?.activities?.slice(0, 3) || null,
           trainingLoad: load,
           readiness: ready,
-          daysUntilRace: getDaysUntilRace('2026-06-13'),
+          daysUntilRace: getDaysUntilRace(getActiveRaceDate()),
           weekNumber: getCurrentWeekNumber(cycleStartDate),
           dayInCycle: getDaysInCurrentCycle(cycleStartDate),
           localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
+          raceContext: buildRaceContextText(),
+          goalsHistory: buildGoalsHistoryText(),
         }),
       });
 
@@ -72,6 +75,7 @@ export default function Dashboard() {
     setYesterdayTraining(yt);
     setRecentCheckIns(getRecentCheckIns(1));
     setGarmin(getGarminData());
+    setPendingResultGoal(getPendingResultGoal());
 
     // Auto-sync max 1x per dag
     if (shouldAutoSync()) {
@@ -163,6 +167,40 @@ export default function Dashboard() {
 
       {/* Countdown */}
       <Countdown />
+
+      {/* Post-race resultaat prompt */}
+      {pendingResultGoal && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900">Wedstrijd voltooid!</p>
+              <p className="text-xs text-gray-700 mt-0.5">
+                Je {pendingResultGoal.name} was voorbij. Vul je resultaat in.
+              </p>
+              <div className="flex gap-2 mt-2">
+                <Link
+                  href={`/schema?tab=longterm&goal=${pendingResultGoal.id}`}
+                  className="text-xs bg-amber-500 text-white px-3 py-1.5 rounded-lg font-medium"
+                >
+                  Resultaat invullen
+                </Link>
+                <button
+                  onClick={() => {
+                    dismissGoalResultPrompt(pendingResultGoal.id);
+                    setPendingResultGoal(null);
+                  }}
+                  className="text-xs text-gray-500 px-2 py-1.5"
+                >
+                  Later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Training Load + Battery Advies */}
       <div className="grid grid-cols-2 gap-3">
