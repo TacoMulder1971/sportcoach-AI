@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, HEART_RATE_ZONES } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, getRecentCheckIns, getActivePlan } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 
 interface CheckInFormProps {
@@ -18,6 +18,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
   const [submitted, setSubmitted] = useState(false);
   const [messages, setMessages] = useState<CheckInMessage[]>([]);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'analyzing'>('idle');
   const [chatInput, setChatInput] = useState('');
   const [sending, setSending] = useState(false);
   const [checkInId, setCheckInId] = useState<string>('');
@@ -36,8 +37,42 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
 
   async function fetchFeedback(checkIn: CheckIn) {
     setLoadingFeedback(true);
+    setSyncStatus('syncing');
     try {
-      const garminData = getGarminData();
+      // 1. Eerst Garmin synchroniseren zodat de coach de meest recente activiteit ziet
+      let garminData = getGarminData();
+      try {
+        const existingActivityIds = garminData?.activities?.map(a => a.id) || [];
+        const syncRes = await fetch('/api/garmin/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ existingActivityIds }),
+        });
+        if (syncRes.ok) {
+          const fresh = await syncRes.json();
+          // Behoud hrZones van bestaande activiteiten (zoals de Data-pagina dat ook doet)
+          if (garminData?.activities) {
+            const existingMap = new Map(garminData.activities.map(a => [a.id, a]));
+            for (const activity of fresh.activities) {
+              if (!activity.hrZones && existingMap.has(activity.id)) {
+                activity.hrZones = existingMap.get(activity.id)?.hrZones;
+              }
+            }
+          }
+          saveGarminData(fresh);
+          garminData = fresh;
+        }
+      } catch {
+        // Sync mag falen (offline, Garmin down) — we vallen terug op cache
+      }
+
+      setSyncStatus('analyzing');
+
+      // 2. Filter activiteiten van vandaag op basis van de verse data
+      const today = new Date().toISOString().split('T')[0];
+      const freshTodayActivities = garminData?.activities?.filter(a => a.date === today) || [];
+      const todayActivities = freshTodayActivities.length > 0 ? freshTodayActivities : garminActivities;
+
       const recentCheckIns = getRecentCheckIns(5);
       const trainingLoad = garminData
         ? calculateTrainingLoad(garminData.activities, garminData.health)
@@ -52,9 +87,9 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         feedbackPrompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min in ${s.zone}\n`;
       }
 
-      if (garminActivities.length > 0) {
+      if (todayActivities.length > 0) {
         feedbackPrompt += '\nWerkelijke Garmin data van vandaag:\n';
-        for (const a of garminActivities) {
+        for (const a of todayActivities) {
           // Bepaal werkelijke zone op basis van avgHR
           let actualZone = 'Onder Z1';
           for (const z of [...HEART_RATE_ZONES].reverse()) {
@@ -104,6 +139,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       // Feedback is optional
     } finally {
       setLoadingFeedback(false);
+      setSyncStatus('idle');
     }
   }
 
@@ -220,11 +256,17 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
             <div className="flex justify-start">
               <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
                 <p className="text-xs font-semibold text-blue-600 mb-1">Coach</p>
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                </div>
+                {syncStatus === 'syncing' ? (
+                  <p className="text-sm text-gray-600">Garmin data ophalen...</p>
+                ) : syncStatus === 'analyzing' ? (
+                  <p className="text-sm text-gray-600">Activiteit analyseren...</p>
+                ) : (
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  </div>
+                )}
               </div>
             </div>
           )}

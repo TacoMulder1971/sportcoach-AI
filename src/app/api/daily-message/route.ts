@@ -116,6 +116,13 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
       prompt += `- Rust HR: ${garminHealth.restingHR} bpm\n`;
       if (garminHealth.avgOvernightHrv > 0) prompt += `- HRV: ${garminHealth.avgOvernightHrv}ms\n`;
       prompt += `- Body Battery: ${garminHealth.bodyBatteryChange > 0 ? '+' : ''}${garminHealth.bodyBatteryChange}\n`;
+      if (garminHealth.avgRespirationRate) prompt += `- Ademhaling (slaap): ${garminHealth.avgRespirationRate}/min\n`;
+      if (garminHealth.lactateThresholdHR || garminHealth.lactateThresholdPace) {
+        const ltParts: string[] = [];
+        if (garminHealth.lactateThresholdHR) ltParts.push(`${garminHealth.lactateThresholdHR} bpm`);
+        if (garminHealth.lactateThresholdPace) ltParts.push(garminHealth.lactateThresholdPace);
+        prompt += `- Lactaatdrempel: ${ltParts.join(' · ')} (gebruik voor concrete zone-advies)\n`;
+      }
     }
 
     if (garminActivities && garminActivities.length > 0) {

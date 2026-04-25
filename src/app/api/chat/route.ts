@@ -129,6 +129,13 @@ Week 2:
         contextMessage += `- Rust hartslag: ${h.restingHR} bpm\n`;
         contextMessage += `- Body Battery verandering: ${h.bodyBatteryChange > 0 ? '+' : ''}${h.bodyBatteryChange}\n`;
         contextMessage += `- Stappen: ${h.steps}\n`;
+        if (h.avgRespirationRate) contextMessage += `- Ademhaling (slaap): ${h.avgRespirationRate}/min\n`;
+        if (h.lactateThresholdHR || h.lactateThresholdPace) {
+          const ltParts: string[] = [];
+          if (h.lactateThresholdHR) ltParts.push(`${h.lactateThresholdHR} bpm`);
+          if (h.lactateThresholdPace) ltParts.push(h.lactateThresholdPace);
+          contextMessage += `- Lactaatdrempel: ${ltParts.join(' · ')} (gebruik voor zone-advies: duurloop onder LT HR, tempo rond LT pace)\n`;
+        }
       }
       if (garminData.activities && garminData.activities.length > 0) {
         contextMessage += '\nRECENTE GARMIN ACTIVITEITEN:\n';

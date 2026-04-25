@@ -597,6 +597,27 @@ export default function DataPage() {
               )}
             </div>
 
+            {/* Drempels & ademhaling */}
+            {(garmin.health.lactateThresholdHR || garmin.health.lactateThresholdPace || garmin.health.avgRespirationRate) && (
+              <div className="border-t border-gray-100 pt-3">
+                <p className="text-xs text-gray-400 mb-2">Drempels & ademhaling</p>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-xl font-bold text-rose-600">{garmin.health.lactateThresholdHR || '–'}</p>
+                    <p className="text-xs text-gray-500">LT HR (bpm)</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-rose-500">{garmin.health.lactateThresholdPace || '–'}</p>
+                    <p className="text-xs text-gray-500">LT tempo</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-teal-600">{garmin.health.avgRespirationRate || '–'}</p>
+                    <p className="text-xs text-gray-500">Ademh./min</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Stappen */}
             <div className="border-t border-gray-100 pt-3">
               <div className="flex items-center justify-between">
