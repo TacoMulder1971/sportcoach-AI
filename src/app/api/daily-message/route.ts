@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +30,12 @@ export async function POST(request: NextRequest) {
     let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
 Spreek informeel (je/jij), wees warm en motiverend. Geen emojis in lopende tekst, alleen eventueel aan het begin.
 BELANGRIJK: Het is nu ${timeStr} (${dagdeel}). Pas je begroeting aan: gebruik "goedemorgen" alleen 's ochtends, "goedemiddag" 's middags, "goedenavond" 's avonds.
+
+DATA-INTEGRITEIT (KRITIEK):
+- Verzin NOOIT HR-waarden, snelheden, zones, watt of tempo. Gebruik alleen wat letterlijk in deze prompt staat.
+- Als er een blok "GEVERIFIEERDE FEITEN" of "VERGELIJKING" staat: behandel die als waarheid en spreek deze niet tegen.
+- Bij multisport-activiteiten: gebruik per onderdeel de splits, niet het totaal-gemiddelde.
+- Als data ontbreekt: zeg dat eerlijk in plaats van te gokken.
 
 ATLEET: ${raceContext || `Traint voor een wedstrijd (nog ${daysUntilRace} dagen).`}
 
@@ -166,6 +173,16 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
 
       const gisterenActiviteiten = garminActivities.filter((a: { date: string }) => a.date === amsterdamYesterday);
       const vandaagActiviteiten = garminActivities.filter((a: { date: string }) => a.date === amsterdamToday);
+
+      // GEVERIFIEERDE FEITEN: vandaag (als training al gedaan)
+      if (trainingAlGedaan && todayTraining?.sessions && todayCompletedActs.length > 0) {
+        prompt += buildVerifiedFactsBlock('vandaag', todayTraining.sessions, todayCompletedActs);
+      }
+
+      // GEVERIFIEERDE FEITEN: gisteren (om recap onderbouwd te maken)
+      if (yesterdayTraining && !yesterdayTraining.isRestDay && yesterdayTraining.sessions && gisterenActiviteiten.length > 0) {
+        prompt += buildVerifiedFactsBlock('gisteren', yesterdayTraining.sessions, gisterenActiviteiten);
+      }
 
       const deviations: string[] = [];
 

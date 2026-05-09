@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, HEART_RATE_ZONES } from '@/lib/types';
+import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
 import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
+import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 
 interface CheckInFormProps {
   sessions: TrainingSession[];
@@ -79,129 +80,13 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         : null;
       const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
-      // ── Helpers voor fact-check ──────────────────────────────────────
-      const zoneForHR = (hr: number): string => {
-        if (!hr || hr <= 0) return '–';
-        for (const z of [...HEART_RATE_ZONES].reverse()) {
-          if (hr >= z.min) return `${z.zone} (${z.min}-${z.max} bpm)`;
-        }
-        return 'Onder Z1';
-      };
-      const zoneNameForHR = (hr: number): string => {
-        if (!hr || hr <= 0) return '–';
-        for (const z of [...HEART_RATE_ZONES].reverse()) {
-          if (hr >= z.min) return z.zone;
-        }
-        return 'Onder Z1';
-      };
-      const detectSplitSport = (distanceKm: number, durationSeconds: number): string => {
-        if (durationSeconds <= 0 || distanceKm <= 0) return 'overig';
-        const speedKmh = (distanceKm / durationSeconds) * 3600;
-        if (speedKmh > 18) return 'fietsen';
-        if (speedKmh > 6) return 'hardlopen';
-        if (speedKmh > 2) return 'wandelen/transitie';
-        return 'overig';
-      };
-      const fmtDuration = (sec: number): string => {
-        const m = Math.floor(sec / 60);
-        const s = sec % 60;
-        return `${m}:${s.toString().padStart(2, '0')}`;
-      };
-      const plannedZoneRange = (zoneStr?: string): string => {
-        if (!zoneStr) return 'geen zone gespecificeerd';
-        const m = zoneStr.match(/Z[1-5]/);
-        if (!m) return zoneStr;
-        const z = HEART_RATE_ZONES.find(zz => zz.zone === m[0]);
-        return z ? `${z.zone} (${z.min}-${z.max} bpm)` : zoneStr;
-      };
-
       let feedbackPrompt = `De atleet heeft zojuist een check-out gedaan na de training van ${dayLabel}.\n`;
       feedbackPrompt += `Gevoel: ${checkIn.feeling}/5`;
       if (checkIn.note) feedbackPrompt += ` — "${checkIn.note}"`;
       feedbackPrompt += '\n';
 
       if (todayActivities.length > 0) {
-        feedbackPrompt += `\nGEVERIFIEERDE FEITEN (door de app berekend uit Garmin-data — gebruik deze cijfers exact, verzin geen eigen HR-waarden, snelheden of zones):\n`;
-
-        feedbackPrompt += `\nGEPLAND:\n`;
-        for (const s of sessions) {
-          feedbackPrompt += `- ${s.sport} ${s.type}, ${s.durationMinutes}min, doel ${plannedZoneRange(s.zone)}\n`;
-        }
-
-        feedbackPrompt += `\nWERKELIJK UITGEVOERD:\n`;
-        for (const a of todayActivities) {
-          feedbackPrompt += `Activiteit "${a.activityName}" (${a.sport}, ${a.durationMinutes}min, ${a.distanceKm}km):\n`;
-          if (a.avgHR > 0) {
-            feedbackPrompt += `- Totaal: gem HR ${a.avgHR} → ${zoneForHR(a.avgHR)}, max HR ${a.maxHR}`;
-          } else {
-            feedbackPrompt += `- Totaal: gem HR niet beschikbaar, max HR ${a.maxHR}`;
-          }
-          if (a.avgPace) feedbackPrompt += `, tempo ${a.avgPace}`;
-          if ((a.avgPower || 0) > 0) feedbackPrompt += `, ${a.avgPower}W${(a.normalizedPower || 0) > 0 ? ` (NP ${a.normalizedPower}W)` : ''}`;
-          if (a.trainingEffectAerobic > 0) feedbackPrompt += `, TE aerobic ${a.trainingEffectAerobic}/5`;
-          if (a.trainingEffectAnaerobic > 0) feedbackPrompt += `, TE anaerobic ${a.trainingEffectAnaerobic}/5`;
-          if (a.elevationGain > 0) feedbackPrompt += `, ${a.elevationGain}m stijging`;
-          if (a.avgRunCadence > 0) feedbackPrompt += `, cadans ${a.avgRunCadence} spm`;
-          if (a.avgBikeCadence > 0) feedbackPrompt += `, cadans ${a.avgBikeCadence} rpm`;
-          feedbackPrompt += `, ${a.calories} kcal\n`;
-
-          if (a.hrZones && a.hrZones.length > 0) {
-            const zonesStr = a.hrZones.filter(z => z.minutes > 0).map(z => `${z.zone} ${z.minutes}min`).join(', ');
-            if (zonesStr) feedbackPrompt += `- HR-zoneverdeling: ${zonesStr}\n`;
-          }
-
-          // Splits met automatische sportdetectie + zone (vooral nuttig voor multisport)
-          if (a.splits && a.splits.length > 1) {
-            feedbackPrompt += `- Splits (sport gecategoriseerd op basis van snelheid):\n`;
-            a.splits.forEach((s, i) => {
-              const sport = detectSplitSport(s.distance, s.durationSeconds);
-              const speedKmh = s.durationSeconds > 0 ? (s.distance / s.durationSeconds) * 3600 : 0;
-              const distStr = s.distance >= 1 ? `${s.distance}km` : `${Math.round(s.distance * 1000)}m`;
-              const zoneStr = s.avgHR > 0 ? ` → ${zoneForHR(s.avgHR)}` : '';
-              const powerStr = (s.avgPower || 0) > 0 ? `, ${s.avgPower}W` : '';
-              feedbackPrompt += `  ${i + 1}. ${sport} — ${distStr} in ${fmtDuration(s.durationSeconds)} (${speedKmh.toFixed(1)} km/h), HR ${s.avgHR || '–'}${zoneStr}${powerStr}\n`;
-            });
-          }
-        }
-
-        // VERGELIJKING: probeer per geplande sessie de juiste split (of activiteit) te koppelen
-        feedbackPrompt += `\nVERGELIJKING (plan vs werkelijk):\n`;
-        for (const s of sessions) {
-          const targetSport = s.sport;
-          let actualHR = 0;
-          let matchSource = '';
-          for (const a of todayActivities) {
-            if (a.splits && a.splits.length > 1) {
-              for (const sp of a.splits) {
-                if (detectSplitSport(sp.distance, sp.durationSeconds) === targetSport && sp.avgHR > 0) {
-                  actualHR = sp.avgHR;
-                  matchSource = `split (${sp.distance >= 1 ? `${sp.distance}km` : `${Math.round(sp.distance * 1000)}m`})`;
-                  break;
-                }
-              }
-              if (actualHR > 0) break;
-            }
-            if (a.sport === targetSport && a.avgHR > 0) {
-              actualHR = a.avgHR;
-              matchSource = 'totaal activiteit';
-              break;
-            }
-          }
-          const plannedZoneLabel = s.zone || 'geen zone';
-          if (actualHR > 0) {
-            const actualZoneName = zoneNameForHR(actualHR);
-            const plannedZoneMatch = s.zone ? s.zone.match(/Z[1-5]/) : null;
-            const verdict = plannedZoneMatch && plannedZoneMatch[0] === actualZoneName
-              ? '✓ MATCH'
-              : plannedZoneMatch
-                ? `✗ AFWIJKING (gepland ${plannedZoneMatch[0]}, werkelijk ${actualZoneName})`
-                : '–';
-            feedbackPrompt += `- ${s.sport} ${s.type} (gepland ${plannedZoneLabel}) → werkelijk HR ${actualHR} (${zoneForHR(actualHR)}) [${matchSource}] → ${verdict}\n`;
-          } else {
-            feedbackPrompt += `- ${s.sport} ${s.type} (gepland ${plannedZoneLabel}) → geen passende HR-data gevonden\n`;
-          }
-        }
-
+        feedbackPrompt += buildVerifiedFactsBlock('vandaag', sessions, todayActivities);
         feedbackPrompt += `\nOPDRACHT: Geef in 2-3 zinnen feedback op basis van bovenstaande feiten. Gebruik de getallen exact zoals ze hier staan — verzin geen andere HR-waarden, zones of snelheden. Begin met of de doelen gehaald zijn (zie VERGELIJKING), benoem 1 hoogtepunt en 1 concreet verbeterpunt voor de volgende keer.`;
       } else {
         feedbackPrompt += '\nGEEN Garmin-activiteit beschikbaar voor vandaag.\n\nGeplande sessies:\n';
