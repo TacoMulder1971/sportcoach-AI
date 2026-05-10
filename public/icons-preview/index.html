@@ -3,53 +3,124 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Icoon-voorstellen</title>
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; background: #87CEEB; padding: 24px; margin: 0; color: #1f2937; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
   p.lead { margin: 0 0 24px; color: #1e3a8a; font-size: 14px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 720px; margin: 0 auto; }
-  @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
-  .card { background: rgba(255,255,255,0.85); border-radius: 16px; padding: 16px; text-align: center; }
-  .card h3 { margin: 0 0 12px; font-size: 14px; color: #0f172a; }
-  .icon { width: 100px; height: 100px; border-radius: 22px; display: block; margin: 0 auto 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
-  .icon-large { width: 140px; height: 140px; border-radius: 30px; }
-  .label { font-size: 12px; color: #475569; line-height: 1.5; }
-  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 6px; }
-  .small { width: 60px; height: 60px; border-radius: 13px; box-shadow: 0 3px 10px rgba(0,0,0,0.18); }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 480px; margin: 0 auto; }
+  .card { background: white; border-radius: 18px; padding: 20px; text-align: center; box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+  .card h3 { margin: 0 0 16px; font-size: 16px; color: #0f172a; }
+  .iconbox { width: 130px; height: 130px; border-radius: 28px; display: block; margin: 0 auto 12px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+  .small { width: 60px; height: 60px; border-radius: 13px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,0.18); display: inline-block; vertical-align: middle; }
+  .small svg, .iconbox svg { width: 100%; height: 100%; display: block; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 8px 0 12px; }
+  .label { font-size: 13px; color: #475569; line-height: 1.5; }
 </style>
 </head>
 <body>
   <h1>TriCoach — voorstellen</h1>
-  <p class="lead">Tik op een icoon om groot te bekijken. Onder elk staat hoe het er als klein iOS-icoon uitziet.</p>
+  <p class="lead">Hieronder zie je elk voorstel groot en op echte iOS-app-icoon-grootte (60×60).</p>
 
   <div class="grid">
+
+    <!-- v1 Tri Stack -->
     <div class="card">
       <h3>v1 · Tri Stack</h3>
-      <img class="icon icon-large" src="icon-v1-tri-stack.svg" alt="v1">
+      <div class="iconbox">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+          <defs><linearGradient id="bg1a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0F766E"/></linearGradient></defs>
+          <rect width="200" height="200" rx="45" fill="url(#bg1a)"/>
+          <path d="M 30 60 Q 52 45 74 60 T 118 60 T 170 60" stroke="white" stroke-width="9" stroke-linecap="round" fill="none"/>
+          <circle cx="58" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
+          <circle cx="142" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
+          <path d="M 58 108 L 100 78 L 142 108 M 100 78 L 110 78" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M 35 165 L 55 150 L 75 165 L 95 150 L 115 165 L 135 150 L 155 165" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        </svg>
+      </div>
       <div class="row">
-        <img class="icon small" src="icon-v1-tri-stack.svg" alt="">
+        <div class="small">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <defs><linearGradient id="bg1b" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0F766E"/></linearGradient></defs>
+            <rect width="200" height="200" rx="45" fill="url(#bg1b)"/>
+            <path d="M 30 60 Q 52 45 74 60 T 118 60 T 170 60" stroke="white" stroke-width="9" stroke-linecap="round" fill="none"/>
+            <circle cx="58" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
+            <circle cx="142" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
+            <path d="M 58 108 L 100 78 L 142 108 M 100 78 L 110 78" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M 35 165 L 55 150 L 75 165 L 95 150 L 115 165 L 135 150 L 155 165" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </div>
       </div>
       <p class="label">Drie sporten gestapeld op cyaan/teal verloop. Direct herkenbaar als triatlon.</p>
     </div>
 
+    <!-- v2 Driehoek -->
     <div class="card">
       <h3>v2 · Driehoek</h3>
-      <img class="icon icon-large" src="icon-v2-triangle.svg" alt="v2">
+      <div class="iconbox">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+          <defs><linearGradient id="bg2a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1E40AF"/><stop offset="100%" stop-color="#0EA5E9"/></linearGradient></defs>
+          <rect width="200" height="200" rx="45" fill="url(#bg2a)"/>
+          <path d="M 100 38 L 168 158 L 32 158 Z" stroke="white" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="100" cy="38" r="13" fill="white"/>
+          <circle cx="168" cy="158" r="13" fill="white"/>
+          <circle cx="32" cy="158" r="13" fill="white"/>
+          <path d="M 92 38 Q 96 34 100 38 T 108 38" stroke="#1E40AF" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <circle cx="168" cy="158" r="5" stroke="#1E40AF" stroke-width="2.5" fill="none"/>
+          <path d="M 27 160 L 32 155 L 37 160" stroke="#1E40AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="100" cy="118" r="8" fill="white" opacity="0.85"/>
+        </svg>
+      </div>
       <div class="row">
-        <img class="icon small" src="icon-v2-triangle.svg" alt="">
+        <div class="small">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <defs><linearGradient id="bg2b" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1E40AF"/><stop offset="100%" stop-color="#0EA5E9"/></linearGradient></defs>
+            <rect width="200" height="200" rx="45" fill="url(#bg2b)"/>
+            <path d="M 100 38 L 168 158 L 32 158 Z" stroke="white" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="100" cy="38" r="13" fill="white"/>
+            <circle cx="168" cy="158" r="13" fill="white"/>
+            <circle cx="32" cy="158" r="13" fill="white"/>
+            <circle cx="100" cy="118" r="8" fill="white" opacity="0.85"/>
+          </svg>
+        </div>
       </div>
       <p class="label">Tri-driehoek met sport-symbolen op de hoeken en AI-accent in midden. Abstract, modern.</p>
     </div>
 
+    <!-- v3 Hartslag -->
     <div class="card">
       <h3>v3 · Hartslag</h3>
-      <img class="icon icon-large" src="icon-v3-bold-runner.svg" alt="v3">
+      <div class="iconbox">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+          <defs><linearGradient id="bg3a" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#EF4444"/><stop offset="100%" stop-color="#B91C1C"/></linearGradient></defs>
+          <rect width="200" height="200" rx="45" fill="url(#bg3a)"/>
+          <path d="M 22 105 L 60 105 L 72 80 L 88 130 L 102 60 L 116 130 L 130 90 L 142 105 L 178 105" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <circle cx="68" cy="42" r="7" fill="white"/>
+          <circle cx="100" cy="42" r="7" fill="white"/>
+          <circle cx="132" cy="42" r="7" fill="white"/>
+          <path d="M 50 165 L 80 165" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+          <path d="M 88 165 L 118 165" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+          <path d="M 126 165 L 150 165" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+        </svg>
+      </div>
       <div class="row">
-        <img class="icon small" src="icon-v3-bold-runner.svg" alt="">
+        <div class="small">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+            <defs><linearGradient id="bg3b" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#EF4444"/><stop offset="100%" stop-color="#B91C1C"/></linearGradient></defs>
+            <rect width="200" height="200" rx="45" fill="url(#bg3b)"/>
+            <path d="M 22 105 L 60 105 L 72 80 L 88 130 L 102 60 L 116 130 L 130 90 L 142 105 L 178 105" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="68" cy="42" r="7" fill="white"/>
+            <circle cx="100" cy="42" r="7" fill="white"/>
+            <circle cx="132" cy="42" r="7" fill="white"/>
+          </svg>
+        </div>
       </div>
       <p class="label">Bold ECG-curve op rood verloop, met tri-dots en snelheidslijnen. Energiek, "AI coach" feel.</p>
     </div>
+
   </div>
 </body>
 </html>
