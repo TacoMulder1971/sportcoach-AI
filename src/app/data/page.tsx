@@ -408,7 +408,10 @@ export default function DataPage() {
               </div>
               <div>
                 <p className={`text-xl font-bold ${readiness.color}`}>{readiness.label}</p>
-                <p className="text-xs text-gray-500">{readiness.score}/9 punten</p>
+                <p className="text-xs text-gray-500">
+                  {readiness.score}/{readiness.maxScore} punten
+                  {!readiness.dataComplete && <span className="text-amber-600"> · data incompleet</span>}
+                </p>
               </div>
             </div>
             <div className="space-y-3">
@@ -420,18 +423,24 @@ export default function DataPage() {
                 <div key={f.label} className="flex items-center gap-3">
                   <p className="text-xs text-gray-500 w-14">{f.label}</p>
                   <div className="flex gap-1 flex-1">
-                    {Array.from({ length: f.max }, (_, i) => i + 1).map((i) => (
-                      <div
-                        key={i}
-                        className={`h-3 flex-1 rounded ${
-                          i <= f.val
-                            ? f.val >= f.max * 0.6 ? 'bg-green-400' : f.val >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
-                            : 'bg-gray-100'
-                        }`}
-                      />
-                    ))}
+                    {f.val === null
+                      ? Array.from({ length: f.max }, (_, i) => (
+                          <div key={i} className="h-3 flex-1 rounded bg-gray-50 border border-dashed border-gray-300" />
+                        ))
+                      : Array.from({ length: f.max }, (_, i) => i + 1).map((i) => (
+                          <div
+                            key={i}
+                            className={`h-3 flex-1 rounded ${
+                              i <= f.val!
+                                ? f.val! >= f.max * 0.6 ? 'bg-green-400' : f.val! >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
+                                : 'bg-gray-100'
+                            }`}
+                          />
+                        ))}
                   </div>
-                  <p className="text-xs text-gray-400 w-36 text-right">{f.detail}</p>
+                  <p className="text-xs text-gray-400 w-36 text-right">
+                    {f.val === null ? <span className="italic">geen data</span> : f.detail}
+                  </p>
                 </div>
               ))}
             </div>

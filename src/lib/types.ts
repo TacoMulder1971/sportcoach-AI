@@ -165,10 +165,16 @@ export interface TrainingReadiness {
   label: string;
   color: string;
   bgColor: string;
-  score: number; // 0-9
+  score: number; // som van scoorbare factoren
+  maxScore: number; // som van max van scoorbare factoren (negen indien volledig)
   advice: string;
   mode: 'full' | 'fallback'; // full=met slaapdata, fallback=zonder
-  factors: { label1: string; score1: number; max1: number; label2: string; score2: number; max2: number; label3: string; score3: number; max3: number };
+  dataComplete: boolean; // false als één of meer factoren ontbrekend zijn (bv. horloge 's nachts uit)
+  factors: {
+    label1: string; score1: number | null; max1: number;
+    label2: string; score2: number | null; max2: number;
+    label3: string; score3: number | null; max3: number;
+  };
 }
 
 export interface TrainingAdvice {

@@ -235,7 +235,10 @@ export default function Dashboard() {
                   {readiness.label}
                 </p>
               </div>
-              <p className={`text-xs ${readiness.color} font-semibold mb-2`}>{readiness.score}/9</p>
+              <p className={`text-xs ${readiness.color} font-semibold mb-2`}>
+                {readiness.score}/{readiness.maxScore}
+                {!readiness.dataComplete && <span className="text-gray-400 font-normal"> · data incompleet</span>}
+              </p>
               <div className="flex gap-1">
                 {[
                   { label: readiness.factors.label1, val: readiness.factors.score1, max: readiness.factors.max1 },
@@ -244,18 +247,22 @@ export default function Dashboard() {
                 ].map((f) => (
                   <div key={f.label} className="flex-1 text-center">
                     <div className="flex gap-px justify-center mb-0.5">
-                      {Array.from({ length: f.max }, (_, i) => i + 1).map((i) => (
-                        <div
-                          key={i}
-                          className={`w-2 h-2 rounded-sm ${
-                            i <= f.val
-                              ? f.val >= f.max * 0.6 ? 'bg-green-400' : f.val >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
-                              : 'bg-gray-200'
-                          }`}
-                        />
-                      ))}
+                      {f.val === null
+                        ? Array.from({ length: f.max }, (_, i) => (
+                            <div key={i} className="w-2 h-2 rounded-sm bg-gray-100 border border-dashed border-gray-300" />
+                          ))
+                        : Array.from({ length: f.max }, (_, i) => i + 1).map((i) => (
+                            <div
+                              key={i}
+                              className={`w-2 h-2 rounded-sm ${
+                                i <= f.val!
+                                  ? f.val! >= f.max * 0.6 ? 'bg-green-400' : f.val! >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
+                                  : 'bg-gray-200'
+                              }`}
+                            />
+                          ))}
                     </div>
-                    <p className="text-[9px] text-gray-400">{f.label}</p>
+                    <p className="text-[9px] text-gray-400">{f.label}{f.val === null ? ' (—)' : ''}</p>
                   </div>
                 ))}
               </div>

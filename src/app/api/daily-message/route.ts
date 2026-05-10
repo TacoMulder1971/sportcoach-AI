@@ -212,7 +212,12 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
       prompt += `\nTRAINING LOAD: ${trainingLoad.weekLoad} TRIMP (${trainingLoad.status})\n`;
     }
     if (readiness) {
-      prompt += `GEREEDHEID: ${readiness.score}/9 - ${readiness.label}\n`;
+      const maxScore = readiness.maxScore ?? 9;
+      prompt += `GEREEDHEID: ${readiness.score}/${maxScore} - ${readiness.label}`;
+      if (readiness.dataComplete === false) {
+        prompt += ` (LET OP: data incompleet — niet alle factoren konden gemeten worden, waarschijnlijk horloge 's nachts uit. Beoordeel niet streng en suggereer eventueel om vannacht weer te dragen voor betere data.)`;
+      }
+      prompt += '\n';
     }
 
     // Instructies voor afwisseling
