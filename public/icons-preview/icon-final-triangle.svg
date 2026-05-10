@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <filter id="g-blue" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-green" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-orange" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="200" height="200" rx="45" fill="url(#bg)"/>
+
+  <!-- Swim boven -->
+  <g transform="translate(70, 22) scale(2.5)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-blue)">
+    <circle cx="6" cy="7" r="2.5"/>
+    <path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/>
+    <path d="M8.5 12l3 2.5-1.5 3"/>
+  </g>
+
+  <!-- Bike linksonder -->
+  <g transform="translate(18, 110) scale(2.5)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-green)">
+    <circle cx="17.5" cy="5" r="2.2"/>
+    <circle cx="6" cy="18" r="3" stroke-width="2"/>
+    <circle cx="18" cy="18" r="3" stroke-width="2"/>
+    <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+    <path d="M14.5 11l2-4.5"/>
+  </g>
+
+  <!-- Run rechtsonder -->
+  <g transform="translate(120, 110) scale(2.5)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-orange)">
+    <circle cx="13" cy="4" r="2.5"/>
+    <path d="M10 10l-3 10"/>
+    <path d="M13.5 7L11 12l4 2-1.5 6"/>
+    <path d="M17 7l-3.5 0"/>
+    <path d="M7 20l3-10"/>
+  </g>
+</svg>
