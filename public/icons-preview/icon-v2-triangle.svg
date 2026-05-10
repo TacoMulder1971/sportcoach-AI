@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- v2: Driehoek met drie sport-dots — abstracter, sterker silhouet -->
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E40AF"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="45" fill="url(#bg2)"/>
+
+  <!-- Driehoek -->
+  <path d="M 100 38 L 168 158 L 32 158 Z"
+        stroke="white" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Drie cirkels op de hoeken — symboliseren de drie sporten -->
+  <circle cx="100" cy="38" r="13" fill="white"/>
+  <circle cx="168" cy="158" r="13" fill="white"/>
+  <circle cx="32" cy="158" r="13" fill="white"/>
+
+  <!-- Subtiele iconen binnenin de cirkels -->
+  <!-- Top: golfje (zwem) -->
+  <path d="M 92 38 Q 96 34 100 38 T 108 38" stroke="#1E40AF" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <!-- Rechts: cirkel (wiel/fiets) -->
+  <circle cx="168" cy="158" r="5" stroke="#1E40AF" stroke-width="2.5" fill="none"/>
+  <!-- Links: chevron (run) -->
+  <path d="M 27 160 L 32 155 L 37 160" stroke="#1E40AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- AI accent in midden -->
+  <circle cx="100" cy="118" r="8" fill="white" opacity="0.85"/>
+</svg>

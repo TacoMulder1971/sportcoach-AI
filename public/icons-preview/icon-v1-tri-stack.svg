@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- v1: Tri Stack — drie sporten op gradient -->
+  <defs>
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#0F766E"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="45" fill="url(#bg1)"/>
+
+  <!-- Swim: golf -->
+  <path d="M 30 60 Q 52 45 74 60 T 118 60 T 170 60"
+        stroke="white" stroke-width="9" stroke-linecap="round" fill="none"/>
+
+  <!-- Bike: vereenvoudigd -->
+  <g>
+    <circle cx="58" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
+    <circle cx="142" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
+    <path d="M 58 108 L 100 78 L 142 108 M 100 78 L 110 78"
+          stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Run: chevrons (snelheid) -->
+  <path d="M 35 165 L 55 150 L 75 165 L 95 150 L 115 165 L 135 150 L 155 165"
+        stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

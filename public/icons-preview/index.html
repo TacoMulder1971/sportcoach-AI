@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Icoon-voorstellen</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; background: #87CEEB; padding: 24px; margin: 0; color: #1f2937; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.lead { margin: 0 0 24px; color: #1e3a8a; font-size: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 720px; margin: 0 auto; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .card { background: rgba(255,255,255,0.85); border-radius: 16px; padding: 16px; text-align: center; }
+  .card h3 { margin: 0 0 12px; font-size: 14px; color: #0f172a; }
+  .icon { width: 100px; height: 100px; border-radius: 22px; display: block; margin: 0 auto 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
+  .icon-large { width: 140px; height: 140px; border-radius: 30px; }
+  .label { font-size: 12px; color: #475569; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 6px; }
+  .small { width: 60px; height: 60px; border-radius: 13px; box-shadow: 0 3px 10px rgba(0,0,0,0.18); }
+</style>
+</head>
+<body>
+  <h1>TriCoach — voorstellen</h1>
+  <p class="lead">Tik op een icoon om groot te bekijken. Onder elk staat hoe het er als klein iOS-icoon uitziet.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h3>v1 · Tri Stack</h3>
+      <img class="icon icon-large" src="icon-v1-tri-stack.svg" alt="v1">
+      <div class="row">
+        <img class="icon small" src="icon-v1-tri-stack.svg" alt="">
+      </div>
+      <p class="label">Drie sporten gestapeld op cyaan/teal verloop. Direct herkenbaar als triatlon.</p>
+    </div>
+
+    <div class="card">
+      <h3>v2 · Driehoek</h3>
+      <img class="icon icon-large" src="icon-v2-triangle.svg" alt="v2">
+      <div class="row">
+        <img class="icon small" src="icon-v2-triangle.svg" alt="">
+      </div>
+      <p class="label">Tri-driehoek met sport-symbolen op de hoeken en AI-accent in midden. Abstract, modern.</p>
+    </div>
+
+    <div class="card">
+      <h3>v3 · Hartslag</h3>
+      <img class="icon icon-large" src="icon-v3-bold-runner.svg" alt="v3">
+      <div class="row">
+        <img class="icon small" src="icon-v3-bold-runner.svg" alt="">
+      </div>
+      <p class="label">Bold ECG-curve op rood verloop, met tri-dots en snelheidslijnen. Energiek, "AI coach" feel.</p>
+    </div>
+  </div>
+</body>
+</html>
