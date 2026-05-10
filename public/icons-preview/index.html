@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>Icoon-voorstellen</title>
+<title>TriCoach voorstellen</title>
 <style>
   body { font-family: -apple-system, system-ui, sans-serif; background: #87CEEB; padding: 24px; margin: 0; color: #1f2937; }
   h1 { font-size: 22px; margin: 0 0 4px; }
@@ -14,111 +12,167 @@
   .grid { display: grid; grid-template-columns: 1fr; gap: 20px; max-width: 480px; margin: 0 auto; }
   .card { background: white; border-radius: 18px; padding: 20px; text-align: center; box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
   .card h3 { margin: 0 0 16px; font-size: 16px; color: #0f172a; }
-  .iconbox { width: 130px; height: 130px; border-radius: 28px; display: block; margin: 0 auto 12px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.18); }
-  .small { width: 60px; height: 60px; border-radius: 13px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,0.18); display: inline-block; vertical-align: middle; }
+  .iconbox { width: 140px; height: 140px; border-radius: 30px; display: block; margin: 0 auto 12px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.25); }
+  .small { width: 60px; height: 60px; border-radius: 13px; overflow: hidden; box-shadow: 0 3px 10px rgba(0,0,0,0.18); display: inline-block; }
   .small svg, .iconbox svg { width: 100%; height: 100%; display: block; }
   .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 8px 0 12px; }
   .label { font-size: 13px; color: #475569; line-height: 1.5; }
 </style>
 </head>
 <body>
-  <h1>TriCoach — voorstellen</h1>
-  <p class="lead">Hieronder zie je elk voorstel groot en op echte iOS-app-icoon-grootte (60×60).</p>
+  <h1>TriCoach — sport-iconen combinatie</h1>
+  <p class="lead">Drie layouts met de zwemmer · fietser · hardloper uit de app zelf (zelfde paden en kleuren).</p>
+
+  <!-- Gedeelde SVG-defs: filters voor neon-glow per kleur -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="g-blue" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="1.6" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="g-green" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="1.6" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="g-orange" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="1.6" result="b"/>
+        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+  </svg>
 
   <div class="grid">
 
-    <!-- v1 Tri Stack -->
+    <!-- v4: Trio Row -->
     <div class="card">
-      <h3>v1 · Tri Stack</h3>
+      <h3>v4 · Trio Row (horizontaal)</h3>
       <div class="iconbox">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-          <defs><linearGradient id="bg1a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0F766E"/></linearGradient></defs>
-          <rect width="200" height="200" rx="45" fill="url(#bg1a)"/>
-          <path d="M 30 60 Q 52 45 74 60 T 118 60 T 170 60" stroke="white" stroke-width="9" stroke-linecap="round" fill="none"/>
-          <circle cx="58" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
-          <circle cx="142" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
-          <path d="M 58 108 L 100 78 L 142 108 M 100 78 L 110 78" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <path d="M 35 165 L 55 150 L 75 165 L 95 150 L 115 165 L 135 150 L 155 165" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <defs>
+            <linearGradient id="bg4" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/>
+            </linearGradient>
+            <radialGradient id="halo4" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="200" height="200" rx="45" fill="url(#bg4)"/>
+          <!-- subtiel halo achter de fietser in midden -->
+          <circle cx="100" cy="100" r="80" fill="url(#halo4)"/>
+
+          <!-- Swim links -->
+          <g transform="translate(15, 76) scale(2.2)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-blue)">
+            <circle cx="6" cy="7" r="2.5"/>
+            <path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/>
+            <path d="M8.5 12l3 2.5-1.5 3"/>
+          </g>
+
+          <!-- Bike midden -->
+          <g transform="translate(74, 76) scale(2.2)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-green)">
+            <circle cx="17.5" cy="5" r="2.2"/>
+            <circle cx="6" cy="18" r="3" stroke-width="2"/>
+            <circle cx="18" cy="18" r="3" stroke-width="2"/>
+            <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+            <path d="M14.5 11l2-4.5"/>
+          </g>
+
+          <!-- Run rechts -->
+          <g transform="translate(133, 76) scale(2.2)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-orange)">
+            <circle cx="13" cy="4" r="2.5"/>
+            <path d="M10 10l-3 10"/>
+            <path d="M13.5 7L11 12l4 2-1.5 6"/>
+            <path d="M17 7l-3.5 0"/>
+            <path d="M7 20l3-10"/>
+          </g>
         </svg>
       </div>
-      <div class="row">
-        <div class="small">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-            <defs><linearGradient id="bg1b" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#0F766E"/></linearGradient></defs>
-            <rect width="200" height="200" rx="45" fill="url(#bg1b)"/>
-            <path d="M 30 60 Q 52 45 74 60 T 118 60 T 170 60" stroke="white" stroke-width="9" stroke-linecap="round" fill="none"/>
-            <circle cx="58" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
-            <circle cx="142" cy="108" r="18" stroke="white" stroke-width="7" fill="none"/>
-            <path d="M 58 108 L 100 78 L 142 108 M 100 78 L 110 78" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <path d="M 35 165 L 55 150 L 75 165 L 95 150 L 115 165 L 135 150 L 155 165" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          </svg>
-        </div>
-      </div>
-      <p class="label">Drie sporten gestapeld op cyaan/teal verloop. Direct herkenbaar als triatlon.</p>
+      <div class="row"><div class="small"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="45" fill="#0f172a"/><g transform="translate(15, 76) scale(2.2)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.5"/><path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/><path d="M8.5 12l3 2.5-1.5 3"/></g><g transform="translate(74, 76) scale(2.2)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.5" cy="5" r="2.2"/><circle cx="6" cy="18" r="3" stroke-width="2"/><circle cx="18" cy="18" r="3" stroke-width="2"/><path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/><path d="M14.5 11l2-4.5"/></g><g transform="translate(133, 76) scale(2.2)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2.5"/><path d="M10 10l-3 10"/><path d="M13.5 7L11 12l4 2-1.5 6"/><path d="M17 7l-3.5 0"/><path d="M7 20l3-10"/></g></svg></div></div>
+      <p class="label">Drie figuren in volgorde van de wedstrijd: zwem → fiets → ren. Klassiek triathlon-statement.</p>
     </div>
 
-    <!-- v2 Driehoek -->
+    <!-- v5: Tri-Triangle -->
     <div class="card">
-      <h3>v2 · Driehoek</h3>
+      <h3>v5 · Triangle (driehoek)</h3>
       <div class="iconbox">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-          <defs><linearGradient id="bg2a" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1E40AF"/><stop offset="100%" stop-color="#0EA5E9"/></linearGradient></defs>
-          <rect width="200" height="200" rx="45" fill="url(#bg2a)"/>
-          <path d="M 100 38 L 168 158 L 32 158 Z" stroke="white" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="100" cy="38" r="13" fill="white"/>
-          <circle cx="168" cy="158" r="13" fill="white"/>
-          <circle cx="32" cy="158" r="13" fill="white"/>
-          <path d="M 92 38 Q 96 34 100 38 T 108 38" stroke="#1E40AF" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-          <circle cx="168" cy="158" r="5" stroke="#1E40AF" stroke-width="2.5" fill="none"/>
-          <path d="M 27 160 L 32 155 L 37 160" stroke="#1E40AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="100" cy="118" r="8" fill="white" opacity="0.85"/>
+          <defs>
+            <linearGradient id="bg5" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/>
+            </linearGradient>
+          </defs>
+          <rect width="200" height="200" rx="45" fill="url(#bg5)"/>
+
+          <!-- Swim boven -->
+          <g transform="translate(70, 22) scale(2.5)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-blue)">
+            <circle cx="6" cy="7" r="2.5"/>
+            <path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/>
+            <path d="M8.5 12l3 2.5-1.5 3"/>
+          </g>
+
+          <!-- Bike linksonder -->
+          <g transform="translate(18, 110) scale(2.5)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-green)">
+            <circle cx="17.5" cy="5" r="2.2"/>
+            <circle cx="6" cy="18" r="3" stroke-width="2"/>
+            <circle cx="18" cy="18" r="3" stroke-width="2"/>
+            <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+            <path d="M14.5 11l2-4.5"/>
+          </g>
+
+          <!-- Run rechtsonder -->
+          <g transform="translate(120, 110) scale(2.5)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-orange)">
+            <circle cx="13" cy="4" r="2.5"/>
+            <path d="M10 10l-3 10"/>
+            <path d="M13.5 7L11 12l4 2-1.5 6"/>
+            <path d="M17 7l-3.5 0"/>
+            <path d="M7 20l3-10"/>
+          </g>
         </svg>
       </div>
-      <div class="row">
-        <div class="small">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-            <defs><linearGradient id="bg2b" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1E40AF"/><stop offset="100%" stop-color="#0EA5E9"/></linearGradient></defs>
-            <rect width="200" height="200" rx="45" fill="url(#bg2b)"/>
-            <path d="M 100 38 L 168 158 L 32 158 Z" stroke="white" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <circle cx="100" cy="38" r="13" fill="white"/>
-            <circle cx="168" cy="158" r="13" fill="white"/>
-            <circle cx="32" cy="158" r="13" fill="white"/>
-            <circle cx="100" cy="118" r="8" fill="white" opacity="0.85"/>
-          </svg>
-        </div>
-      </div>
-      <p class="label">Tri-driehoek met sport-symbolen op de hoeken en AI-accent in midden. Abstract, modern.</p>
+      <div class="row"><div class="small"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="45" fill="#0f172a"/><g transform="translate(70, 22) scale(2.5)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.5"/><path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/><path d="M8.5 12l3 2.5-1.5 3"/></g><g transform="translate(18, 110) scale(2.5)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.5" cy="5" r="2.2"/><circle cx="6" cy="18" r="3" stroke-width="2"/><circle cx="18" cy="18" r="3" stroke-width="2"/><path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/><path d="M14.5 11l2-4.5"/></g><g transform="translate(120, 110) scale(2.5)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2.5"/><path d="M10 10l-3 10"/><path d="M13.5 7L11 12l4 2-1.5 6"/><path d="M17 7l-3.5 0"/><path d="M7 20l3-10"/></g></svg></div></div>
+      <p class="label">Tri-driehoek: zwem boven, fiets linksonder, ren rechtsonder. Symboliseert "tri" letterlijk.</p>
     </div>
 
-    <!-- v3 Hartslag -->
+    <!-- v6: Stacked vertical -->
     <div class="card">
-      <h3>v3 · Hartslag</h3>
+      <h3>v6 · Stacked (verticaal)</h3>
       <div class="iconbox">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-          <defs><linearGradient id="bg3a" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#EF4444"/><stop offset="100%" stop-color="#B91C1C"/></linearGradient></defs>
-          <rect width="200" height="200" rx="45" fill="url(#bg3a)"/>
-          <path d="M 22 105 L 60 105 L 72 80 L 88 130 L 102 60 L 116 130 L 130 90 L 142 105 L 178 105" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="68" cy="42" r="7" fill="white"/>
-          <circle cx="100" cy="42" r="7" fill="white"/>
-          <circle cx="132" cy="42" r="7" fill="white"/>
-          <path d="M 50 165 L 80 165" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
-          <path d="M 88 165 L 118 165" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
-          <path d="M 126 165 L 150 165" stroke="white" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
+          <defs>
+            <linearGradient id="bg6" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1e293b"/><stop offset="100%" stop-color="#0f172a"/>
+            </linearGradient>
+          </defs>
+          <rect width="200" height="200" rx="45" fill="url(#bg6)"/>
+
+          <!-- Swim top -->
+          <g transform="translate(70, 14) scale(2.4)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-blue)">
+            <circle cx="6" cy="7" r="2.5"/>
+            <path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/>
+            <path d="M8.5 12l3 2.5-1.5 3"/>
+          </g>
+
+          <!-- Bike middle -->
+          <g transform="translate(70, 70) scale(2.4)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-green)">
+            <circle cx="17.5" cy="5" r="2.2"/>
+            <circle cx="6" cy="18" r="3" stroke-width="2"/>
+            <circle cx="18" cy="18" r="3" stroke-width="2"/>
+            <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+            <path d="M14.5 11l2-4.5"/>
+          </g>
+
+          <!-- Run bottom -->
+          <g transform="translate(70, 128) scale(2.4)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-orange)">
+            <circle cx="13" cy="4" r="2.5"/>
+            <path d="M10 10l-3 10"/>
+            <path d="M13.5 7L11 12l4 2-1.5 6"/>
+            <path d="M17 7l-3.5 0"/>
+            <path d="M7 20l3-10"/>
+          </g>
         </svg>
       </div>
-      <div class="row">
-        <div class="small">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-            <defs><linearGradient id="bg3b" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#EF4444"/><stop offset="100%" stop-color="#B91C1C"/></linearGradient></defs>
-            <rect width="200" height="200" rx="45" fill="url(#bg3b)"/>
-            <path d="M 22 105 L 60 105 L 72 80 L 88 130 L 102 60 L 116 130 L 130 90 L 142 105 L 178 105" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-            <circle cx="68" cy="42" r="7" fill="white"/>
-            <circle cx="100" cy="42" r="7" fill="white"/>
-            <circle cx="132" cy="42" r="7" fill="white"/>
-          </svg>
-        </div>
-      </div>
-      <p class="label">Bold ECG-curve op rood verloop, met tri-dots en snelheidslijnen. Energiek, "AI coach" feel.</p>
+      <div class="row"><div class="small"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="45" fill="#0f172a"/><g transform="translate(70, 14) scale(2.4)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.5"/><path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/><path d="M8.5 12l3 2.5-1.5 3"/></g><g transform="translate(70, 70) scale(2.4)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.5" cy="5" r="2.2"/><circle cx="6" cy="18" r="3" stroke-width="2"/><circle cx="18" cy="18" r="3" stroke-width="2"/><path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/><path d="M14.5 11l2-4.5"/></g><g transform="translate(70, 128) scale(2.4)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2.5"/><path d="M10 10l-3 10"/><path d="M13.5 7L11 12l4 2-1.5 6"/><path d="M17 7l-3.5 0"/><path d="M7 20l3-10"/></g></svg></div></div>
+      <p class="label">Drie figuren onder elkaar. Compact, leesbaar zelfs op klein formaat.</p>
     </div>
 
   </div>
