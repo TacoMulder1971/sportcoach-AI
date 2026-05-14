@@ -74,9 +74,11 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
         prompt += `\nLET OP: er is vandaag al een activiteit geregistreerd (${todayGarminActs.map((a: { activityName: string }) => a.activityName).join(', ')}) maar die matcht niet met de geplande sport. De geplande training staat mogelijk nog open.\n`;
       }
     } else {
-      prompt += `\nVANDAAG: Rustdag — herstel staat centraal. Geen geplande training.\n`;
+      prompt += `\n>>> RUSTDAG VANDAAG <<<\n`;
+      prompt += `Vandaag staat er GEEN training in het schema. Het is een bewuste rustdag — herstel is de "training".\n`;
+      prompt += `KRITIEK: Spoor de atleet NIET aan om te trainen. Suggereer GEEN sport-sessies. Focus op herstel, slaap, voeding en mentale rust.\n`;
       if (todayGarminActs.length > 0) {
-        prompt += `NB: er is vandaag wel een activiteit geregistreerd (${todayGarminActs.map((a: { activityName: string }) => a.activityName).join(', ')}).\n`;
+        prompt += `NB: er is vandaag wel een activiteit geregistreerd (${todayGarminActs.map((a: { activityName: string }) => a.activityName).join(', ')}) — dat was waarschijnlijk een lichte beweging, géén reden om de rustdag te negeren.\n`;
       }
     }
 

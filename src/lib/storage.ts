@@ -92,6 +92,10 @@ export function saveDailyMessage(message: string): void {
   setItem(KEYS.DAILY_MESSAGE, { key: getTodayAmsterdam(), message });
 }
 
+export function clearDailyMessage(): void {
+  setItem(KEYS.DAILY_MESSAGE, null);
+}
+
 // Auto-sync throttle (1x per dag)
 const AUTO_SYNC_KEY = 'tricoach_last_auto_sync';
 
@@ -188,6 +192,8 @@ export function saveStoredPlan(plan: StoredPlan): void {
   const plans = getStoredPlans();
   plans.push(plan);
   setItem(KEYS.PLANS, plans);
+  // Schema is gewijzigd → coach-van-de-dag moet opnieuw genereren met nieuwe data
+  clearDailyMessage();
 }
 
 export function setActivePlanId(id: string): void {
@@ -202,6 +208,8 @@ export function setActivePlanId(id: string): void {
     }
   }
   setItem(KEYS.ACTIVE_PLAN_ID, id);
+  // Ander actief plan → coach-van-de-dag opnieuw genereren
+  clearDailyMessage();
 }
 
 export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string; id: string } {
@@ -225,6 +233,8 @@ export function updateActivePlan(updatedPlan: TrainingWeek[]): boolean {
   if (idx === -1) return false;
   plans[idx].plan = updatedPlan;
   setItem(KEYS.PLANS, plans);
+  // Schema is aangepast (bv. dag gewijzigd naar rust) → coach moet opnieuw genereren
+  clearDailyMessage();
   return true;
 }
 

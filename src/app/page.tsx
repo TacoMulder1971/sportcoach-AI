@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
 
@@ -280,7 +280,24 @@ export default function Dashboard() {
             <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           </div>
           <div className="flex-1">
-            <p className="text-xs font-semibold text-blue-600 mb-1">Coach van de dag</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs font-semibold text-blue-600">Coach van de dag</p>
+              <button
+                onClick={() => {
+                  clearDailyMessage();
+                  setDailyMessage(null);
+                  fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness, yesterdayTraining);
+                }}
+                disabled={loadingDaily || syncing}
+                className="text-blue-500 hover:text-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                aria-label="Bericht vernieuwen"
+                title="Bericht vernieuwen"
+              >
+                <svg className={`w-4 h-4 ${loadingDaily ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/>
+                </svg>
+              </button>
+            </div>
             {(syncing || loadingDaily) && !dailyMessage ? (
               <div className="flex items-center gap-2 py-1">
                 <div className="flex gap-1">
