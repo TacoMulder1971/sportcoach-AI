@@ -1,4 +1,4 @@
-export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'rust';
+export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'wandelen' | 'voetballen' | 'rust';
 
 export type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5';
 
@@ -76,6 +76,8 @@ export const SPORT_ICONS: Record<Sport, string> = {
   fietsen: 'F',
   hardlopen: 'H',
   mountainbike: 'M',
+  wandelen: 'W',
+  voetballen: 'V',
   rust: 'R',
 };
 
@@ -84,6 +86,8 @@ export const SPORT_COLORS: Record<Sport, string> = {
   fietsen: 'bg-green-500',
   hardlopen: 'bg-orange-500',
   mountainbike: 'bg-emerald-600',
+  wandelen: 'bg-teal-500',
+  voetballen: 'bg-yellow-500',
   rust: 'bg-gray-400',
 };
 

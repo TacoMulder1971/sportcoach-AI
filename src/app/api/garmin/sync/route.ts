@@ -18,6 +18,12 @@ function mapGarminSport(typeKey: string): Sport | 'overig' {
     open_water_swimming: 'zwemmen',
     pool_swimming: 'zwemmen',
     swimming: 'zwemmen',
+    walking: 'wandelen',
+    hiking: 'wandelen',
+    casual_walking: 'wandelen',
+    speed_walking: 'wandelen',
+    soccer: 'voetballen',
+    football: 'voetballen',
   };
   return map[typeKey] || 'overig';
 }

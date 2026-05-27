@@ -12,6 +12,8 @@ const NEON_COLORS: Record<string, { stroke: string; glow: string }> = {
   fietsen:      { stroke: '#22c55e', glow: 'drop-shadow(0 0 6px #22c55e) drop-shadow(0 0 14px rgba(34,197,94,0.4))' },
   hardlopen:    { stroke: '#f97316', glow: 'drop-shadow(0 0 6px #f97316) drop-shadow(0 0 14px rgba(249,115,22,0.4))' },
   mountainbike: { stroke: '#10b981', glow: 'drop-shadow(0 0 6px #10b981) drop-shadow(0 0 14px rgba(16,185,129,0.4))' },
+  wandelen:     { stroke: '#14b8a6', glow: 'drop-shadow(0 0 6px #14b8a6) drop-shadow(0 0 14px rgba(20,184,166,0.4))' },
+  voetballen:   { stroke: '#eab308', glow: 'drop-shadow(0 0 6px #eab308) drop-shadow(0 0 14px rgba(234,179,8,0.4))' },
   rust:         { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
   overig:       { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
 };
@@ -78,6 +80,32 @@ function RestIcon({ color }: { color: string }) {
   );
 }
 
+function WalkIcon({ color }: { color: string }) {
+  // Wandelaar in beweging — rustigere houding dan hardlopen, met wandelstok-suggestie via gestrekt been
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="13" cy="4" r="2" />
+      <path d="M13 7v5l-3 3.5L12 21" />
+      <path d="M12 13.5l4 1.5" />
+      <path d="M10 8l-3 2 2 3" />
+      <path d="M8 21l1.5-4" />
+    </svg>
+  );
+}
+
+function SoccerIcon({ color }: { color: string }) {
+  // Voetbal (klassiek bal-pattern) + voetlijn eronder voor schop-suggestie
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="11" r="7" />
+      {/* pentagon in midden */}
+      <path d="M12 7.5 L 15 9.5 L 14 13 L 10 13 L 9 9.5 Z" strokeWidth="1.6" />
+      {/* paneeltjes naar rand */}
+      <path d="M12 7.5 L 12 4.5 M 15 9.5 L 18 8 M 14 13 L 16.5 15.5 M 10 13 L 7.5 15.5 M 9 9.5 L 6 8" strokeWidth="1.4" opacity="0.85" />
+    </svg>
+  );
+}
+
 function UnknownIcon({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -93,6 +121,8 @@ const ICON_MAP: Record<string, React.FC<{ color: string }>> = {
   fietsen: BikeIcon,
   hardlopen: RunIcon,
   mountainbike: MountainBikeIcon,
+  wandelen: WalkIcon,
+  voetballen: SoccerIcon,
   rust: RestIcon,
   overig: UnknownIcon,
 };
