@@ -8,9 +8,12 @@ import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { buildEquipmentAttentionLine } from '@/lib/equipment';
 
 const TYPE_ICON: Record<EquipmentType, string> = {
-  fiets: '🚲',
+  racefiets: '🚴',
+  mountainbike: '⛰️',
+  stadsfiets: '🚲',
   hardloopschoenen: '👟',
   overig: '🛠️',
+  fiets: '🚲', // legacy fallback
 };
 
 // Welke sporten ondersteunen materiaal-keuze (overige = niet relevant)

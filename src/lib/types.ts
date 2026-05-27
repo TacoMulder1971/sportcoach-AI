@@ -290,7 +290,15 @@ export interface Goal {
 // Houdt fietsen, schoenen e.d. bij. Slijtage via km uit Garmin-activiteiten,
 // onderhoud (smeren, Di2 opladen, etc.) via terugkerende intervallen.
 
-export type EquipmentType = 'fiets' | 'hardloopschoenen' | 'overig';
+// Drie soorten fietsen omdat ze andere onderhouds-intervallen en sport-koppeling hebben.
+// 'fiets' is een legacy-waarde die automatisch wordt gemigreerd naar 'racefiets'.
+export type EquipmentType =
+  | 'racefiets'
+  | 'mountainbike'
+  | 'stadsfiets'
+  | 'hardloopschoenen'
+  | 'overig'
+  | 'fiets'; // deprecated — gemigreerd bij app start
 
 export interface MaintenanceItem {
   id: string;
@@ -326,17 +334,28 @@ export const EQUIPMENT_DEFAULT_LIMITS: Partial<Record<EquipmentType, number>> = 
 };
 
 export const EQUIPMENT_DEFAULT_MAINTENANCE: Record<EquipmentType, Omit<MaintenanceItem, 'id' | 'lastDoneAt'>[]> = {
-  fiets: [
+  racefiets: [
     { name: 'Ketting smeren', intervalKm: 300, intervalDays: 14 },
     { name: 'Ketting vervangen', intervalKm: 4000 },
     { name: 'Di2 opladen', intervalDays: 180 },
   ],
+  mountainbike: [
+    { name: 'Ketting smeren', intervalKm: 150, intervalDays: 10 },
+    { name: 'Ketting vervangen', intervalKm: 2500 },
+    { name: 'Vering service', intervalDays: 365 },
+    { name: 'Remblokken controleren', intervalKm: 1000 },
+  ],
+  stadsfiets: [], // bewust leeg: alleen registratie, geen automatische onderhouds-suggesties
   hardloopschoenen: [],
   overig: [],
+  fiets: [], // legacy
 };
 
 export const EQUIPMENT_TYPE_LABEL: Record<EquipmentType, string> = {
-  fiets: 'Fiets',
+  racefiets: 'Racefiets',
+  mountainbike: 'Mountainbike',
+  stadsfiets: 'Stadsfiets',
   hardloopschoenen: 'Hardloopschoenen',
   overig: 'Overig',
+  fiets: 'Fiets', // legacy
 };

@@ -19,15 +19,21 @@ import {
 import { calculateEquipmentKm, equipmentWearStatus, maintenanceStatus, WearStatus } from '@/lib/equipment';
 
 const TYPE_ICON: Record<EquipmentType, string> = {
-  fiets: '🚲',
+  racefiets: '🚴',
+  mountainbike: '⛰️',
+  stadsfiets: '🚲',
   hardloopschoenen: '👟',
   overig: '🛠️',
+  fiets: '🚲', // legacy, gemigreerd bij volgende load
 };
 
 const TYPE_SPORT_DEFAULT: Record<EquipmentType, Sport> = {
-  fiets: 'fietsen',
+  racefiets: 'fietsen',
+  mountainbike: 'mountainbike',
+  stadsfiets: 'fietsen',
   hardloopschoenen: 'hardlopen',
   overig: 'fietsen',
+  fiets: 'fietsen', // legacy
 };
 
 const WEAR_COLORS: Record<WearStatus, { bar: string; text: string; pill: string }> = {
@@ -309,7 +315,7 @@ function EquipmentFormModal({
   onClose: () => void;
 }) {
   const [name, setName] = useState(eq?.name || '');
-  const [type, setType] = useState<EquipmentType>(eq?.type || 'fiets');
+  const [type, setType] = useState<EquipmentType>(eq?.type === 'fiets' ? 'racefiets' : (eq?.type || 'racefiets'));
   const [sport, setSport] = useState<Sport>(eq?.sport || TYPE_SPORT_DEFAULT[eq?.type || 'fiets']);
   const [acquiredAt, setAcquiredAt] = useState(eq?.acquiredAt || new Date().toISOString().split('T')[0]);
   const [startKm, setStartKm] = useState(eq?.startKm?.toString() || '0');
@@ -375,7 +381,9 @@ function EquipmentFormModal({
               onChange={e => setType(e.target.value as EquipmentType)}
               className="w-full border border-gray-300 rounded-lg p-2 text-sm"
             >
-              <option value="fiets">🚲 Fiets</option>
+              <option value="racefiets">🚴 Racefiets</option>
+              <option value="mountainbike">⛰️ Mountainbike</option>
+              <option value="stadsfiets">🚲 Stadsfiets</option>
               <option value="hardloopschoenen">👟 Hardloopschoenen</option>
               <option value="overig">🛠️ Overig</option>
             </select>
@@ -387,7 +395,13 @@ function EquipmentFormModal({
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder={type === 'fiets' ? 'Cervelo S5' : type === 'hardloopschoenen' ? 'Saucony Endorphin Speed 4' : 'Materiaal-naam'}
+              placeholder={
+                type === 'racefiets' ? 'BMC racefiets' :
+                type === 'mountainbike' ? 'Mountainbike' :
+                type === 'stadsfiets' ? 'Stadsfiets' :
+                type === 'hardloopschoenen' ? 'Brooks 25' :
+                'Materiaal-naam'
+              }
               className="w-full border border-gray-300 rounded-lg p-2 text-sm"
             />
           </div>

@@ -21,6 +21,7 @@ const KEYS = {
   GOAL_RESULT_DISMISSED: 'tricoach_goal_result_dismissed',
   EQUIPMENT: 'tricoach_equipment',
   ACTIVITY_ASSIGNMENTS: 'tricoach_activity_assignments',
+  EQUIPMENT_MIGRATED_V1: 'tricoach_equipment_migrated_v1',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -672,7 +673,28 @@ export function buildGoalsHistoryText(): string {
 
 // ─── Equipment (materiaal: fietsen, schoenen + onderhoud) ─────────
 
+/**
+ * Eenmalige migratie: legacy type='fiets' wordt 'racefiets'. Wordt automatisch
+ * uitgevoerd bij elke aanroep van getEquipment() — kost niets als al gedaan.
+ */
+function runEquipmentMigrationV1(): void {
+  if (typeof window === 'undefined') return;
+  const done = getItem<boolean>(KEYS.EQUIPMENT_MIGRATED_V1, false);
+  if (done) return;
+  const list = getItem<Equipment[]>(KEYS.EQUIPMENT, []);
+  let changed = false;
+  for (const eq of list) {
+    if ((eq.type as string) === 'fiets') {
+      eq.type = 'racefiets';
+      changed = true;
+    }
+  }
+  if (changed) setItem(KEYS.EQUIPMENT, list);
+  setItem(KEYS.EQUIPMENT_MIGRATED_V1, true);
+}
+
 export function getEquipment(): Equipment[] {
+  runEquipmentMigrationV1();
   return getItem<Equipment[]>(KEYS.EQUIPMENT, []);
 }
 
