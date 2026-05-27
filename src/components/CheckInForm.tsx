@@ -1,11 +1,20 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments } from '@/lib/storage';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport } from '@/lib/types';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { buildEquipmentAttentionLine } from '@/lib/equipment';
+
+const TYPE_ICON: Record<EquipmentType, string> = {
+  fiets: '🚲',
+  hardloopschoenen: '👟',
+  overig: '🛠️',
+};
+
+// Welke sporten ondersteunen materiaal-keuze (overige = niet relevant)
+const SPORTS_WITH_EQUIPMENT: Sport[] = ['fietsen', 'hardlopen', 'mountainbike'];
 
 interface CheckInFormProps {
   sessions: TrainingSession[];
@@ -25,6 +34,49 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
   const [sending, setSending] = useState(false);
   const [checkInId, setCheckInId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // ── Materiaal-keuze per sport ───────────────────────────────────
+  // Bepaal welke sporten in deze check-out materiaal hebben (fietsen/hardlopen/mountainbike),
+  // en welke actieve equipment-items er voor zijn. Toon dropdown alleen als >0 opties.
+  const sportsInCheckOut = useMemo<Sport[]>(
+    () => Array.from(new Set(
+      sessions
+        .map(s => s.sport)
+        .filter((s): s is Sport => SPORTS_WITH_EQUIPMENT.includes(s as Sport))
+    )),
+    [sessions]
+  );
+
+  const equipmentBySport = useMemo<Record<string, Equipment[]>>(() => {
+    if (typeof window === 'undefined') return {};
+    const active = getActiveEquipment();
+    const map: Record<string, Equipment[]> = {};
+    for (const sport of sportsInCheckOut) {
+      map[sport] = active.filter(e => e.sport === sport);
+    }
+    return map;
+  }, [sportsInCheckOut]);
+
+  // Initial keuze = default-equipment per sport
+  const [equipmentChoices, setEquipmentChoices] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const initial: Record<string, string> = {};
+    for (const sport of sportsInCheckOut) {
+      const list = equipmentBySport[sport] || [];
+      const def = list.find(e => e.isDefault) || list[0];
+      if (def) initial[sport] = def.id;
+    }
+    setEquipmentChoices(initial);
+  }, [sportsInCheckOut, equipmentBySport]);
+
+  /** Past de gekozen equipment toe op alle activiteiten van vandaag in die sport. */
+  const applyEquipmentChoices = (activities: GarminActivity[]) => {
+    for (const a of activities) {
+      const chosen = equipmentChoices[a.sport];
+      if (chosen) assignActivityToEquipment(a.id, chosen);
+    }
+  };
 
   useEffect(() => {
     // Scroll alleen naar beneden als de coach antwoordt of aan het typen is,
@@ -74,6 +126,9 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       const today = new Date().toISOString().split('T')[0];
       const freshTodayActivities = garminData?.activities?.filter(a => a.date === today) || [];
       const todayActivities = freshTodayActivities.length > 0 ? freshTodayActivities : garminActivities;
+
+      // Pas de gekozen equipment toe op de verse activiteiten van vandaag
+      applyEquipmentChoices(todayActivities);
 
       const recentCheckIns = getRecentCheckIns(5);
       const trainingLoad = garminData
@@ -204,6 +259,8 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
     };
 
     saveCheckIn(checkIn);
+    // Pas equipment-keuzes direct toe op de huidige (gecachte) activiteiten van vandaag
+    applyEquipmentChoices(garminActivities);
     setCheckInId(id);
     setSubmitted(true);
     fetchFeedback(checkIn);
@@ -324,6 +381,31 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           ))}
         </div>
       </div>
+
+      {/* Materiaal-keuze per sport */}
+      {sportsInCheckOut.map(sport => {
+        const options = equipmentBySport[sport] || [];
+        if (options.length === 0) return null;
+        const sportLabel = sport === 'fietsen' ? 'fiets' : sport === 'hardlopen' ? 'schoenen' : sport === 'mountainbike' ? 'mountainbike' : sport;
+        return (
+          <div key={sport}>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Welke {sportLabel} gebruikt?
+            </label>
+            <select
+              value={equipmentChoices[sport] || ''}
+              onChange={(e) => setEquipmentChoices(prev => ({ ...prev, [sport]: e.target.value }))}
+              className="w-full border border-gray-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {options.map(eq => (
+                <option key={eq.id} value={eq.id}>
+                  {TYPE_ICON[eq.type]} {eq.name}{eq.isDefault ? ' · default' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      })}
 
       <div>
         <label className="text-sm font-medium text-gray-700 mb-2 block">
