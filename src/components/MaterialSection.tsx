@@ -17,15 +17,7 @@ import {
   generateId,
 } from '@/lib/storage';
 import { calculateEquipmentKm, equipmentWearStatus, maintenanceStatus, WearStatus } from '@/lib/equipment';
-
-const TYPE_ICON: Record<EquipmentType, string> = {
-  racefiets: '🚴',
-  mountainbike: '⛰️',
-  stadsfiets: '🚲',
-  hardloopschoenen: '👟',
-  overig: '🛠️',
-  fiets: '🚲', // legacy, gemigreerd bij volgende load
-};
+import EquipmentIcon from '@/components/EquipmentIcon';
 
 const TYPE_SPORT_DEFAULT: Record<EquipmentType, Sport> = {
   racefiets: 'fietsen',
@@ -196,8 +188,8 @@ function EquipmentCard({
     <div className={`bg-white rounded-xl border ${isRetired ? 'border-gray-200 opacity-70' : 'border-gray-200'} p-4`}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xl">{TYPE_ICON[eq.type]}</span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <EquipmentIcon type={eq.type} size="md" />
             <span className="font-semibold text-gray-900">{eq.name}</span>
             {eq.isDefault && !isRetired && (
               <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">DEFAULT</span>

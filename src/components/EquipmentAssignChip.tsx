@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Equipment, EquipmentType, GarminActivity, ActivityAssignments } from '@/lib/types';
 import { assignActivityToEquipment, clearActivityAssignment } from '@/lib/storage';
 import { equipmentForActivity } from '@/lib/equipment';
+import EquipmentIcon from '@/components/EquipmentIcon';
 
 const TYPE_ICON: Record<EquipmentType, string> = {
   racefiets: '🚴',
@@ -85,11 +86,11 @@ export default function EquipmentAssignChip({ activity, equipment, assignments, 
                       onChange?.();
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-3 ${
                       selected ? 'bg-blue-50 border border-blue-300' : 'hover:bg-gray-50'
                     }`}
                   >
-                    <span className="text-lg">{TYPE_ICON[eq.type]}</span>
+                    <EquipmentIcon type={eq.type} size="sm" />
                     <span className="flex-1">{eq.name}</span>
                     {eq.isDefault && <span className="text-[10px] text-blue-600 font-semibold">DEFAULT</span>}
                     {selected && <span className="text-blue-600">✓</span>}

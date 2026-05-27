@@ -10,7 +10,8 @@ import TrainingLoadChart from '@/components/TrainingLoadChart';
 import TrendLineChart from '@/components/TrendLineChart';
 import MaterialSection from '@/components/MaterialSection';
 import EquipmentAssignChip from '@/components/EquipmentAssignChip';
-import { filterStatsActivities } from '@/lib/equipment';
+import EquipmentIcon from '@/components/EquipmentIcon';
+import { filterStatsActivities, equipmentForActivity } from '@/lib/equipment';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -690,10 +691,16 @@ export default function DataPage() {
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Activiteiten</h2>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-            {garmin.activities.map((a) => (
+            {garmin.activities.map((a) => {
+              const assignedEq = equipmentForActivity(a, equipment, assignments);
+              return (
               <div key={a.id} className="p-3">
                 <div className="flex items-center gap-3">
-                  <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="md" />
+                  {assignedEq ? (
+                    <EquipmentIcon type={assignedEq.type} size="md" />
+                  ) : (
+                    <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="md" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{a.activityName}</p>
                     <p className="text-xs text-gray-500">
@@ -736,7 +743,8 @@ export default function DataPage() {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
