@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
+import { buildEquipmentAttentionLine } from '@/lib/equipment';
 
 interface CheckInFormProps {
   sessions: TrainingSession[];
@@ -106,6 +107,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           trainingLoad,
           currentPlan,
           cycleStartDate,
+          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
         }),
       });
 
@@ -159,6 +161,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           trainingLoad,
           currentPlan,
           cycleStartDate,
+          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
         }),
       });
 

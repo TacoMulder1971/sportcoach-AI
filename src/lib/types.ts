@@ -285,3 +285,58 @@ export interface Goal {
   createdAt: string;           // ISO
   archivedAt?: string;         // ISO
 }
+
+// ── Materiaal / Equipment ───────────────────────────────────────────
+// Houdt fietsen, schoenen e.d. bij. Slijtage via km uit Garmin-activiteiten,
+// onderhoud (smeren, Di2 opladen, etc.) via terugkerende intervallen.
+
+export type EquipmentType = 'fiets' | 'hardloopschoenen' | 'overig';
+
+export interface MaintenanceItem {
+  id: string;
+  name: string;              // bv. "Ketting smeren", "Di2 opladen", "Ketting vervangen"
+  lastDoneAt: string;        // ISO datum
+  lastDoneKm?: number;       // km-stand van de equipment bij die actie (voor km-interval)
+  intervalDays?: number;     // herhaalinterval in dagen
+  intervalKm?: number;       // herhaalinterval in km
+}
+
+export interface Equipment {
+  id: string;
+  type: EquipmentType;
+  name: string;              // bv. "Cervelo S5", "Saucony Endorphin Speed 4 (rood)"
+  sport: Sport;              // welke sport-activiteiten tellen voor de km
+  isDefault?: boolean;       // default-keuze voor activiteit-toewijzing (max 1 per type+sport)
+  acquiredAt: string;        // ISO datum aankoop/installatie
+  startKm: number;           // 0 default; >0 bij tweedehands of bij overzetten
+  kmLimit?: number;          // vervangdrempel (alleen voor verbruiksartikelen zoals schoenen)
+  status: 'active' | 'retired';
+  retiredAt?: string;        // ISO; daarna geen nieuwe km meer
+  maintenance?: MaintenanceItem[];
+  note?: string;
+  createdAt: string;         // ISO
+}
+
+// Per-activiteit override: welk Equipment is gebruikt voor een Garmin-activiteit.
+// Apart van Equipment opgeslagen zodat we bij gear-wissel niets hoeven aan te raken.
+export type ActivityAssignments = Record<string, string>; // activityId -> equipmentId
+
+export const EQUIPMENT_DEFAULT_LIMITS: Partial<Record<EquipmentType, number>> = {
+  hardloopschoenen: 700,
+};
+
+export const EQUIPMENT_DEFAULT_MAINTENANCE: Record<EquipmentType, Omit<MaintenanceItem, 'id' | 'lastDoneAt'>[]> = {
+  fiets: [
+    { name: 'Ketting smeren', intervalKm: 300, intervalDays: 14 },
+    { name: 'Ketting vervangen', intervalKm: 4000 },
+    { name: 'Di2 opladen', intervalDays: 180 },
+  ],
+  hardloopschoenen: [],
+  overig: [],
+};
+
+export const EQUIPMENT_TYPE_LABEL: Record<EquipmentType, string> = {
+  fiets: 'Fiets',
+  hardloopschoenen: 'Hardloopschoenen',
+  overig: 'Overig',
+};

@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -19,6 +19,8 @@ const KEYS = {
   GOALS: 'tricoach_goals',
   GOALS_MIGRATED: 'tricoach_goals_migrated',
   GOAL_RESULT_DISMISSED: 'tricoach_goal_result_dismissed',
+  EQUIPMENT: 'tricoach_equipment',
+  ACTIVITY_ASSIGNMENTS: 'tricoach_activity_assignments',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -666,4 +668,111 @@ export function buildGoalsHistoryText(): string {
     return `- ${label} (${dateFmt}): ${time}${reflection}`;
   });
   return `RECENTE DOELEN:\n${lines.join('\n')}`;
+}
+
+// ─── Equipment (materiaal: fietsen, schoenen + onderhoud) ─────────
+
+export function getEquipment(): Equipment[] {
+  return getItem<Equipment[]>(KEYS.EQUIPMENT, []);
+}
+
+export function getActiveEquipment(): Equipment[] {
+  return getEquipment().filter(e => e.status === 'active');
+}
+
+export function getRetiredEquipment(): Equipment[] {
+  return getEquipment()
+    .filter(e => e.status === 'retired')
+    .sort((a, b) => (b.retiredAt || '').localeCompare(a.retiredAt || ''));
+}
+
+export function saveEquipment(eq: Equipment): void {
+  const list = getEquipment();
+  list.push(eq);
+  setItem(KEYS.EQUIPMENT, list);
+}
+
+export function updateEquipment(id: string, updates: Partial<Equipment>): void {
+  const list = getEquipment();
+  const idx = list.findIndex(e => e.id === id);
+  if (idx === -1) return;
+  list[idx] = { ...list[idx], ...updates };
+  setItem(KEYS.EQUIPMENT, list);
+}
+
+export function deleteEquipment(id: string): void {
+  const list = getEquipment().filter(e => e.id !== id);
+  setItem(KEYS.EQUIPMENT, list);
+  // Verwijder ook eventuele toewijzingen die naar dit equipment verwezen
+  const assignments = getActivityAssignments();
+  let changed = false;
+  for (const actId of Object.keys(assignments)) {
+    if (assignments[actId] === id) { delete assignments[actId]; changed = true; }
+  }
+  if (changed) setItem(KEYS.ACTIVITY_ASSIGNMENTS, assignments);
+}
+
+export function retireEquipment(id: string, retiredAt?: string): void {
+  const date = retiredAt || new Date().toISOString().split('T')[0];
+  updateEquipment(id, { status: 'retired', retiredAt: date, isDefault: false });
+}
+
+/** Maakt het opgegeven Equipment de default voor zijn (type, sport) combinatie. */
+export function setDefaultEquipment(id: string): void {
+  const list = getEquipment();
+  const target = list.find(e => e.id === id);
+  if (!target) return;
+  for (const e of list) {
+    if (e.type === target.type && e.sport === target.sport && e.status === 'active') {
+      e.isDefault = e.id === id;
+    }
+  }
+  setItem(KEYS.EQUIPMENT, list);
+}
+
+export function markMaintenanceDone(
+  equipmentId: string,
+  maintenanceItemId: string,
+  currentKm?: number,
+  date?: string,
+): void {
+  const list = getEquipment();
+  const eq = list.find(e => e.id === equipmentId);
+  if (!eq?.maintenance) return;
+  const item = eq.maintenance.find(m => m.id === maintenanceItemId);
+  if (!item) return;
+  item.lastDoneAt = date || new Date().toISOString().split('T')[0];
+  if (typeof currentKm === 'number') item.lastDoneKm = Math.round(currentKm);
+  setItem(KEYS.EQUIPMENT, list);
+}
+
+/** Genereert default onderhouds-items voor een type met today als lastDoneAt. */
+export function buildDefaultMaintenance(type: Equipment['type']): MaintenanceItem[] {
+  const today = new Date().toISOString().split('T')[0];
+  return (EQUIPMENT_DEFAULT_MAINTENANCE[type] || []).map(m => ({
+    id: generateId(),
+    name: m.name,
+    intervalDays: m.intervalDays,
+    intervalKm: m.intervalKm,
+    lastDoneAt: today,
+    lastDoneKm: 0,
+  }));
+}
+
+// ─── Activity → Equipment toewijzingen ──────────────────────────
+
+export function getActivityAssignments(): ActivityAssignments {
+  return getItem<ActivityAssignments>(KEYS.ACTIVITY_ASSIGNMENTS, {});
+}
+
+export function assignActivityToEquipment(activityId: string | number, equipmentId: string): void {
+  const map = getActivityAssignments();
+  map[String(activityId)] = equipmentId;
+  setItem(KEYS.ACTIVITY_ASSIGNMENTS, map);
+}
+
+export function clearActivityAssignment(activityId: string | number): void {
+  const map = getActivityAssignments();
+  delete map[String(activityId)];
+  setItem(KEYS.ACTIVITY_ASSIGNMENTS, map);
 }

@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
-import { GarminSyncData, TrainingReadiness } from '@/lib/types';
+import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
 import TrendLineChart from '@/components/TrendLineChart';
+import MaterialSection from '@/components/MaterialSection';
+import EquipmentAssignChip from '@/components/EquipmentAssignChip';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -18,15 +20,23 @@ export default function DataPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [pulling, setPulling] = useState(false);
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [assignments, setAssignments] = useState<ActivityAssignments>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const touchStartY = useRef(0);
   const PULL_THRESHOLD = 65;
+
+  const refreshEquipment = useCallback(() => {
+    setEquipment(getEquipment());
+    setAssignments(getActivityAssignments());
+  }, []);
 
   useEffect(() => {
     setGarmin(getGarminData());
     const cached = getWeeklyReport();
     if (cached) setWeeklyReport(cached.summary);
-  }, []);
+    refreshEquipment();
+  }, [refreshEquipment]);
 
   async function handleGarminSync() {
     setSyncing(true);
@@ -665,6 +675,9 @@ export default function DataPage() {
         </section>
       )}
 
+      {/* Materiaal */}
+      <MaterialSection />
+
       {/* Alle activiteiten */}
       {garmin.activities.length > 0 && (
         <section>
@@ -685,7 +698,17 @@ export default function DataPage() {
                       {a.calories > 0 && ` · ${a.calories}kcal`}
                     </p>
                   </div>
-                  <span className="text-xs text-gray-400 flex-shrink-0">{a.date}</span>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    <span className="text-xs text-gray-400">{a.date}</span>
+                    {(a.sport === 'fietsen' || a.sport === 'hardlopen' || a.sport === 'mountainbike') && a.distanceKm > 0 && (
+                      <EquipmentAssignChip
+                        activity={a}
+                        equipment={equipment}
+                        assignments={assignments}
+                        onChange={refreshEquipment}
+                      />
+                    )}
+                  </div>
                 </div>
                 {/* Splits/blokken voor intervaltraining */}
                 {a.splits && a.splits.length > 1 && (

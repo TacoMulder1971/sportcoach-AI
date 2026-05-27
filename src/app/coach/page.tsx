@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from './CheckInContent';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace } from '@/lib/storage';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getEquipment, getActivityAssignments } from '@/lib/storage';
+import { buildEquipmentAttentionLine } from '@/lib/equipment';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { getCurrentPhase } from '@/lib/periodization';
 
@@ -223,6 +224,7 @@ export default function CoachPage() {
           localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
+          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
         }),
       });
 

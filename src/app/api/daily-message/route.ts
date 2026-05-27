@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory } = await request.json();
+    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention } = await request.json();
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
     const now = new Date();
@@ -220,6 +220,9 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
         prompt += ` (LET OP: data incompleet — niet alle factoren konden gemeten worden, waarschijnlijk horloge 's nachts uit. Beoordeel niet streng en suggereer eventueel om vannacht weer te dragen voor betere data.)`;
       }
       prompt += '\n';
+    }
+    if (equipmentAttention && typeof equipmentAttention === 'string' && equipmentAttention.trim().length > 0) {
+      prompt += `\nMATERIAAL-ATTENTIE:\n${equipmentAttention}\nNoem dit kort als er ruimte is — geen verplicht onderwerp.\n`;
     }
 
     // Instructies voor afwisseling

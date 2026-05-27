@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments } from '@/lib/storage';
+import { buildEquipmentAttentionLine } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
 
@@ -35,6 +36,10 @@ export default function Dashboard() {
       const yesterdayCheckOut = checkIns.length > 0 ? checkIns[0] : null;
       const { cycleStartDate } = getActivePlan();
 
+      const equipment = getEquipment();
+      const assignments = getActivityAssignments();
+      const equipmentAttention = buildEquipmentAttentionLine(equipment, garminData?.activities || [], assignments);
+
       const res = await fetch('/api/daily-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,6 +57,7 @@ export default function Dashboard() {
           localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
+          equipmentAttention,
         }),
       });
 

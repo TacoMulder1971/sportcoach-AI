@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
       weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
-      raceContext, goalsHistory,
+      raceContext, goalsHistory, equipmentAttention,
     } = await request.json();
 
     // Bouw schema tekst dynamisch
@@ -174,6 +174,10 @@ Week 2:
       contextMessage += `- Weekbelasting: ${trainingLoad.weekLoad} TRIMP\n`;
       contextMessage += `- Status: ${trainingLoad.status}\n`;
       contextMessage += `- Advies: ${trainingLoad.advice}\n`;
+    }
+
+    if (equipmentAttention && typeof equipmentAttention === 'string' && equipmentAttention.trim().length > 0) {
+      contextMessage += `\nMATERIAAL:\n${equipmentAttention}\n(Gebruik dit als de atleet ernaar vraagt of als het echt relevant is voor het advies.)\n`;
     }
 
     // Trainingsfase
