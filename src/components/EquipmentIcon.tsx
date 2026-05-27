@@ -49,20 +49,21 @@ function MountainbikeSvg({ color }: { color: string }) {
 }
 
 function StadsfietsSvg({ color }: { color: string }) {
-  // Rechtopstaande omafiets: hoge handlebars + zadel + (klein) mandje voorop
+  // Rechtopstaande omafiets met klassieke lage swoop-toptube + mandje
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5.5" cy="18.5" r="2.5" strokeWidth="2" />
-      <circle cx="18.5" cy="18.5" r="2.5" strokeWidth="2" />
-      {/* Frame: achterwiel → zadel → trapas → voorvork */}
-      <path d="M5.5 18.5 L 11 11 L 18.5 18.5" />
-      {/* Zadelbuis + stuurpen */}
-      <path d="M11 11 L 11 5" />
-      <path d="M9 5 L 13 5" />
-      {/* Stuur omhoog naar voren */}
-      <path d="M13 6 L 17 5 L 18.5 18.5" strokeWidth="1.8" opacity="0.85" />
-      {/* Mini mandje voorop */}
-      <path d="M14.5 5 L 14.5 7.5 L 17 7.5 L 17 5" strokeWidth="1.5" />
+      <circle cx="6" cy="19" r="2.5" strokeWidth="2" />
+      <circle cx="18" cy="19" r="2.5" strokeWidth="2" />
+      {/* Lage swoop top tube — kenmerk van een omafiets */}
+      <path d="M 6 19 Q 12 10 18 19" />
+      {/* Zadelbuis verticaal + zadel */}
+      <path d="M 11 14 L 11 6" />
+      <path d="M 9 6 L 13 6" />
+      {/* Stuurpen + horizontaal stuur hoog */}
+      <path d="M 17 14 L 17 7" />
+      <path d="M 14 7 L 19 7" />
+      {/* Klein mandje boven het stuur */}
+      <path d="M 14 4.5 L 14 7 L 18 7 L 18 4.5" strokeWidth="1.6" />
     </svg>
   );
 }

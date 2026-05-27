@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 600" width="720" height="600">
+  <defs>
+    <filter id="g-blue" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-green" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-orange" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-emerald" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-teal" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-yellow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-gray" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="g-purple" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- light background -->
+  <rect width="720" height="600" fill="#f1f5f9"/>
+
+  <!-- Title -->
+  <text x="20" y="35" font-family="-apple-system, system-ui" font-size="20" font-weight="700" fill="#0f172a">Sport-iconen (in Activiteiten-lijst)</text>
+
+  <!-- ROW 1 Sport icons -->
+  <g transform="translate(20, 60)">
+    <!-- Zwemmen -->
+    <g transform="translate(0,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-blue)">
+        <circle cx="6" cy="7" r="2.5"/>
+        <path d="M3 17c1-2 3-4 5.5-4s3 1.5 5 1.5 3.5-1.5 5.5-1.5c1.5 0 2.5.5 3 1"/>
+        <path d="M8.5 12l3 2.5-1.5 3"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Zwemmen</text>
+    </g>
+    <!-- Hardlopen -->
+    <g transform="translate(100,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-orange)">
+        <circle cx="13" cy="4" r="2.5"/>
+        <path d="M10 10l-3 10"/>
+        <path d="M13.5 7L11 12l4 2-1.5 6"/>
+        <path d="M17 7l-3.5 0"/>
+        <path d="M7 20l3-10"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Hardlopen</text>
+    </g>
+    <!-- Fietsen (race) -->
+    <g transform="translate(200,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-green)">
+        <circle cx="17.5" cy="5" r="2.2"/>
+        <circle cx="6" cy="18" r="3" stroke-width="2"/>
+        <circle cx="18" cy="18" r="3" stroke-width="2"/>
+        <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+        <path d="M14.5 11l2-4.5"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Fietsen</text>
+    </g>
+    <!-- Mountainbike -->
+    <g transform="translate(300,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-emerald)">
+        <circle cx="17.5" cy="5" r="2.2"/>
+        <circle cx="6" cy="18" r="3" stroke-width="2"/>
+        <circle cx="18" cy="18" r="3" stroke-width="2"/>
+        <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+        <path d="M14.5 11l2-4.5"/>
+        <path d="M2 14l4-4 4 2 4-5 4 1"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Mountainbike</text>
+    </g>
+    <!-- Wandelen NIEUW -->
+    <g transform="translate(400,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#14b8a6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-teal)">
+        <circle cx="13" cy="4" r="2"/>
+        <path d="M13 7v5l-3 3.5L12 21"/>
+        <path d="M12 13.5l4 1.5"/>
+        <path d="M10 8l-3 2 2 3"/>
+        <path d="M8 21l1.5-4"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569" font-weight="600">Wandelen ✨</text>
+    </g>
+    <!-- Voetballen NIEUW -->
+    <g transform="translate(500,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#eab308" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-yellow)">
+        <circle cx="12" cy="11" r="7"/>
+        <path d="M12 7.5 L 15 9.5 L 14 13 L 10 13 L 9 9.5 Z" stroke-width="1.6"/>
+        <path d="M12 7.5 L 12 4.5 M 15 9.5 L 18 8 M 14 13 L 16.5 15.5 M 10 13 L 7.5 15.5 M 9 9.5 L 6 8" stroke-width="1.4"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569" font-weight="600">Voetballen ✨</text>
+    </g>
+    <!-- Rust -->
+    <g transform="translate(600,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#6b7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-gray)">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Rust</text>
+    </g>
+  </g>
+
+  <!-- Section 2: Equipment icons -->
+  <text x="20" y="220" font-family="-apple-system, system-ui" font-size="20" font-weight="700" fill="#0f172a">Equipment-iconen (in Materiaal-sectie + Activiteiten met toewijzing)</text>
+
+  <g transform="translate(20, 250)">
+    <!-- Racefiets -->
+    <g transform="translate(0,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-green)">
+        <circle cx="17.5" cy="5" r="2.2"/>
+        <circle cx="6" cy="18" r="3" stroke-width="2"/>
+        <circle cx="18" cy="18" r="3" stroke-width="2"/>
+        <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+        <path d="M14.5 11l2-4.5"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Racefiets</text>
+      <text x="40" y="115" text-anchor="middle" font-family="-apple-system" font-size="10" fill="#94a3b8">BMC</text>
+    </g>
+    <!-- Mountainbike equipment -->
+    <g transform="translate(100,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-emerald)">
+        <circle cx="17.5" cy="5" r="2.2"/>
+        <circle cx="6" cy="18" r="3" stroke-width="2"/>
+        <circle cx="18" cy="18" r="3" stroke-width="2"/>
+        <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+        <path d="M14.5 11l2-4.5"/>
+        <path d="M2 14l4-4 4 2 4-5 4 1"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Mountainbike</text>
+      <text x="40" y="115" text-anchor="middle" font-family="-apple-system" font-size="10" fill="#94a3b8">MTB</text>
+    </g>
+    <!-- Stadsfiets -->
+    <g transform="translate(200,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-gray)">
+        <circle cx="6" cy="19" r="2.5" stroke-width="2"/>
+        <circle cx="18" cy="19" r="2.5" stroke-width="2"/>
+        <path d="M 6 19 Q 12 10 18 19"/>
+        <path d="M 11 14 L 11 6"/>
+        <path d="M 9 6 L 13 6"/>
+        <path d="M 17 14 L 17 7"/>
+        <path d="M 14 7 L 19 7"/>
+        <path d="M 14 4.5 L 14 7 L 18 7 L 18 4.5" stroke-width="1.6"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Stadsfiets</text>
+      <text x="40" y="115" text-anchor="middle" font-family="-apple-system" font-size="10" fill="#94a3b8">telt niet voor stats</text>
+    </g>
+    <!-- Hardloopschoenen -->
+    <g transform="translate(300,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#f97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-orange)">
+        <path d="M2 16 C 2 13.5 4 12.5 6.5 12.5 L 13 12.5 C 17 12.5 20.5 14 21.5 16.5 L 22 18 L 2 18 Z"/>
+        <path d="M2 16 L 22 16" stroke-width="1.5" opacity="0.7"/>
+        <path d="M 7 14 L 9 13 M 10 14 L 12 13 M 13 14 L 14.5 13" stroke-width="1.4" opacity="0.85"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Hardloopschoenen</text>
+      <text x="40" y="115" text-anchor="middle" font-family="-apple-system" font-size="10" fill="#94a3b8">Brooks / Saucony</text>
+    </g>
+    <!-- Wrench Overig -->
+    <g transform="translate(400,0)">
+      <rect width="80" height="80" rx="16" fill="#111827"/>
+      <g transform="translate(16,16) scale(2)" fill="none" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-purple)">
+        <path d="M14.7 6.3a4 4 0 0 1 5.4 5.4l-1.7 1.7-3.7-3.7Z"/>
+        <path d="M14.7 6.3 4.5 16.5l3 3 10.2-10.2"/>
+        <circle cx="6" cy="18" r="0.8" fill="#a78bfa" stroke="none"/>
+      </g>
+      <text x="40" y="100" text-anchor="middle" font-family="-apple-system" font-size="12" fill="#475569">Overig</text>
+      <text x="40" y="115" text-anchor="middle" font-family="-apple-system" font-size="10" fill="#94a3b8">vrij type</text>
+    </g>
+  </g>
+
+  <!-- Mockup: hoe ziet de Activiteiten-lijst eruit -->
+  <text x="20" y="420" font-family="-apple-system, system-ui" font-size="20" font-weight="700" fill="#0f172a">In de Activiteiten-lijst:</text>
+
+  <g transform="translate(20, 440)">
+    <rect width="680" height="140" rx="12" fill="white" stroke="#e2e8f0"/>
+
+    <!-- Row 1: BMC racefiets -->
+    <g transform="translate(16, 14)">
+      <rect width="40" height="40" rx="10" fill="#111827"/>
+      <g transform="translate(8,8) scale(1) translate(0,0)" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-green)">
+        <circle cx="17.5" cy="5" r="2.2"/>
+        <circle cx="6" cy="18" r="3" stroke-width="2"/>
+        <circle cx="18" cy="18" r="3" stroke-width="2"/>
+        <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+        <path d="M14.5 11l2-4.5"/>
+      </g>
+      <text x="52" y="22" font-family="-apple-system" font-size="13" font-weight="600" fill="#1f2937">Albrandswaard Wegwielren</text>
+      <text x="52" y="38" font-family="-apple-system" font-size="11" fill="#64748b">62min · 32.87km · HR 125/137 · 161W</text>
+    </g>
+
+    <!-- Row 2: MTB -->
+    <g transform="translate(16, 60)">
+      <rect width="40" height="40" rx="10" fill="#111827"/>
+      <g transform="translate(8,8) scale(1)" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-emerald)">
+        <circle cx="17.5" cy="5" r="2.2"/>
+        <circle cx="6" cy="18" r="3" stroke-width="2"/>
+        <circle cx="18" cy="18" r="3" stroke-width="2"/>
+        <path d="M18 18l-3.5-7-3 3.5-2-2.5L6 18"/>
+        <path d="M14.5 11l2-4.5"/>
+        <path d="M2 14l4-4 4 2 4-5 4 1"/>
+      </g>
+      <text x="52" y="22" font-family="-apple-system" font-size="13" font-weight="600" fill="#1f2937">Bos MTB-rit</text>
+      <text x="52" y="38" font-family="-apple-system" font-size="11" fill="#64748b">45min · 14.2km · HR 142/158</text>
+    </g>
+
+    <!-- Row 3: Stadsfiets -->
+    <g transform="translate(360, 14)">
+      <rect width="40" height="40" rx="10" fill="#111827"/>
+      <g transform="translate(8,8) scale(1)" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-gray)">
+        <circle cx="6" cy="19" r="2.5" stroke-width="2"/>
+        <circle cx="18" cy="19" r="2.5" stroke-width="2"/>
+        <path d="M 6 19 Q 12 10 18 19"/>
+        <path d="M 11 14 L 11 6"/>
+        <path d="M 9 6 L 13 6"/>
+        <path d="M 17 14 L 17 7"/>
+        <path d="M 14 7 L 19 7"/>
+        <path d="M 14 4.5 L 14 7 L 18 7 L 18 4.5" stroke-width="1.6"/>
+      </g>
+      <text x="52" y="22" font-family="-apple-system" font-size="13" font-weight="600" fill="#1f2937">Stadje rondje</text>
+      <text x="52" y="38" font-family="-apple-system" font-size="11" fill="#64748b">15min · 4.2km · telt niet mee</text>
+    </g>
+
+    <!-- Row 4: Wandelen -->
+    <g transform="translate(360, 60)">
+      <rect width="40" height="40" rx="10" fill="#111827"/>
+      <g transform="translate(8,8) scale(1)" fill="none" stroke="#14b8a6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-teal)">
+        <circle cx="13" cy="4" r="2"/>
+        <path d="M13 7v5l-3 3.5L12 21"/>
+        <path d="M12 13.5l4 1.5"/>
+        <path d="M10 8l-3 2 2 3"/>
+        <path d="M8 21l1.5-4"/>
+      </g>
+      <text x="52" y="22" font-family="-apple-system" font-size="13" font-weight="600" fill="#1f2937">Avondwandeling</text>
+      <text x="52" y="38" font-family="-apple-system" font-size="11" fill="#64748b">50min · 4.1km</text>
+    </g>
+
+    <!-- Row 5: Voetballen -->
+    <g transform="translate(16, 105)">
+      <rect width="40" height="40" rx="10" fill="#111827"/>
+      <g transform="translate(8,8) scale(1)" fill="none" stroke="#eab308" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-yellow)">
+        <circle cx="12" cy="11" r="7"/>
+        <path d="M12 7.5 L 15 9.5 L 14 13 L 10 13 L 9 9.5 Z" stroke-width="1.6"/>
+        <path d="M12 7.5 L 12 4.5 M 15 9.5 L 18 8 M 14 13 L 16.5 15.5 M 10 13 L 7.5 15.5 M 9 9.5 L 6 8" stroke-width="1.4"/>
+      </g>
+      <text x="52" y="22" font-family="-apple-system" font-size="13" font-weight="600" fill="#1f2937">Voetbaltraining</text>
+      <text x="52" y="38" font-family="-apple-system" font-size="11" fill="#64748b">90min · HR 138/176</text>
+    </g>
+
+    <!-- Row 6: Hardlopen (Brooks toegewezen) -->
+    <g transform="translate(360, 105)">
+      <rect width="40" height="40" rx="10" fill="#111827"/>
+      <g transform="translate(8,8) scale(1)" fill="none" stroke="#f97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#g-orange)">
+        <path d="M2 16 C 2 13.5 4 12.5 6.5 12.5 L 13 12.5 C 17 12.5 20.5 14 21.5 16.5 L 22 18 L 2 18 Z"/>
+        <path d="M2 16 L 22 16" stroke-width="1.5" opacity="0.7"/>
+        <path d="M 7 14 L 9 13 M 10 14 L 12 13 M 13 14 L 14.5 13" stroke-width="1.4" opacity="0.85"/>
+      </g>
+      <text x="52" y="22" font-family="-apple-system" font-size="13" font-weight="600" fill="#1f2937">Tempo run</text>
+      <text x="52" y="38" font-family="-apple-system" font-size="11" fill="#64748b">35min · 7km · 5:00/km · Brooks 25</text>
+    </g>
+  </g>
+</svg>
