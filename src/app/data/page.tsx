@@ -10,6 +10,7 @@ import TrainingLoadChart from '@/components/TrainingLoadChart';
 import TrendLineChart from '@/components/TrendLineChart';
 import MaterialSection from '@/components/MaterialSection';
 import EquipmentAssignChip from '@/components/EquipmentAssignChip';
+import { filterStatsActivities } from '@/lib/equipment';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -73,15 +74,21 @@ export default function DataPage() {
     }
   }
 
+  // Activiteiten die meetellen voor statistieken (stadsfiets-rides uitgesloten)
+  const statsActivities = useMemo(() => {
+    if (!garmin) return [];
+    return filterStatsActivities(garmin.activities, equipment, assignments);
+  }, [garmin, equipment, assignments]);
+
   const trainingLoad = useMemo(() => {
     if (!garmin) return null;
-    return calculateTrainingLoad(garmin.activities, garmin.health);
-  }, [garmin]);
+    return calculateTrainingLoad(statsActivities, garmin.health);
+  }, [garmin, statsActivities]);
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getTrainingReadiness(garmin.health, true, garmin.activities);
-  }, [garmin]);
+    return getTrainingReadiness(garmin.health, true, statsActivities);
+  }, [garmin, statsActivities]);
 
   // Weekly totals
   const weekStats = useMemo(() => {
@@ -89,7 +96,7 @@ export default function DataPage() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const cutoff = sevenDaysAgo.toISOString().split('T')[0];
-    const recent = garmin.activities.filter((a) => a.date >= cutoff);
+    const recent = statsActivities.filter((a) => a.date >= cutoff);
     return {
       totalMinutes: recent.reduce((s, a) => s + a.durationMinutes, 0),
       totalKm: Math.round(recent.reduce((s, a) => s + a.distanceKm, 0) * 10) / 10,
@@ -97,25 +104,25 @@ export default function DataPage() {
       count: recent.length,
       avgHR: recent.length > 0 ? Math.round(recent.reduce((s, a) => s + a.avgHR, 0) / recent.length) : 0,
     };
-  }, [garmin]);
+  }, [garmin, statsActivities]);
 
   const dailyTRIMP = useMemo(() => {
     if (!garmin) return [];
     const restingHR = garmin.health?.restingHR || 55;
-    return getDailyTRIMPHistory(garmin.activities, restingHR, 42);
-  }, [garmin]);
+    return getDailyTRIMPHistory(statsActivities, restingHR, 42);
+  }, [garmin, statsActivities]);
 
   const weeklyTRIMP = useMemo(() => {
     if (!garmin) return [];
     const restingHR = garmin.health?.restingHR || 55;
-    return getWeeklyTRIMPTotals(garmin.activities, restingHR, 6);
-  }, [garmin]);
+    return getWeeklyTRIMPTotals(statsActivities, restingHR, 6);
+  }, [garmin, statsActivities]);
 
   const isMonday = new Date().getDay() === 1;
 
-  // Wekelijkse trenddata voor grafieken (8 weken)
+  // Wekelijkse trenddata voor grafieken (8 weken) — stadsfiets-rides uitgesloten
   const weeklyTrends = useMemo(() => {
-    if (!garmin || garmin.activities.length === 0) return null;
+    if (!garmin || statsActivities.length === 0) return null;
     const now = new Date();
 
     const hrData: { label: string; value: number }[] = [];
@@ -135,7 +142,7 @@ export default function DataPage() {
       const weekEndStr = weekEnd.toISOString().split('T')[0];
       const label = monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' });
 
-      const weekActivities = garmin.activities.filter(a => a.date >= weekStart && a.date <= weekEndStr);
+      const weekActivities = statsActivities.filter(a => a.date >= weekStart && a.date <= weekEndStr);
       const withHR = weekActivities.filter(a => a.avgHR > 0);
       const runs = weekActivities.filter(a => a.sport === 'hardlopen' && a.avgSpeed > 0);
       const bikes = weekActivities.filter(a => (a.sport === 'fietsen' || a.sport === 'mountainbike') && a.avgSpeed > 0);
@@ -150,7 +157,7 @@ export default function DataPage() {
     }
 
     return { hrData, runTempoData, bikeSpeedData, powerData };
-  }, [garmin]);
+  }, [garmin, statsActivities]);
 
   async function handleGenerateReport() {
     if (!garmin) return;
@@ -164,7 +171,7 @@ export default function DataPage() {
       const cutoff = sevenDaysAgo.toISOString().split('T')[0];
       const recentCheckIns = JSON.parse(localStorage.getItem('tricoach_checkins') || '[]')
         .filter((c: { date: string }) => c.date >= cutoff);
-      const recent = garmin.activities.filter((a) => a.date >= cutoff);
+      const recent = statsActivities.filter((a) => a.date >= cutoff);
       const totalVolumeMinutes = recent.reduce((s, a) => s + a.durationMinutes, 0);
       const totalVolumeKm = recent.reduce((s, a) => s + a.distanceKm, 0);
 

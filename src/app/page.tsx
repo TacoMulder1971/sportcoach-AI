@@ -6,7 +6,7 @@ import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments } from '@/lib/storage';
-import { buildEquipmentAttentionLine } from '@/lib/equipment';
+import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
 
@@ -39,6 +39,8 @@ export default function Dashboard() {
       const equipment = getEquipment();
       const assignments = getActivityAssignments();
       const equipmentAttention = buildEquipmentAttentionLine(equipment, garminData?.activities || [], assignments);
+      // Filter stadsfiets-rides eruit voor de coach context
+      const trainingActivities = filterStatsActivities(garminData?.activities || [], equipment, assignments);
 
       const res = await fetch('/api/daily-message', {
         method: 'POST',
@@ -48,7 +50,7 @@ export default function Dashboard() {
           yesterdayTraining: prevDayTraining,
           yesterdayCheckOut,
           garminHealth: garminData?.health || null,
-          garminActivities: garminData?.activities?.slice(0, 3) || null,
+          garminActivities: trainingActivities.slice(0, 3) || null,
           trainingLoad: load,
           readiness: ready,
           daysUntilRace: getDaysUntilRace(getActiveRaceDate()),
@@ -126,15 +128,21 @@ export default function Dashboard() {
     }
   }
 
+  // Stadsfiets-ritten uitsluiten van training-statistieken
+  const statsActivities = useMemo(() => {
+    if (!garmin) return [];
+    return filterStatsActivities(garmin.activities, getEquipment(), getActivityAssignments());
+  }, [garmin]);
+
   const trainingLoad: TrainingLoadData | null = useMemo(() => {
     if (!garmin) return null;
-    return calculateTrainingLoad(garmin.activities, garmin.health);
-  }, [garmin]);
+    return calculateTrainingLoad(statsActivities, garmin.health);
+  }, [garmin, statsActivities]);
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, garmin.activities);
-  }, [garmin, todayTraining]);
+    return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, statsActivities);
+  }, [garmin, todayTraining, statsActivities]);
 
   // Trainingsadvies: gereedheid vs. geplande training
   const trainingAdvice: TrainingAdvice | null = useMemo(() => {

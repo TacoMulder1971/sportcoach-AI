@@ -5,7 +5,7 @@ import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from './CheckInContent';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
 import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getEquipment, getActivityAssignments } from '@/lib/storage';
-import { buildEquipmentAttentionLine } from '@/lib/equipment';
+import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { getCurrentPhase } from '@/lib/periodization';
 
@@ -168,15 +168,21 @@ export default function CoachPage() {
     try {
       const recentCheckIns = getRecentCheckIns(5);
       const garminData = getGarminData();
+      const equipmentList = getEquipment();
+      const activityAssignments = getActivityAssignments();
+      // Stadsfiets-ritten worden niet als training meegenomen
+      const statsActivities = garminData
+        ? filterStatsActivities(garminData.activities, equipmentList, activityAssignments)
+        : [];
       const trainingLoad = garminData
-        ? calculateTrainingLoad(garminData.activities, garminData.health)
+        ? calculateTrainingLoad(statsActivities, garminData.health)
         : null;
 
       const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
       const restingHR = garminData?.health?.restingHR || 55;
       const weeklyTRIMP = garminData
-        ? getWeeklyTRIMPTotals(garminData.activities, restingHR, 4)
+        ? getWeeklyTRIMPTotals(statsActivities, restingHR, 4)
         : [];
 
       const allCheckIns = getCheckIns();
@@ -202,6 +208,10 @@ export default function CoachPage() {
         setMessages((prev) => { resolve(prev); return prev; });
       });
 
+      const garminForCoach = garminData
+        ? { ...garminData, activities: statsActivities }
+        : null;
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -211,7 +221,7 @@ export default function CoachPage() {
             content: m.content,
           })),
           checkIns: recentCheckIns,
-          garminData,
+          garminData: garminForCoach,
           trainingLoad,
           currentPlan,
           cycleStartDate,

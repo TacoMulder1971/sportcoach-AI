@@ -55,6 +55,34 @@ export function equipmentForActivity(
       ?? null;
 }
 
+/**
+ * Bepaalt of een activiteit moet worden uitgesloten van trainingsstatistieken.
+ * Op dit moment: stadsfiets-ritten tellen niet mee als training (woon-werkverkeer).
+ * Worden wel getoond in de Activiteiten-lijst en in km-tellers per equipment.
+ */
+export function isExcludedFromStats(
+  activity: { id: string | number; sport: string; date: string },
+  equipment: Equipment[],
+  assignments: ActivityAssignments,
+): boolean {
+  const assigned = equipmentForActivity(activity, equipment, assignments);
+  return assigned?.type === 'stadsfiets';
+}
+
+/**
+ * Filter activiteiten voor training-statistieken (TRIMP, weekvolume, trends).
+ * Sluit stadsfiets-ritten uit; alles anders blijft.
+ */
+export function filterStatsActivities<T extends { id: string | number; sport: string; date: string }>(
+  activities: T[],
+  equipment: Equipment[],
+  assignments: ActivityAssignments,
+): T[] {
+  if (!activities.length) return activities;
+  if (equipment.length === 0) return activities; // niets om op te filteren
+  return activities.filter(a => !isExcludedFromStats(a, equipment, assignments));
+}
+
 /** Som van Garmin-km die aan dit equipment zijn toegewezen + startKm. */
 export function calculateEquipmentKm(
   eq: Equipment,

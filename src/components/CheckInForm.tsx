@@ -5,7 +5,7 @@ import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity
 import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
-import { buildEquipmentAttentionLine } from '@/lib/equipment';
+import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 
 const TYPE_ICON: Record<EquipmentType, string> = {
   racefiets: '🚴',
@@ -134,8 +134,12 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       applyEquipmentChoices(todayActivities);
 
       const recentCheckIns = getRecentCheckIns(5);
+      // Stadsfiets-ritten worden niet meegerekend als training-belasting
+      const statsActivities = garminData
+        ? filterStatsActivities(garminData.activities, getEquipment(), getActivityAssignments())
+        : [];
       const trainingLoad = garminData
-        ? calculateTrainingLoad(garminData.activities, garminData.health)
+        ? calculateTrainingLoad(statsActivities, garminData.health)
         : null;
       const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
@@ -199,8 +203,12 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
     try {
       const garminData = getGarminData();
       const recentCheckIns = getRecentCheckIns(5);
+      // Stadsfiets-ritten worden niet meegerekend als training-belasting
+      const statsActivities = garminData
+        ? filterStatsActivities(garminData.activities, getEquipment(), getActivityAssignments())
+        : [];
       const trainingLoad = garminData
-        ? calculateTrainingLoad(garminData.activities, garminData.health)
+        ? calculateTrainingLoad(statsActivities, garminData.health)
         : null;
       const { plan: currentPlan, cycleStartDate } = getActivePlan();
 
