@@ -25,9 +25,13 @@ export function inSameSportGroup(a: string, b: string): boolean {
 }
 
 /**
- * Welke equipment-items kan de atleet aan deze activiteit koppelen?
+ * Welke equipment-items kan de atleet HANDMATIG aan deze activiteit koppelen?
  * Voor fiets-activiteiten: alle actieve fietsen (race/MTB/stad), ook al staat de
  * activiteit als 'fietsen' en de fiets als 'mountainbike' (of andersom).
+ *
+ * Bewust GEEN datum-filter: je wilt ook oudere ritten (van vóór de aanschafdatum)
+ * kunnen taggen. De aanschafdatum-grens geldt alleen voor automatische toewijzing
+ * (zie equipmentForActivity).
  */
 export function assignableEquipment(
   activity: { sport: string; date: string },
@@ -36,9 +40,7 @@ export function assignableEquipment(
   const group = SPORT_GROUPS[activity.sport] ?? [activity.sport];
   return equipment.filter(e =>
     e.status === 'active' &&
-    group.includes(e.sport) &&
-    e.acquiredAt <= activity.date &&
-    (!e.retiredAt || activity.date <= e.retiredAt)
+    group.includes(e.sport)
   );
 }
 
