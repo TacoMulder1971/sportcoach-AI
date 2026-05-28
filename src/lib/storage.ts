@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -22,6 +22,8 @@ const KEYS = {
   EQUIPMENT: 'tricoach_equipment',
   ACTIVITY_ASSIGNMENTS: 'tricoach_activity_assignments',
   EQUIPMENT_MIGRATED_V1: 'tricoach_equipment_migrated_v1',
+  SWIM_VARIANTS: 'tricoach_swim_variants',
+  LAST_SWIM_VARIANT: 'tricoach_last_swim_variant',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -797,4 +799,31 @@ export function clearActivityAssignment(activityId: string | number): void {
   const map = getActivityAssignments();
   delete map[String(activityId)];
   setItem(KEYS.ACTIVITY_ASSIGNMENTS, map);
+}
+
+// ─── Zwem-varianten (binnen/buiten/openwater per activiteit) ─────
+
+export function getSwimVariants(): ActivitySwimVariants {
+  return getItem<ActivitySwimVariants>(KEYS.SWIM_VARIANTS, {});
+}
+
+export function setActivitySwimVariant(activityId: string | number, variant: SwimVariant): void {
+  const map = getSwimVariants();
+  map[String(activityId)] = variant;
+  setItem(KEYS.SWIM_VARIANTS, map);
+}
+
+export function clearActivitySwimVariant(activityId: string | number): void {
+  const map = getSwimVariants();
+  delete map[String(activityId)];
+  setItem(KEYS.SWIM_VARIANTS, map);
+}
+
+/** Laatst gekozen zwem-variant — wordt de default bij de volgende check-out. */
+export function getLastSwimVariant(): SwimVariant {
+  return getItem<SwimVariant>(KEYS.LAST_SWIM_VARIANT, 'zwembad_binnen');
+}
+
+export function setLastSwimVariant(variant: SwimVariant): void {
+  setItem(KEYS.LAST_SWIM_VARIANT, variant);
 }

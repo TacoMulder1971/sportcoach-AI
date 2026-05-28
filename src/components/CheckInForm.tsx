@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment } from '@/lib/storage';
+import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport, SwimVariant, SWIM_VARIANT_LABEL } from '@/lib/types';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
+
+const SWIM_VARIANTS: SwimVariant[] = ['zwembad_binnen', 'zwembad_buiten', 'openwater'];
 
 const TYPE_ICON: Record<EquipmentType, string> = {
   racefiets: '🚴',
@@ -81,6 +83,27 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
     }
   };
 
+  // ── Zwem-variant keuze ──────────────────────────────────────────
+  const hasSwimSession = useMemo(
+    () => sessions.some(s => s.sport === 'zwemmen'),
+    [sessions]
+  );
+  // Default = laatst gekozen variant (gevraagd: "laatste keuze als default")
+  const [swimChoice, setSwimChoice] = useState<SwimVariant>('zwembad_binnen');
+  useEffect(() => {
+    if (hasSwimSession) setSwimChoice(getLastSwimVariant());
+  }, [hasSwimSession]);
+
+  /** Past de gekozen zwem-variant toe op alle zwem-activiteiten van vandaag. */
+  const applySwimChoice = (activities: GarminActivity[]) => {
+    if (!hasSwimSession) return;
+    let appliedAny = false;
+    for (const a of activities) {
+      if (a.sport === 'zwemmen') { setActivitySwimVariant(a.id, swimChoice); appliedAny = true; }
+    }
+    if (appliedAny) setLastSwimVariant(swimChoice);
+  };
+
   useEffect(() => {
     // Scroll alleen naar beneden als de coach antwoordt of aan het typen is,
     // niet direct na het versturen van een eigen bericht (anders schiet het beeld
@@ -130,8 +153,9 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       const freshTodayActivities = garminData?.activities?.filter(a => a.date === today) || [];
       const todayActivities = freshTodayActivities.length > 0 ? freshTodayActivities : garminActivities;
 
-      // Pas de gekozen equipment toe op de verse activiteiten van vandaag
+      // Pas de gekozen equipment + zwem-variant toe op de verse activiteiten van vandaag
       applyEquipmentChoices(todayActivities);
+      applySwimChoice(todayActivities);
 
       const recentCheckIns = getRecentCheckIns(5);
       // Stadsfiets-ritten worden niet meegerekend als training-belasting
@@ -270,8 +294,9 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
     };
 
     saveCheckIn(checkIn);
-    // Pas equipment-keuzes direct toe op de huidige (gecachte) activiteiten van vandaag
+    // Pas equipment- + zwem-keuzes direct toe op de huidige (gecachte) activiteiten van vandaag
     applyEquipmentChoices(garminActivities);
+    applySwimChoice(garminActivities);
     setCheckInId(id);
     setSubmitted(true);
     fetchFeedback(checkIn);
@@ -417,6 +442,26 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           </div>
         );
       })}
+
+      {/* Zwem-variant keuze (default = laatste keuze) */}
+      {hasSwimSession && (
+        <div>
+          <label className="text-sm font-medium text-gray-700 mb-2 block">
+            Waar gezwommen?
+          </label>
+          <select
+            value={swimChoice}
+            onChange={(e) => setSwimChoice(e.target.value as SwimVariant)}
+            className="w-full border border-gray-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            {SWIM_VARIANTS.map(v => (
+              <option key={v} value={v}>
+                🌊 {SWIM_VARIANT_LABEL[v]}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="text-sm font-medium text-gray-700 mb-2 block">

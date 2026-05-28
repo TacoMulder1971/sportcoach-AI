@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
-import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments } from '@/lib/types';
+import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -11,7 +11,10 @@ import TrendLineChart from '@/components/TrendLineChart';
 import MaterialSection from '@/components/MaterialSection';
 import EquipmentAssignChip from '@/components/EquipmentAssignChip';
 import EquipmentIcon from '@/components/EquipmentIcon';
+import SwimVariantIcon from '@/components/SwimVariantIcon';
+import SwimVariantChip from '@/components/SwimVariantChip';
 import { filterStatsActivities, equipmentForActivity } from '@/lib/equipment';
+import { swimVariantForActivity } from '@/lib/swim';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -24,6 +27,7 @@ export default function DataPage() {
   const [pulling, setPulling] = useState(false);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [assignments, setAssignments] = useState<ActivityAssignments>({});
+  const [swimVariants, setSwimVariants] = useState<ActivitySwimVariants>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const touchStartY = useRef(0);
   const PULL_THRESHOLD = 65;
@@ -31,6 +35,7 @@ export default function DataPage() {
   const refreshEquipment = useCallback(() => {
     setEquipment(getEquipment());
     setAssignments(getActivityAssignments());
+    setSwimVariants(getSwimVariants());
   }, []);
 
   useEffect(() => {
@@ -698,6 +703,8 @@ export default function DataPage() {
                 <div className="flex items-center gap-3">
                   {assignedEq ? (
                     <EquipmentIcon type={assignedEq.type} size="md" />
+                  ) : a.sport === 'zwemmen' ? (
+                    <SwimVariantIcon variant={swimVariantForActivity(a, swimVariants)} size="md" />
                   ) : (
                     <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="md" />
                   )}
@@ -719,6 +726,13 @@ export default function DataPage() {
                         activity={a}
                         equipment={equipment}
                         assignments={assignments}
+                        onChange={refreshEquipment}
+                      />
+                    )}
+                    {a.sport === 'zwemmen' && (
+                      <SwimVariantChip
+                        activity={a}
+                        variants={swimVariants}
                         onChange={refreshEquipment}
                       />
                     )}

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GarminConnect } from 'garmin-connect';
-import { GarminActivity, GarminHealthStats, GarminSyncData, Sport } from '@/lib/types';
+import { GarminActivity, GarminHealthStats, GarminSyncData, Sport, SwimVariant } from '@/lib/types';
 
 function mapGarminSport(typeKey: string): Sport | 'overig' {
   const map: Record<string, Sport> = {
@@ -26,6 +26,14 @@ function mapGarminSport(typeKey: string): Sport | 'overig' {
     football: 'voetballen',
   };
   return map[typeKey] || 'overig';
+}
+
+// Garmin onderscheidt binnen-/baanzwemmen van openwater; buitenbad geeft Garmin
+// niet apart door, dus dat tagt de atleet zelf via de check-out/chip.
+function mapSwimVariant(typeKey: string): SwimVariant | undefined {
+  if (typeKey === 'open_water_swimming') return 'openwater';
+  if (typeKey === 'lap_swimming' || typeKey === 'pool_swimming' || typeKey === 'swimming') return 'zwembad_binnen';
+  return undefined;
 }
 
 export async function POST(request: Request) {
@@ -55,7 +63,8 @@ export async function POST(request: Request) {
     // Fetch activities (last 30)
     const rawActivities = await GC.getActivities(0, 30);
     const activities: GarminActivity[] = rawActivities.map((a) => {
-      const sport = mapGarminSport(a.activityType?.typeKey || '');
+      const typeKey = a.activityType?.typeKey || '';
+      const sport = mapGarminSport(typeKey);
       const durationMinutes = Math.round((a.duration || 0) / 60);
       const distanceKm = Math.round(((a.distance || 0) / 1000) * 100) / 100;
       const avgSpeedKmh = Math.round(((a.averageSpeed || 0) * 3.6) * 10) / 10;
@@ -101,6 +110,7 @@ export async function POST(request: Request) {
         avgPower: Math.round((a as unknown as Record<string, unknown>).avgPower as number || 0) || undefined,
         normalizedPower: Math.round((a as unknown as Record<string, unknown>).normPower as number || 0) || undefined,
         trainingStressScore: Math.round(((a as unknown as Record<string, unknown>).trainingStressScore as number || 0) * 10) / 10 || undefined,
+        swimVariant: sport === 'zwemmen' ? mapSwimVariant(typeKey) : undefined,
       };
     });
 

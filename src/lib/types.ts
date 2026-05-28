@@ -1,5 +1,17 @@
 export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'wandelen' | 'voetballen' | 'rust';
 
+// Zwem-locatie varianten — onderscheiden binnen-/buitenbad en openwater per activiteit
+export type SwimVariant = 'zwembad_binnen' | 'zwembad_buiten' | 'openwater';
+
+// Per-activiteit override van de zwem-variant (apart van GarminActivity opgeslagen)
+export type ActivitySwimVariants = Record<string, SwimVariant>; // activityId -> variant
+
+export const SWIM_VARIANT_LABEL: Record<SwimVariant, string> = {
+  zwembad_binnen: 'Zwembad (binnen)',
+  zwembad_buiten: 'Zwembad (buiten)',
+  openwater: 'Openwater',
+};
+
 export type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5';
 
 export interface HeartRateZoneInfo {
@@ -133,6 +145,7 @@ export interface GarminActivity {
   normalizedPower?: number;    // gecorrigeerd vermogen in watt
   trainingStressScore?: number; // TSS per activiteit
   splits?: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number }[]; // rondes/blokken
+  swimVariant?: SwimVariant;   // door Garmin afgeleide zwem-locatie (binnen/openwater); user-override apart opgeslagen
 }
 
 export interface GarminHealthStats {
