@@ -5,6 +5,43 @@
 
 import { Equipment, GarminActivity, MaintenanceItem, ActivityAssignments } from './types';
 
+// Sport-groepen: alle fietsen (race/MTB/stad) zijn onderling uitwisselbaar voor
+// een fiets-activiteit, ongeacht of Garmin 'm als fietsen of mountainbike labelt.
+const SPORT_GROUPS: Record<string, string[]> = {
+  fietsen: ['fietsen', 'mountainbike'],
+  mountainbike: ['fietsen', 'mountainbike'],
+  hardlopen: ['hardlopen'],
+  zwemmen: ['zwemmen'],
+};
+
+/** De sport-groep waartoe een sport behoort (fietsen + mountainbike = één groep). */
+export function sportGroup(sport: string): string[] {
+  return SPORT_GROUPS[sport] ?? [sport];
+}
+
+/** Zitten twee sporten in dezelfde uitwisselbare groep? */
+export function inSameSportGroup(a: string, b: string): boolean {
+  return sportGroup(a).includes(b);
+}
+
+/**
+ * Welke equipment-items kan de atleet aan deze activiteit koppelen?
+ * Voor fiets-activiteiten: alle actieve fietsen (race/MTB/stad), ook al staat de
+ * activiteit als 'fietsen' en de fiets als 'mountainbike' (of andersom).
+ */
+export function assignableEquipment(
+  activity: { sport: string; date: string },
+  equipment: Equipment[],
+): Equipment[] {
+  const group = SPORT_GROUPS[activity.sport] ?? [activity.sport];
+  return equipment.filter(e =>
+    e.status === 'active' &&
+    group.includes(e.sport) &&
+    e.acquiredAt <= activity.date &&
+    (!e.retiredAt || activity.date <= e.retiredAt)
+  );
+}
+
 export type WearStatus = 'ok' | 'warning' | 'overdue' | 'na';
 export type MaintenanceState = {
   status: 'ok' | 'warning' | 'overdue';

@@ -5,7 +5,7 @@ import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity
 import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
-import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
+import { buildEquipmentAttentionLine, filterStatsActivities, assignableEquipment, inSameSportGroup } from '@/lib/equipment';
 
 const SWIM_VARIANTS: SwimVariant[] = ['zwembad_binnen', 'zwembad_buiten', 'openwater'];
 
@@ -55,30 +55,37 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
   const equipmentBySport = useMemo<Record<string, Equipment[]>>(() => {
     if (typeof window === 'undefined') return {};
     const active = getActiveEquipment();
+    const today = new Date().toISOString().split('T')[0];
     const map: Record<string, Equipment[]> = {};
     for (const sport of sportsInCheckOut) {
-      map[sport] = active.filter(e => e.sport === sport);
+      // Alle uitwisselbare equipment (fietsen onderling: race/MTB/stad)
+      map[sport] = assignableEquipment({ sport, date: today }, active);
     }
     return map;
   }, [sportsInCheckOut]);
 
-  // Initial keuze = default-equipment per sport
+  // Initial keuze = default-equipment van de exacte sport, anders eerste default, anders eerste
   const [equipmentChoices, setEquipmentChoices] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const initial: Record<string, string> = {};
     for (const sport of sportsInCheckOut) {
       const list = equipmentBySport[sport] || [];
-      const def = list.find(e => e.isDefault) || list[0];
+      const def = list.find(e => e.isDefault && e.sport === sport) || list.find(e => e.isDefault) || list[0];
       if (def) initial[sport] = def.id;
     }
     setEquipmentChoices(initial);
   }, [sportsInCheckOut, equipmentBySport]);
 
-  /** Past de gekozen equipment toe op alle activiteiten van vandaag in die sport. */
+  /** Past de gekozen equipment toe op activiteiten van vandaag (matcht binnen sportgroep). */
   const applyEquipmentChoices = (activities: GarminActivity[]) => {
     for (const a of activities) {
-      const chosen = equipmentChoices[a.sport];
+      // Directe match op activiteit-sport, anders een keuze uit dezelfde sportgroep
+      // (bv. geplande 'fietsen' keuze toepassen op een Garmin 'mountainbike' rit)
+      const choiceSport = Object.keys(equipmentChoices).find(
+        sp => sp === a.sport || inSameSportGroup(sp, a.sport)
+      );
+      const chosen = choiceSport ? equipmentChoices[choiceSport] : undefined;
       if (chosen) assignActivityToEquipment(a.id, chosen);
     }
   };

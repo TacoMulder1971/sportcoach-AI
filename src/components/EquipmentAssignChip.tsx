@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Equipment, EquipmentType, GarminActivity, ActivityAssignments } from '@/lib/types';
 import { assignActivityToEquipment, clearActivityAssignment } from '@/lib/storage';
-import { equipmentForActivity } from '@/lib/equipment';
+import { equipmentForActivity, assignableEquipment } from '@/lib/equipment';
 import EquipmentIcon from '@/components/EquipmentIcon';
 
 const TYPE_ICON: Record<EquipmentType, string> = {
@@ -32,13 +32,8 @@ export default function EquipmentAssignChip({ activity, equipment, assignments, 
   const assigned = equipmentForActivity(activity, equipment, assignments);
   const hasOverride = !!assignments[activity.id];
 
-  // Alleen actieve equipment van dezelfde sport tonen als opties
-  const candidates = equipment.filter(e =>
-    e.sport === activity.sport &&
-    e.status === 'active' &&
-    e.acquiredAt <= activity.date &&
-    (!e.retiredAt || activity.date <= e.retiredAt)
-  );
+  // Alle uitwisselbare equipment (fietsen onderling: race/MTB/stad) tonen als opties
+  const candidates = assignableEquipment(activity, equipment);
 
   // Geen equipment voor deze sport beschikbaar → geen chip tonen
   if (candidates.length === 0 && !assigned) return null;
@@ -71,7 +66,7 @@ export default function EquipmentAssignChip({ activity, equipment, assignments, 
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-4 py-3 border-b border-gray-100">
-              <p className="text-sm font-semibold text-gray-900">Welke {activity.sport === 'fietsen' ? 'fiets' : activity.sport === 'hardlopen' ? 'schoenen' : 'materiaal'}?</p>
+              <p className="text-sm font-semibold text-gray-900">Welke {activity.sport === 'fietsen' || activity.sport === 'mountainbike' ? 'fiets' : activity.sport === 'hardlopen' ? 'schoenen' : 'materiaal'}?</p>
               <p className="text-xs text-gray-500 truncate">{activity.activityName} · {activity.date}</p>
             </div>
 
