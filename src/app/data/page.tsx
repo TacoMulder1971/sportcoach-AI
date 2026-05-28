@@ -133,8 +133,22 @@ export default function DataPage() {
 
     const hrData: { label: string; value: number }[] = [];
     const runTempoData: { label: string; value: number }[] = [];
-    const bikeSpeedData: { label: string; value: number }[] = [];
+    const raceSpeedData: { label: string; value: number }[] = [];
+    const mtbSpeedData: { label: string; value: number }[] = [];
     const powerData: { label: string; value: number }[] = [];
+    const swimPaceData: { label: string; value: number }[] = [];
+
+    // Bepaal of een fiets-rit op de racefiets of de MTB hoort (op basis van toewijzing,
+    // anders op basis van de Garmin-sport).
+    const bikeKind = (a: typeof statsActivities[number]): 'race' | 'mtb' | null => {
+      const eq = equipmentForActivity(a, equipment, assignments);
+      if (eq?.type === 'racefiets') return 'race';
+      if (eq?.type === 'mountainbike') return 'mtb';
+      if (eq?.type === 'stadsfiets') return null; // veiligheidsnet (zou al gefilterd zijn)
+      if (a.sport === 'fietsen') return 'race';
+      if (a.sport === 'mountainbike') return 'mtb';
+      return null;
+    };
 
     for (let i = 7; i >= 0; i--) {
       const d = new Date(now);
@@ -151,18 +165,26 @@ export default function DataPage() {
       const weekActivities = statsActivities.filter(a => a.date >= weekStart && a.date <= weekEndStr);
       const withHR = weekActivities.filter(a => a.avgHR > 0);
       const runs = weekActivities.filter(a => a.sport === 'hardlopen' && a.avgSpeed > 0);
-      const bikes = weekActivities.filter(a => (a.sport === 'fietsen' || a.sport === 'mountainbike') && a.avgSpeed > 0);
+      const raceBikes = weekActivities.filter(a => a.avgSpeed > 0 && bikeKind(a) === 'race');
+      const mtbBikes = weekActivities.filter(a => a.avgSpeed > 0 && bikeKind(a) === 'mtb');
       const withPower = weekActivities.filter(a => (a.avgPower || 0) > 0);
+      const swims = weekActivities.filter(a => a.sport === 'zwemmen' && a.distanceKm > 0 && a.durationMinutes > 0);
 
       hrData.push({ label, value: withHR.length > 0 ? Math.round(withHR.reduce((s, a) => s + a.avgHR, 0) / withHR.length) : 0 });
       // Tempo in sec/km voor hardlopen (lagere = sneller)
       const avgRunPace = runs.length > 0 ? runs.reduce((s, a) => s + (1 / a.avgSpeed) * 60, 0) / runs.length : 0;
       runTempoData.push({ label, value: Math.round(avgRunPace * 10) / 10 });
-      bikeSpeedData.push({ label, value: bikes.length > 0 ? Math.round(bikes.reduce((s, a) => s + a.avgSpeed, 0) / bikes.length * 10) / 10 : 0 });
+      raceSpeedData.push({ label, value: raceBikes.length > 0 ? Math.round(raceBikes.reduce((s, a) => s + a.avgSpeed, 0) / raceBikes.length * 10) / 10 : 0 });
+      mtbSpeedData.push({ label, value: mtbBikes.length > 0 ? Math.round(mtbBikes.reduce((s, a) => s + a.avgSpeed, 0) / mtbBikes.length * 10) / 10 : 0 });
       powerData.push({ label, value: withPower.length > 0 ? Math.round(withPower.reduce((s, a) => s + (a.avgPower || 0), 0) / withPower.length) : 0 });
+      // Zwemtempo in sec/100m (lagere = sneller)
+      const avgSwimPace = swims.length > 0
+        ? swims.reduce((s, a) => s + (a.durationMinutes * 60) / (a.distanceKm * 10), 0) / swims.length
+        : 0;
+      swimPaceData.push({ label, value: Math.round(avgSwimPace) });
     }
 
-    return { hrData, runTempoData, bikeSpeedData, powerData };
+    return { hrData, runTempoData, raceSpeedData, mtbSpeedData, powerData, swimPaceData };
   }, [garmin, statsActivities]);
 
   async function handleGenerateReport() {
@@ -679,11 +701,13 @@ export default function DataPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Trends (8 weken)</h2>
           <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-5">
             <TrendLineChart data={weeklyTrends.hrData} color="#ef4444" unit="bpm" title="Gemiddelde hartslag per week" />
-            <TrendLineChart data={weeklyTrends.runTempoData} color="#22c55e" unit="min/km" title="Hardlooptempo per week (min/km)" invertY={true} />
-            <TrendLineChart data={weeklyTrends.bikeSpeedData} color="#3b82f6" unit="km/h" title="Fietssnelheid per week" />
+            <TrendLineChart data={weeklyTrends.runTempoData} color="#f97316" unit="min/km" title="Hardlooptempo per week (min/km)" invertY={true} />
+            <TrendLineChart data={weeklyTrends.raceSpeedData} color="#22c55e" unit="km/h" title="Snelheid racefiets per week" />
+            <TrendLineChart data={weeklyTrends.mtbSpeedData} color="#10b981" unit="km/h" title="Snelheid mountainbike per week" />
             {weeklyTrends.powerData.some(d => d.value > 0) && (
               <TrendLineChart data={weeklyTrends.powerData} color="#f59e0b" unit="W" title="Gemiddeld vermogen fietsen per week" />
             )}
+            <TrendLineChart data={weeklyTrends.swimPaceData} color="#3b82f6" unit="s/100m" title="Zwemtempo per week (sec/100m)" invertY={true} />
           </div>
         </section>
       )}
