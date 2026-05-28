@@ -63,7 +63,7 @@ export default function EquipmentAssignChip({ activity, equipment, assignments, 
 
       {open && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
           onClick={() => setOpen(false)}
         >
           <div
@@ -112,7 +112,7 @@ export default function EquipmentAssignChip({ activity, equipment, assignments, 
               )}
             </div>
 
-            <div className="px-4 py-3 border-t border-gray-100">
+            <div className="px-4 py-3 border-t border-gray-100" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
               <button
                 onClick={() => setOpen(false)}
                 className="w-full py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700"

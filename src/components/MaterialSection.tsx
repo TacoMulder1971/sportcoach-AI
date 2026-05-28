@@ -358,7 +358,7 @@ function EquipmentFormModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900">{mode === 'new' ? 'Nieuw materiaal' : 'Bewerk materiaal'}</h3>
@@ -557,7 +557,7 @@ function EquipmentFormModal({
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2">
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <button
             onClick={onClose}
             className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700"
