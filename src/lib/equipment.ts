@@ -67,10 +67,14 @@ function daysBetween(a: string, b: string): number {
  * Bepaal welk Equipment van toepassing was op een activiteit.
  * Volgorde:
  *  1. Expliciete override (assignments[activity.id])
- *  2. Default (isDefault=true) voor (sport, datum-window)
- *  3. Eerste actieve match voor (sport, datum-window)
+ *  2. Default (isDefault=true) voor de sport
+ *  3. Eerste actieve match voor de sport
  *  4. Eerste match überhaupt
  *  5. null
+ *
+ * Let op: de default-fiets claimt ook ritten van vóór de aanschafdatum, zodat
+ * je bestaande historie automatisch op de default komt. Een rustdag-/verkeerde
+ * toewijzing corrigeer je per rit met de chip (override heeft voorrang).
  */
 export function equipmentForActivity(
   activity: { id: string | number; sport: string; date: string },
@@ -85,7 +89,6 @@ export function equipmentForActivity(
   }
   const candidates = equipment.filter(e =>
     e.sport === activity.sport &&
-    e.acquiredAt <= activity.date &&
     (!e.retiredAt || activity.date <= e.retiredAt)
   );
   return candidates.find(e => e.isDefault && e.status === 'active')
