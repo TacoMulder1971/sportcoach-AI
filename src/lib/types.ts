@@ -229,6 +229,18 @@ export interface StoredPlan {
   status: 'active' | 'archived';
 }
 
+// Weersomstandigheden op een racedag (via Open-Meteo, gecached per goal)
+export interface RaceWeather {
+  date: string;
+  tempMaxC: number;
+  tempMinC: number;
+  precipitationMm: number;
+  windMaxKmh: number;
+  weatherCode: number;        // WMO weather interpretation code
+  description: string;        // NL omschrijving ("Lichte regen", "Zonnig", ...)
+  source: 'archief' | 'verwachting';
+}
+
 export interface NutritionLog {
   date: string;          // "2026-03-25"
   calories: number;

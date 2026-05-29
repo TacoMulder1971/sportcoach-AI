@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -24,6 +24,9 @@ const KEYS = {
   EQUIPMENT_MIGRATED_V1: 'tricoach_equipment_migrated_v1',
   SWIM_VARIANTS: 'tricoach_swim_variants',
   LAST_SWIM_VARIANT: 'tricoach_last_swim_variant',
+  ACTIVITY_ARCHIVE: 'tricoach_activity_archive',
+  HEALTH_ARCHIVE: 'tricoach_health_archive',
+  RACE_WEATHER: 'tricoach_race_weather',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -148,6 +151,70 @@ export function getGarminData(): GarminSyncData | null {
 
 export function saveGarminData(data: GarminSyncData): void {
   setItem(KEYS.GARMIN_DATA, data);
+}
+
+// ─── Activiteiten-archief ────────────────────────────────────────
+// Garmin sync overschrijft GARMIN_DATA met de laatste 30 activiteiten. Voor
+// historische trends (bv. de weken vóór een wedstrijd) bouwen we een groeiend
+// archief op dat bij elke sync wordt samengevoegd (dedup op id).
+
+export function getActivityArchive(): GarminActivity[] {
+  return getItem<GarminActivity[]>(KEYS.ACTIVITY_ARCHIVE, []);
+}
+
+/** Welke versie van twee activiteiten met hetzelfde id is "rijker" (meer detail)? */
+function richerActivity(a: GarminActivity, b: GarminActivity): GarminActivity {
+  const scoreOf = (x: GarminActivity) =>
+    (x.hrZones?.length ? 2 : 0) + (x.splits?.length ? 2 : 0) + (x.avgHR > 0 ? 1 : 0);
+  return scoreOf(b) > scoreOf(a) ? b : a;
+}
+
+export function mergeActivitiesIntoArchive(activities: GarminActivity[]): void {
+  if (!activities || activities.length === 0) return;
+  const existing = getActivityArchive();
+  const byId = new Map<number, GarminActivity>(existing.map(a => [a.id, a]));
+  for (const a of activities) {
+    const prev = byId.get(a.id);
+    byId.set(a.id, prev ? richerActivity(prev, a) : a);
+  }
+  const merged = Array.from(byId.values()).sort((x, y) => y.date.localeCompare(x.date));
+  setItem(KEYS.ACTIVITY_ARCHIVE, merged);
+}
+
+/** Activiteiten uit het archief binnen [start, end] (ISO-datums, inclusief). */
+export function getArchivedActivitiesInRange(start: string, end: string): GarminActivity[] {
+  return getActivityArchive().filter(a => a.date >= start && a.date <= end);
+}
+
+// ─── Gezondheids-archief (HRV / Body Battery / slaap per dag) ─────
+export function getHealthArchive(): GarminHealthStats[] {
+  return getItem<GarminHealthStats[]>(KEYS.HEALTH_ARCHIVE, []);
+}
+
+export function mergeHealthIntoArchive(health: GarminHealthStats | null): void {
+  if (!health || !health.date) return;
+  const existing = getHealthArchive();
+  const idx = existing.findIndex(h => h.date === health.date);
+  if (idx >= 0) existing[idx] = health;
+  else existing.push(health);
+  existing.sort((a, b) => b.date.localeCompare(a.date));
+  setItem(KEYS.HEALTH_ARCHIVE, existing);
+}
+
+export function getArchivedHealthInRange(start: string, end: string): GarminHealthStats[] {
+  return getHealthArchive().filter(h => h.date >= start && h.date <= end);
+}
+
+// ─── Weer-cache per wedstrijd ────────────────────────────────────
+export function getRaceWeather(goalId: string): RaceWeather | null {
+  const map = getItem<Record<string, RaceWeather>>(KEYS.RACE_WEATHER, {});
+  return map[goalId] ?? null;
+}
+
+export function saveRaceWeather(goalId: string, weather: RaceWeather): void {
+  const map = getItem<Record<string, RaceWeather>>(KEYS.RACE_WEATHER, {});
+  map[goalId] = weather;
+  setItem(KEYS.RACE_WEATHER, map);
 }
 
 // Training plans
