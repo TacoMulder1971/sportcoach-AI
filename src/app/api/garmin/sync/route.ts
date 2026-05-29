@@ -121,9 +121,12 @@ export async function POST(request: Request) {
       };
     });
 
-    // Fetch HR zone details + splits voor nieuwe activiteiten (max 5, parallel)
+    // Fetch HR zone details + splits voor nieuwe activiteiten (max 5, parallel).
+    // Multisport-activiteiten krijgen áltijd hun splits (ook al zijn ze al bekend),
+    // omdat de per-discipline opdeling juist daar het belangrijkst is.
     const newActivities = activities.filter(a => !existingActivityIds.includes(a.id));
-    const toFetchDetails = newActivities.slice(0, 5);
+    const multisportActivities = activities.filter(a => a.isMultisport && existingActivityIds.includes(a.id));
+    const toFetchDetails = [...newActivities.slice(0, 5), ...multisportActivities];
 
     const gcGet = (GC as unknown as { get: <T = unknown>(url: string) => Promise<T> }).get.bind(GC);
     const API_BASE = 'https://connectapi.garmin.com';
