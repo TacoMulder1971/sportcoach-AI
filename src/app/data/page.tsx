@@ -770,22 +770,62 @@ export default function DataPage() {
                     )}
                   </div>
                 </div>
-                {/* Splits/blokken voor intervaltraining */}
+                {/* Splits: multisport per discipline, anders generieke laps */}
                 {a.splits && a.splits.length > 1 && (
                   <div className="mt-2 ml-10 space-y-0.5">
-                    {a.splits.map((s, i) => {
-                      const mins = Math.floor(s.durationSeconds / 60);
-                      const secs = s.durationSeconds % 60;
-                      return (
-                        <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
-                          <span className="w-4 text-gray-400 text-right">{i + 1}.</span>
-                          {s.distance > 0 && <span>{s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance}km`}</span>}
-                          <span>{mins}:{secs.toString().padStart(2, '0')}</span>
-                          {s.avgHR > 0 && <span className="text-red-400">HR {s.avgHR}</span>}
-                          {(s.avgPower || 0) > 0 && <span className="text-amber-500">{s.avgPower}W</span>}
-                        </div>
-                      );
-                    })}
+                    {a.isMultisport ? (
+                      // Multisport: groepeer laps per discipline (filter transitie-blokjes)
+                      (() => {
+                        const SPORT_EMOJI: Record<string, string> = { zwemmen: '🏊', fietsen: '🚴', hardlopen: '🏃', transitie: '↔️' };
+                        const SPORT_COLOR: Record<string, string> = { zwemmen: 'text-blue-500', fietsen: 'text-green-500', hardlopen: 'text-orange-500', transitie: 'text-gray-400' };
+                        // Groepeer aaneengesloten splits per sport
+                        const groups: { sport: string; splits: typeof a.splits }[] = [];
+                        for (const s of a.splits!) {
+                          const sp = s.sport || 'onbekend';
+                          const last = groups[groups.length - 1];
+                          if (last && last.sport === sp) {
+                            last.splits!.push(s);
+                          } else {
+                            groups.push({ sport: sp, splits: [s] });
+                          }
+                        }
+                        return groups.map((g, gi) => {
+                          const totalSecs = g.splits!.reduce((sum, s) => sum + s.durationSeconds, 0);
+                          const totalKm = g.splits!.reduce((sum, s) => sum + s.distance, 0);
+                          const avgHR = g.splits!.filter(s => s.avgHR > 0).length > 0
+                            ? Math.round(g.splits!.reduce((sum, s) => sum + s.avgHR, 0) / g.splits!.filter(s => s.avgHR > 0).length)
+                            : 0;
+                          const mins = Math.floor(totalSecs / 60);
+                          const secs = totalSecs % 60;
+                          const emoji = SPORT_EMOJI[g.sport] || '•';
+                          const col = SPORT_COLOR[g.sport] || 'text-gray-500';
+                          return (
+                            <div key={gi} className="flex items-center gap-2 text-xs">
+                              <span className="w-5 text-center">{emoji}</span>
+                              <span className={`font-medium ${col}`}>{g.sport === 'transitie' ? 'T' + gi : g.sport.charAt(0).toUpperCase() + g.sport.slice(1)}</span>
+                              {totalKm > 0 && <span className="text-gray-500">{totalKm < 1 ? `${Math.round(totalKm * 1000)}m` : `${totalKm.toFixed(2)}km`}</span>}
+                              <span className="text-gray-600">{mins}:{secs.toString().padStart(2, '0')}</span>
+                              {avgHR > 0 && <span className="text-red-400">HR {avgHR}</span>}
+                            </div>
+                          );
+                        });
+                      })()
+                    ) : (
+                      // Gewone laps (interval, ronden)
+                      a.splits!.map((s, i) => {
+                        const mins = Math.floor(s.durationSeconds / 60);
+                        const secs = s.durationSeconds % 60;
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-xs text-gray-500">
+                            <span className="w-4 text-gray-400 text-right">{i + 1}.</span>
+                            {s.distance > 0 && <span>{s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance}km`}</span>}
+                            <span>{mins}:{secs.toString().padStart(2, '0')}</span>
+                            {s.avgHR > 0 && <span className="text-red-400">HR {s.avgHR}</span>}
+                            {(s.avgPower || 0) > 0 && <span className="text-amber-500">{s.avgPower}W</span>}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </div>

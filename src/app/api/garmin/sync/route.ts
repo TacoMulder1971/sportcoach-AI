@@ -24,6 +24,12 @@ function mapGarminSport(typeKey: string): Sport | 'overig' {
     speed_walking: 'wandelen',
     soccer: 'voetballen',
     football: 'voetballen',
+    multi_sport: 'multisport',
+    triathlon: 'multisport',
+    duathlon: 'multisport',
+    swimrun: 'multisport',
+    aquabike: 'multisport',
+    brick: 'multisport',
   };
   return map[typeKey] || 'overig';
 }
@@ -111,6 +117,7 @@ export async function POST(request: Request) {
         normalizedPower: Math.round((a as unknown as Record<string, unknown>).normPower as number || 0) || undefined,
         trainingStressScore: Math.round(((a as unknown as Record<string, unknown>).trainingStressScore as number || 0) * 10) / 10 || undefined,
         swimVariant: sport === 'zwemmen' ? mapSwimVariant(typeKey) : undefined,
+        isMultisport: sport === 'multisport' ? true : undefined,
       };
     });
 
@@ -138,15 +145,34 @@ export async function POST(request: Request) {
             }));
         }
 
-        // Splits/laps voor intervaltraining
+        // Splits/laps voor intervaltraining + multisport disciplines
         const laps = lapsResp?.lapDTOs;
         if (laps && Array.isArray(laps) && laps.length > 1) {
-          activity.splits = laps.map(s => ({
-            distance: Math.round(((Number(s.distance) || 0) / 1000) * 100) / 100,
-            durationSeconds: Math.round(Number(s.duration) || 0),
-            avgHR: Math.round(Number(s.averageHR) || 0),
-            avgPower: Math.round(Number(s.averagePower) || 0) || undefined,
-          }));
+          activity.splits = laps.map(s => {
+            // Garmin geeft voor multisport-laps een intensity/lapType field.
+            // sportType of intensity 'TRANSITION' voor T1/T2, anders discipline.
+            const lapIntensity = String(s.intensity || '').toLowerCase();
+            const lapSportType = String(s.sport || s.sportType || '').toLowerCase();
+            let splitSport: string | undefined;
+            if (activity.isMultisport) {
+              if (lapIntensity === 'transition' || lapSportType.includes('transition')) {
+                splitSport = 'transitie';
+              } else if (lapSportType.includes('swim') || lapSportType.includes('zwem')) {
+                splitSport = 'zwemmen';
+              } else if (lapSportType.includes('bike') || lapSportType.includes('cycl') || lapSportType.includes('fiets')) {
+                splitSport = 'fietsen';
+              } else if (lapSportType.includes('run') || lapSportType.includes('loop')) {
+                splitSport = 'hardlopen';
+              }
+            }
+            return {
+              distance: Math.round(((Number(s.distance) || 0) / 1000) * 100) / 100,
+              durationSeconds: Math.round(Number(s.duration) || 0),
+              avgHR: Math.round(Number(s.averageHR) || 0),
+              avgPower: Math.round(Number(s.averagePower) || 0) || undefined,
+              sport: splitSport,
+            };
+          });
         }
       } catch (e) {
         console.error(`Failed to fetch details for activity ${activity.id}:`, e);

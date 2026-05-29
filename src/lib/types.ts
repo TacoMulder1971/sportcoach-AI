@@ -1,4 +1,4 @@
-export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'wandelen' | 'voetballen' | 'rust';
+export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'wandelen' | 'voetballen' | 'multisport' | 'rust';
 
 // Zwem-locatie varianten — onderscheiden binnen-/buitenbad en openwater per activiteit
 export type SwimVariant = 'zwembad_binnen' | 'zwembad_buiten' | 'openwater';
@@ -90,6 +90,7 @@ export const SPORT_ICONS: Record<Sport, string> = {
   mountainbike: 'M',
   wandelen: 'W',
   voetballen: 'V',
+  multisport: 'MS',
   rust: 'R',
 };
 
@@ -100,6 +101,7 @@ export const SPORT_COLORS: Record<Sport, string> = {
   mountainbike: 'bg-emerald-600',
   wandelen: 'bg-teal-500',
   voetballen: 'bg-yellow-500',
+  multisport: 'bg-purple-500',
   rust: 'bg-gray-400',
 };
 
@@ -144,7 +146,8 @@ export interface GarminActivity {
   avgPower?: number;           // watt (fietsen met Edge 530)
   normalizedPower?: number;    // gecorrigeerd vermogen in watt
   trainingStressScore?: number; // TSS per activiteit
-  splits?: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number }[]; // rondes/blokken
+  splits?: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number; sport?: string }[]; // rondes/blokken
+  isMultisport?: boolean;      // brick-training of triatlon (Garmin multi_sport / triathlon)
   swimVariant?: SwimVariant;   // door Garmin afgeleide zwem-locatie (binnen/openwater); user-override apart opgeslagen
 }
 

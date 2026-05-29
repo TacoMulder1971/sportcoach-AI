@@ -14,6 +14,7 @@ const NEON_COLORS: Record<string, { stroke: string; glow: string }> = {
   mountainbike: { stroke: '#10b981', glow: 'drop-shadow(0 0 6px #10b981) drop-shadow(0 0 14px rgba(16,185,129,0.4))' },
   wandelen:     { stroke: '#14b8a6', glow: 'drop-shadow(0 0 6px #14b8a6) drop-shadow(0 0 14px rgba(20,184,166,0.4))' },
   voetballen:   { stroke: '#eab308', glow: 'drop-shadow(0 0 6px #eab308) drop-shadow(0 0 14px rgba(234,179,8,0.4))' },
+  multisport:   { stroke: '#a855f7', glow: 'drop-shadow(0 0 6px #a855f7) drop-shadow(0 0 14px rgba(168,85,247,0.4))' },
   rust:         { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
   overig:       { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
 };
@@ -116,6 +117,26 @@ function UnknownIcon({ color }: { color: string }) {
   );
 }
 
+// Multisport (triathlon/brick): drie kleintjes — zwemmer links, loper rechts, fiets middenboven
+function MultisportIcon({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {/* Zwemgolf links */}
+      <path d="M2 16c.6-1 1.8-2 3-2s1.8.9 3 .9" />
+      {/* Fiets midden */}
+      <circle cx="12" cy="9" r="2" />
+      <path d="M10 9h4" />
+      <circle cx="9.5" cy="13" r="1.5" strokeWidth="1.5" />
+      <circle cx="14.5" cy="13" r="1.5" strokeWidth="1.5" />
+      <path d="M12 9l-2.5 4 5 0" />
+      {/* Hardloopgolf rechts */}
+      <circle cx="20" cy="6" r="1.2" />
+      <path d="M19.5 8l-1 3 1.5 1" />
+      <path d="M18.5 11l-1 3" />
+    </svg>
+  );
+}
+
 const ICON_MAP: Record<string, React.FC<{ color: string }>> = {
   zwemmen: SwimIcon,
   fietsen: BikeIcon,
@@ -123,6 +144,7 @@ const ICON_MAP: Record<string, React.FC<{ color: string }>> = {
   mountainbike: MountainBikeIcon,
   wandelen: WalkIcon,
   voetballen: SoccerIcon,
+  multisport: MultisportIcon,
   rust: RestIcon,
   overig: UnknownIcon,
 };
