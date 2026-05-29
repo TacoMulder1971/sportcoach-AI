@@ -150,6 +150,31 @@ export async function POST(request: Request) {
 
         // Splits/laps voor intervaltraining + multisport disciplines
         const laps = lapsResp?.lapDTOs;
+
+        // DEBUG: log ruwe lap-data voor multisport, zodat we zien welke velden
+        // Garmin gebruikt om de discipline per blok aan te duiden.
+        if (activity.isMultisport) {
+          console.log(`[MULTISPORT DEBUG] activity ${activity.id} "${activity.activityName}"`);
+          console.log('[MULTISPORT DEBUG] lapsResp keys:', lapsResp ? Object.keys(lapsResp) : 'null');
+          if (laps && Array.isArray(laps)) {
+            console.log(`[MULTISPORT DEBUG] ${laps.length} laps. First lap full object:`);
+            console.log(JSON.stringify(laps[0], null, 2));
+            console.log('[MULTISPORT DEBUG] per-lap sport-achtige velden:');
+            laps.forEach((lap, i) => {
+              console.log(`  lap ${i}:`, JSON.stringify({
+                sport: lap.sport,
+                sportType: lap.sportType,
+                activityType: lap.activityType,
+                intensity: lap.intensity,
+                lapType: lap.lapType,
+                messageIndex: lap.messageIndex,
+                distance: lap.distance,
+                duration: lap.duration,
+              }));
+            });
+          }
+        }
+
         if (laps && Array.isArray(laps) && laps.length > 1) {
           activity.splits = laps.map(s => {
             // Garmin geeft voor multisport-laps een intensity/lapType field.
