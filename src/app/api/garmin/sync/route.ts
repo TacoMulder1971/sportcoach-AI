@@ -148,62 +148,56 @@ export async function POST(request: Request) {
             }));
         }
 
-        // Splits/laps voor intervaltraining + multisport disciplines
-        const laps = lapsResp?.lapDTOs;
-
-        // DEBUG: log child-activiteiten + eventDTOs voor multisport, zodat we zien
-        // hoe Garmin de discipline per onderdeel aanduidt.
         if (activity.isMultisport) {
-          console.log(`[MULTISPORT DEBUG] activity ${activity.id} "${activity.activityName}"`);
-          console.log('[MULTISPORT DEBUG] eventDTOs:', JSON.stringify((lapsResp as Record<string, unknown> | null)?.eventDTOs ?? 'none'));
-          try {
-            const detail = await gcGet<Record<string, unknown>>(`${API_BASE}/activity-service/activity/${activity.id}`);
-            const meta = detail?.metadataDTO as Record<string, unknown> | undefined;
-            console.log('[MULTISPORT DEBUG] detail keys:', detail ? Object.keys(detail) : 'null');
-            console.log('[MULTISPORT DEBUG] metadataDTO childIds:', JSON.stringify(meta?.childIds ?? 'none'));
-            const childIds = (meta?.childIds as (string | number)[] | undefined) || [];
-            for (const cid of childIds) {
-              const child = await gcGet<Record<string, unknown>>(`${API_BASE}/activity-service/activity/${cid}`).catch(() => null);
-              const at = child?.activityTypeDTO as Record<string, unknown> | undefined;
-              const sum = child?.summaryDTO as Record<string, unknown> | undefined;
-              console.log(`[MULTISPORT DEBUG] child ${cid}:`, JSON.stringify({
-                typeKey: at?.typeKey,
-                distance: sum?.distance,
-                duration: sum?.duration,
-                averageHR: sum?.averageHR,
-              }));
-            }
-          } catch (e) {
-            console.log('[MULTISPORT DEBUG] detail fetch error:', String(e));
+          // Multisport (triatlon/duatlon/brick) = parent met child-activiteiten.
+          // Elk onderdeel is een eigen activiteit met eigen sport + metrics.
+          // De gewone /splits laps bevatten geen discipline-info, dus we halen
+          // de children op via metadataDTO.childIds.
+          const detail = await gcGet<{ metadataDTO?: { childIds?: (string | number)[] } }>(
+            `${API_BASE}/activity-service/activity/${activity.id}`,
+          ).catch(() => null);
+          const childIds = detail?.metadataDTO?.childIds || [];
+          if (childIds.length > 0) {
+            const children = await Promise.all(
+              childIds.map(cid =>
+                gcGet<{ activityTypeDTO?: { typeKey?: string }; summaryDTO?: Record<string, number> }>(
+                  `${API_BASE}/activity-service/activity/${cid}`,
+                ).catch(() => null),
+              ),
+            );
+            activity.splits = children
+              .filter((c): c is NonNullable<typeof c> => !!c)
+              .map(child => {
+                const typeKey = child.activityTypeDTO?.typeKey || '';
+                const sum = child.summaryDTO || {};
+                // transition_v2 / transition → wisselzone; rest via sport-mapping
+                let splitSport: string | undefined;
+                if (typeKey.startsWith('transition')) {
+                  splitSport = 'transitie';
+                } else {
+                  const mapped = mapGarminSport(typeKey);
+                  splitSport = mapped === 'overig' ? undefined : mapped;
+                }
+                return {
+                  distance: Math.round(((Number(sum.distance) || 0) / 1000) * 100) / 100,
+                  durationSeconds: Math.round(Number(sum.duration) || 0),
+                  avgHR: Math.round(Number(sum.averageHR) || 0),
+                  avgPower: Math.round(Number(sum.averagePower) || 0) || undefined,
+                  sport: splitSport,
+                };
+              });
           }
-        }
-
-        if (laps && Array.isArray(laps) && laps.length > 1) {
-          activity.splits = laps.map(s => {
-            // Garmin geeft voor multisport-laps een intensity/lapType field.
-            // sportType of intensity 'TRANSITION' voor T1/T2, anders discipline.
-            const lapIntensity = String(s.intensity || '').toLowerCase();
-            const lapSportType = String(s.sport || s.sportType || '').toLowerCase();
-            let splitSport: string | undefined;
-            if (activity.isMultisport) {
-              if (lapIntensity === 'transition' || lapSportType.includes('transition')) {
-                splitSport = 'transitie';
-              } else if (lapSportType.includes('swim') || lapSportType.includes('zwem')) {
-                splitSport = 'zwemmen';
-              } else if (lapSportType.includes('bike') || lapSportType.includes('cycl') || lapSportType.includes('fiets')) {
-                splitSport = 'fietsen';
-              } else if (lapSportType.includes('run') || lapSportType.includes('loop')) {
-                splitSport = 'hardlopen';
-              }
-            }
-            return {
+        } else {
+          // Gewone activiteit: laps zijn intervallen/ronden (geen discipline-split)
+          const laps = lapsResp?.lapDTOs;
+          if (laps && Array.isArray(laps) && laps.length > 1) {
+            activity.splits = laps.map(s => ({
               distance: Math.round(((Number(s.distance) || 0) / 1000) * 100) / 100,
               durationSeconds: Math.round(Number(s.duration) || 0),
               avgHR: Math.round(Number(s.averageHR) || 0),
               avgPower: Math.round(Number(s.averagePower) || 0) || undefined,
-              sport: splitSport,
-            };
-          });
+            }));
+          }
         }
       } catch (e) {
         console.error(`Failed to fetch details for activity ${activity.id}:`, e);
