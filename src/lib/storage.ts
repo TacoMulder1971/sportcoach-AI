@@ -186,6 +186,21 @@ export function getArchivedActivitiesInRange(start: string, end: string): Garmin
   return getActivityArchive().filter(a => a.date >= start && a.date <= end);
 }
 
+/**
+ * Verwijder één activiteit uit zowel de live Garmin-data als het archief.
+ * Let op: niet permanent — een volgende Garmin-sync kan dezelfde activiteit
+ * opnieuw binnenhalen tenzij die ook op Garmin zelf is verwijderd.
+ */
+export function deleteActivity(id: number): void {
+  const data = getGarminData();
+  if (data) {
+    data.activities = data.activities.filter(a => a.id !== id);
+    saveGarminData(data);
+  }
+  const archive = getActivityArchive().filter(a => a.id !== id);
+  setItem(KEYS.ACTIVITY_ARCHIVE, archive);
+}
+
 // ─── Gezondheids-archief (HRV / Body Battery / slaap per dag) ─────
 export function getHealthArchive(): GarminHealthStats[] {
   return getItem<GarminHealthStats[]>(KEYS.HEALTH_ARCHIVE, []);

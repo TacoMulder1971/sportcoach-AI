@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
@@ -82,6 +82,12 @@ export default function DataPage() {
     } finally {
       setSyncing(false);
     }
+  }
+
+  function handleDeleteActivity(id: number, name: string) {
+    if (!confirm(`Activiteit "${name || 'zonder naam'}" verwijderen uit je opgeslagen data?\n\nLet op: bij een volgende Garmin-sync kan deze terugkomen, tenzij je 'm ook op Garmin verwijdert.`)) return;
+    deleteActivity(id);
+    setGarmin(getGarminData());
   }
 
   // Activiteiten die meetellen voor statistieken (stadsfiets-rides uitgesloten)
@@ -756,7 +762,19 @@ export default function DataPage() {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className="text-xs text-gray-400">{a.date}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">{a.date}</span>
+                      <button
+                        onClick={() => handleDeleteActivity(a.id, a.activityName)}
+                        aria-label="Activiteit verwijderen"
+                        className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        </svg>
+                      </button>
+                    </div>
                     {(a.sport === 'fietsen' || a.sport === 'hardlopen' || a.sport === 'mountainbike') && a.distanceKm > 0 && (
                       <EquipmentAssignChip
                         activity={a}
