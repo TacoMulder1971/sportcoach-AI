@@ -722,11 +722,19 @@ export default function DataPage() {
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {garmin.activities.map((a) => {
               const assignedEq = equipmentForActivity(a, equipment, assignments);
+              // Alleen voor fietsen tonen we het materiaal-icoon (race/MTB/stad).
+              // Hardlopen houdt de loper, zwemmen de zwem-variant.
+              const showBikeIcon = assignedEq && (
+                assignedEq.type === 'racefiets' ||
+                assignedEq.type === 'mountainbike' ||
+                assignedEq.type === 'stadsfiets' ||
+                assignedEq.type === 'fiets'
+              );
               return (
               <div key={a.id} className="p-3">
                 <div className="flex items-center gap-3">
-                  {assignedEq ? (
-                    <EquipmentIcon type={assignedEq.type} size="md" />
+                  {showBikeIcon ? (
+                    <EquipmentIcon type={assignedEq!.type} size="md" />
                   ) : a.sport === 'zwemmen' ? (
                     <SwimVariantIcon variant={swimVariantForActivity(a, swimVariants)} size="md" />
                   ) : (
