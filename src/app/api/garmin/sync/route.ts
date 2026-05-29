@@ -151,27 +151,30 @@ export async function POST(request: Request) {
         // Splits/laps voor intervaltraining + multisport disciplines
         const laps = lapsResp?.lapDTOs;
 
-        // DEBUG: log ruwe lap-data voor multisport, zodat we zien welke velden
-        // Garmin gebruikt om de discipline per blok aan te duiden.
+        // DEBUG: log child-activiteiten + eventDTOs voor multisport, zodat we zien
+        // hoe Garmin de discipline per onderdeel aanduidt.
         if (activity.isMultisport) {
           console.log(`[MULTISPORT DEBUG] activity ${activity.id} "${activity.activityName}"`);
-          console.log('[MULTISPORT DEBUG] lapsResp keys:', lapsResp ? Object.keys(lapsResp) : 'null');
-          if (laps && Array.isArray(laps)) {
-            console.log(`[MULTISPORT DEBUG] ${laps.length} laps. First lap full object:`);
-            console.log(JSON.stringify(laps[0], null, 2));
-            console.log('[MULTISPORT DEBUG] per-lap sport-achtige velden:');
-            laps.forEach((lap, i) => {
-              console.log(`  lap ${i}:`, JSON.stringify({
-                sport: lap.sport,
-                sportType: lap.sportType,
-                activityType: lap.activityType,
-                intensity: lap.intensity,
-                lapType: lap.lapType,
-                messageIndex: lap.messageIndex,
-                distance: lap.distance,
-                duration: lap.duration,
+          console.log('[MULTISPORT DEBUG] eventDTOs:', JSON.stringify((lapsResp as Record<string, unknown> | null)?.eventDTOs ?? 'none'));
+          try {
+            const detail = await gcGet<Record<string, unknown>>(`${API_BASE}/activity-service/activity/${activity.id}`);
+            const meta = detail?.metadataDTO as Record<string, unknown> | undefined;
+            console.log('[MULTISPORT DEBUG] detail keys:', detail ? Object.keys(detail) : 'null');
+            console.log('[MULTISPORT DEBUG] metadataDTO childIds:', JSON.stringify(meta?.childIds ?? 'none'));
+            const childIds = (meta?.childIds as (string | number)[] | undefined) || [];
+            for (const cid of childIds) {
+              const child = await gcGet<Record<string, unknown>>(`${API_BASE}/activity-service/activity/${cid}`).catch(() => null);
+              const at = child?.activityTypeDTO as Record<string, unknown> | undefined;
+              const sum = child?.summaryDTO as Record<string, unknown> | undefined;
+              console.log(`[MULTISPORT DEBUG] child ${cid}:`, JSON.stringify({
+                typeKey: at?.typeKey,
+                distance: sum?.distance,
+                duration: sum?.duration,
+                averageHR: sum?.averageHR,
               }));
-            });
+            }
+          } catch (e) {
+            console.log('[MULTISPORT DEBUG] detail fetch error:', String(e));
           }
         }
 
