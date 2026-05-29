@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
@@ -70,6 +70,10 @@ export default function DataPage() {
         }
       }
 
+      // Eerst alles in het archief, daarna de live-weergave compact houden.
+      mergeActivitiesIntoArchive(data.activities);
+      mergeHealthIntoArchive(data.health);
+      data.activities = data.activities.slice(0, 40);
       saveGarminData(data);
       setGarmin(data);
       markAutoSyncDone();

@@ -66,8 +66,12 @@ export async function POST(request: Request) {
     const GC = new GarminConnect({ username: email, password });
     await GC.login();
 
-    // Fetch activities (last 30)
-    const rawActivities = await GC.getActivities(0, 30);
+    // Fetch activities. We halen er bewust veel op (niet 30) zodat het
+    // activiteiten-archief in één sync meerdere maanden historie terugvult —
+    // nodig voor de "aanloop" naar een wedstrijd. De client bewaart zelf alles
+    // in het archief en houdt de live-weergave compact.
+    const ACTIVITY_FETCH_COUNT = 150;
+    const rawActivities = await GC.getActivities(0, ACTIVITY_FETCH_COUNT);
     const activities: GarminActivity[] = rawActivities.map((a) => {
       const typeKey = a.activityType?.typeKey || '';
       const sport = mapGarminSport(typeKey);
@@ -124,9 +128,13 @@ export async function POST(request: Request) {
     // Fetch HR zone details + splits voor nieuwe activiteiten (max 5, parallel).
     // Multisport-activiteiten krijgen áltijd hun splits (ook al zijn ze al bekend),
     // omdat de per-discipline opdeling juist daar het belangrijkst is.
+    // Detail-fetches (HR-zones/splits) zijn duur, dus begrensd: de nieuwste
+    // nieuwe activiteiten + de meest recente multisport-races (voor splits).
     const newActivities = activities.filter(a => !existingActivityIds.includes(a.id));
-    const multisportActivities = activities.filter(a => a.isMultisport && existingActivityIds.includes(a.id));
-    const toFetchDetails = [...newActivities.slice(0, 5), ...multisportActivities];
+    const multisportActivities = activities
+      .filter(a => a.isMultisport && existingActivityIds.includes(a.id))
+      .slice(0, 10);
+    const toFetchDetails = [...newActivities.slice(0, 8), ...multisportActivities];
 
     const gcGet = (GC as unknown as { get: <T = unknown>(url: string) => Promise<T> }).get.bind(GC);
     const API_BASE = 'https://connectapi.garmin.com';
