@@ -35,9 +35,9 @@ SportCoach AI — een Nederlandstalige AI-sportcoach-webapp (Next.js, PWA) voor 
 - **Activiteiten-archief:** de Garmin-sync overschrijft de live-data, dus voor historische trends (bijv. de aanloop naar een wedstrijd) is er een **groeiend archief** in `storage.ts` (`ACTIVITY_ARCHIVE` + `HEALTH_ARCHIVE`, dedup). De sync haalt nu 150 activiteiten op; beide sync-handlers (`page.tsx`, `data/page.tsx`) mergen álles in het archief en trimmen de live-weergave tot 40.
 
 ## Git
-- Commit/push alleen als de gebruiker erom vraagt.
-- Branch eerst als je op `main` zit (tenzij de gebruiker direct-op-main vraagt).
-- Verifieer met `npx tsc --noEmit` + `npm run build` vóór een push.
+- **Werkwijze (voorkeur gebruiker): direct committen + pushen naar `main` na elke geverifieerde wijziging — niet eerst vragen.** ("push maar gelijk", 2026-05-31). Werk direct op `main`, geen feature-branch nodig.
+- Verifieer áltijd met `npx tsc --noEmit` + `npm run build` vóór de push.
+- Push naar `main` → Vercel auto-deploy (productie).
 
 ## Verdere context
 Uitgebreide feature-historie staat in het projectgeheugen onder
