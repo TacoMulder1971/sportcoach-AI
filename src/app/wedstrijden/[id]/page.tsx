@@ -180,10 +180,10 @@ export default function WedstrijdDetailPage() {
                   </p>
                 )}
                 <div className="grid grid-cols-2 gap-3">
-                  <StatTile value={`${buildup.totalSessions}`} label="Trainingen" />
-                  <StatTile value={fmtHours(buildup.totalMinutes)} label="Trainingstijd" />
-                  <StatTile value={`${buildup.totalKm}`} label="Kilometer" />
-                  <StatTile value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" />
+                  <StatTile value={`${buildup.totalSessions}`} label="Trainingen" accent="text-sky-300" />
+                  <StatTile value={fmtHours(buildup.totalMinutes)} label="Trainingstijd" accent="text-violet-300" />
+                  <StatTile value={`${buildup.totalKm}`} label="Kilometer" accent="text-emerald-300" />
+                  <StatTile value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" accent="text-amber-300" />
                 </div>
                 {buildup.avgHR > 0 && (
                   <p className="text-blue-200/70 text-xs text-center mt-4 pt-3 border-t border-white/10">
@@ -263,10 +263,10 @@ export default function WedstrijdDetailPage() {
   );
 }
 
-function StatTile({ value, label }: { value: string; label: string }) {
+function StatTile({ value, label, accent }: { value: string; label: string; accent: string }) {
   return (
-    <div className="bg-white/5 rounded-xl px-3 py-3 text-center">
-      <p className="text-2xl font-extrabold text-white">{value}</p>
+    <div className="bg-white/10 border border-white/10 rounded-xl px-3 py-3 text-center">
+      <p className={`text-2xl font-extrabold ${accent}`}>{value}</p>
       <p className="text-xs text-blue-200/80 mt-0.5">{label}</p>
     </div>
   );
