@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport, SwimVariant, SWIM_VARIANT_LABEL } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, saveGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { buildEquipmentAttentionLine, filterStatsActivities, assignableEquipment, inSameSportGroup } from '@/lib/equipment';
@@ -26,18 +26,27 @@ interface CheckInFormProps {
   dayLabel: string;
   garminActivities?: GarminActivity[];
   onComplete: () => void;
+  /** Bestaande check-out van vandaag — opent direct het gesprek (resume-modus). */
+  resumeCheckIn?: CheckIn;
 }
 
-export default function CheckInForm({ sessions, dayLabel, garminActivities = [], onComplete }: CheckInFormProps) {
-  const [feeling, setFeeling] = useState<1 | 2 | 3 | 4 | 5 | null>(null);
-  const [note, setNote] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [messages, setMessages] = useState<CheckInMessage[]>([]);
+export default function CheckInForm({ sessions, dayLabel, garminActivities = [], onComplete, resumeCheckIn }: CheckInFormProps) {
+  // Resume-modus: heropen het gesprek van een al gedane check-out
+  const resumeMessages: CheckInMessage[] = resumeCheckIn?.messages?.length
+    ? resumeCheckIn.messages
+    : resumeCheckIn?.feedback
+      ? [{ role: 'assistant', content: resumeCheckIn.feedback }]
+      : [];
+
+  const [feeling, setFeeling] = useState<1 | 2 | 3 | 4 | 5 | null>(resumeCheckIn?.feeling ?? null);
+  const [note, setNote] = useState(resumeCheckIn?.note || '');
+  const [submitted, setSubmitted] = useState(!!resumeCheckIn);
+  const [messages, setMessages] = useState<CheckInMessage[]>(resumeMessages);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'analyzing'>('idle');
   const [chatInput, setChatInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [checkInId, setCheckInId] = useState<string>('');
+  const [checkInId, setCheckInId] = useState<string>(resumeCheckIn?.id || '');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // ── Materiaal-keuze per sport ───────────────────────────────────
@@ -129,26 +138,8 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       // 1. Eerst Garmin synchroniseren zodat de coach de meest recente activiteit ziet
       let garminData = getGarminData();
       try {
-        const existingActivityIds = garminData?.activities?.map(a => a.id) || [];
-        const syncRes = await fetch('/api/garmin/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ existingActivityIds }),
-        });
-        if (syncRes.ok) {
-          const fresh = await syncRes.json();
-          // Behoud hrZones van bestaande activiteiten (zoals de Data-pagina dat ook doet)
-          if (garminData?.activities) {
-            const existingMap = new Map(garminData.activities.map(a => [a.id, a]));
-            for (const activity of fresh.activities) {
-              if (!activity.hrZones && existingMap.has(activity.id)) {
-                activity.hrZones = existingMap.get(activity.id)?.hrZones;
-              }
-            }
-          }
-          saveGarminData(fresh);
-          garminData = fresh;
-        }
+        const fresh = await syncGarminData();
+        if (fresh) garminData = fresh;
       } catch {
         // Sync mag falen (offline, Garmin down) — we vallen terug op cache
       }
@@ -317,7 +308,12 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <p className="text-lg font-semibold text-gray-900">Check-out opgeslagen!</p>
+          <p className="text-lg font-semibold text-gray-900">
+            {resumeCheckIn ? 'Je check-out van vandaag' : 'Check-out opgeslagen!'}
+          </p>
+          {resumeCheckIn && (
+            <p className="text-gray-500 text-sm mt-1">Je kunt het gesprek met de coach voortzetten.</p>
+          )}
         </div>
 
         {/* Chat berichten */}
@@ -361,7 +357,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         </div>
 
         {/* Chat input */}
-        {!loadingFeedback && messages.length > 0 && (
+        {!loadingFeedback && (messages.length > 0 || !!resumeCheckIn) && (
           <div className="flex items-end gap-2 bg-white rounded-2xl border border-gray-200 p-2">
             <textarea
               value={chatInput}

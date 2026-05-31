@@ -153,6 +153,47 @@ export function saveGarminData(data: GarminSyncData): void {
   setItem(KEYS.GARMIN_DATA, data);
 }
 
+/**
+ * Synchroniseer met Garmin: haalt alleen details op voor nieuwe activiteiten,
+ * behoudt hrZones van bestaande, mergt álles in het archief en houdt de
+ * live-weergave compact (40). Geeft de verse data terug, of de bestaande
+ * cache bij een mislukte sync (offline / Garmin down). Eén bron voor alle
+ * sync-aanroepen (dashboard, data-pagina, check-out).
+ */
+export async function syncGarminData(): Promise<GarminSyncData | null> {
+  const existingData = getGarminData();
+  const existingActivityIds = existingData?.activities?.map(a => a.id) || [];
+
+  const res = await fetch('/api/garmin/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ existingActivityIds }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Sync mislukt');
+  }
+  const data: GarminSyncData = await res.json();
+
+  // Behoud hrZones van bestaande activiteiten (server stuurt die niet altijd mee)
+  if (existingData?.activities) {
+    const existingMap = new Map(existingData.activities.map(a => [a.id, a]));
+    for (const activity of data.activities) {
+      if (!activity.hrZones && existingMap.has(activity.id)) {
+        activity.hrZones = existingMap.get(activity.id)?.hrZones;
+      }
+    }
+  }
+
+  // Eerst alles in het archief, daarna de live-weergave compact houden.
+  mergeActivitiesIntoArchive(data.activities);
+  mergeHealthIntoArchive(data.health);
+  data.activities = data.activities.slice(0, 40);
+  saveGarminData(data);
+  markAutoSyncDone();
+  return data;
+}
+
 // ─── Activiteiten-archief ────────────────────────────────────────
 // Garmin sync overschrijft GARMIN_DATA met de laatste 30 activiteiten. Voor
 // historische trends (bv. de weken vóór een wedstrijd) bouwen we een groeiend

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import CheckInForm from '@/components/CheckInForm';
 import { getTodayTraining } from '@/lib/schedule';
-import { getGarminData, getActivePlan, getCheckInsForDate, getRecentCheckIns, getNutritionForDate, saveNutritionFeedback, getActiveRaceDate, buildRaceContextText } from '@/lib/storage';
+import { getGarminData, syncGarminData, getActivePlan, getCheckInsForDate, getRecentCheckIns, getNutritionForDate, saveNutritionFeedback, getActiveRaceDate, buildRaceContextText } from '@/lib/storage';
 import { TrainingDay, GarminActivity, CheckIn, HEART_RATE_ZONES, FEELING_SCALE, NutritionLog } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 
@@ -17,30 +17,26 @@ function getHRZoneLabel(avgHR: number): string {
 export default function CheckInContent({ onComplete }: { onComplete: () => void }) {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
   const [todayActivities, setTodayActivities] = useState<GarminActivity[]>([]);
-  const [alreadyCheckedOut, setAlreadyCheckedOut] = useState(false);
+  const [existingCheckIn, setExistingCheckIn] = useState<CheckIn | null>(null);
   const [recentCheckIns, setRecentCheckIns] = useState<CheckIn[]>([]);
   const [nutritionLog, setNutritionLog] = useState<NutritionLog | null>(null);
   const [nutritionFeedback, setNutritionFeedback] = useState<string | null>(null);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [syncing, setSyncing] = useState(true);
+
+  const alreadyCheckedOut = existingCheckIn !== null;
 
   useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
     const { plan, cycleStartDate } = getActivePlan();
     setTodayTraining(getTodayTraining(plan, cycleStartDate));
 
-    // Check of er al een check-out is voor vandaag
-    const today = new Date().toISOString().split('T')[0];
+    // Bestaande check-out van vandaag (voor resume-gesprek)
     const todayCheckIns = getCheckInsForDate(today);
-    setAlreadyCheckedOut(todayCheckIns.length > 0);
+    setExistingCheckIn(todayCheckIns[0] || null);
 
     // Laatste 3 check-outs voor historie
     setRecentCheckIns(getRecentCheckIns(3));
-
-    // Match Garmin activities from today
-    const garmin = getGarminData();
-    if (garmin) {
-      const matched = garmin.activities.filter((a) => a.date === today);
-      setTodayActivities(matched);
-    }
 
     // Voedingsdata van vandaag
     const nutrition = getNutritionForDate(today);
@@ -48,6 +44,26 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
       setNutritionLog(nutrition);
       if (nutrition.aiFeedback) setNutritionFeedback(nutrition.aiFeedback);
     }
+
+    // Eerst de gecachte activiteiten tonen, daarna verversen via Garmin-sync
+    // zodat de coach (en de "Gedaan"-kolom) de trainingen van vandaag ziet.
+    const cached = getGarminData();
+    if (cached) setTodayActivities(cached.activities.filter((a) => a.date === today));
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const fresh = await syncGarminData();
+        if (!cancelled && fresh) {
+          setTodayActivities(fresh.activities.filter((a) => a.date === today));
+        }
+      } catch {
+        // Sync mag falen (offline / Garmin down) — we tonen de cache
+      } finally {
+        if (!cancelled) setSyncing(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -57,13 +73,57 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
         <p className="text-gray-500 text-sm">Hoe ging je training?</p>
       </div>
 
-      {alreadyCheckedOut ? (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-            <svg className="w-6 h-6 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-          </div>
-          <p className="text-green-700 font-semibold">Al ingecheckt vandaag!</p>
-          <p className="text-gray-500 text-sm mt-1">Je hebt je check-out voor vandaag al gedaan.</p>
+      {syncing && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+          <span className="flex gap-1">
+            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
+            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
+            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+          </span>
+          Garmin synchroniseren — activiteiten van vandaag ophalen…
+        </div>
+      )}
+
+      {alreadyCheckedOut && existingCheckIn ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          {/* Garmin activiteiten van vandaag (vers na sync) */}
+          {todayActivities.length > 0 && (
+            <div className="mb-4 pb-4 border-b border-gray-100">
+              <p className="text-xs text-gray-400 mb-2">Garmin activiteiten vandaag</p>
+              <div className="space-y-2">
+                {todayActivities.map((a) => (
+                  <div key={a.id} className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="sm" />
+                      <p className="text-sm font-medium">{a.activityName}</p>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">{a.durationMinutes}m</p>
+                        <p className="text-[10px] text-gray-400">Duur</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">{a.distanceKm > 0 ? `${a.distanceKm}km` : '–'}</p>
+                        <p className="text-[10px] text-gray-400">Afstand</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-red-500">{a.avgHR || '–'}</p>
+                        <p className="text-[10px] text-gray-400">{a.avgHR > 0 ? getHRZoneLabel(a.avgHR) : 'Gem HR'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <CheckInForm
+            sessions={existingCheckIn.sessions || []}
+            dayLabel={existingCheckIn.trainingDay}
+            garminActivities={todayActivities}
+            onComplete={onComplete}
+            resumeCheckIn={existingCheckIn}
+          />
         </div>
       ) : todayTraining && !todayTraining.isRestDay ? (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
