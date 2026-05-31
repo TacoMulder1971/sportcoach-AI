@@ -205,7 +205,7 @@ const SPORT_META: Record<string, { label: string; color: string }> = {
   wandelen:     { label: 'Wandelen', color: '#14b8a6' },
   multisport:   { label: 'Multisport', color: '#a855f7' },
   voetballen:   { label: 'Voetballen', color: '#eab308' },
-  overig:       { label: 'Overig', color: '#6b7280' },
+  overig:       { label: 'Workout', color: '#6b7280' },
 };
 
 const BUILDUP_WEEKS = 20;

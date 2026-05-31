@@ -72,7 +72,7 @@ export default function WedstrijdDetailPage() {
   const result = race.goal.result;
 
   return (
-    <div className="px-4 pt-6 space-y-6">
+    <div className="px-4 pt-6 space-y-4">
       <BackLink />
 
       {/* Donkere hero */}
@@ -165,20 +165,16 @@ export default function WedstrijdDetailPage() {
 
       {/* Aanloop naar de wedstrijd */}
       <section>
-        <div className="flex items-baseline gap-2 mb-2">
-          <h2 className="text-base font-semibold text-gray-900">Aanloop</h2>
-          <p className="text-xs text-gray-400">training vóór de wedstrijd</p>
-        </div>
         {buildup && buildup.totalSessions > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {/* Samenvatting — zelfde donkere stijl als de hero */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-4 text-white shadow-lg">
               <div className="absolute -right-8 -top-10 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl" />
               <div className="relative">
                 {buildup.startDate && (
-                  <p className="text-blue-200/80 text-sm mb-3">
-                    Gestart op <span className="font-semibold text-white">{formatRaceDateNL(buildup.startDate)}</span>
-                    {' '}— {buildup.spanWeeks} weken, {buildup.weeksWithData} actief.
+                  <p className="text-blue-200/80 text-xs mb-3 whitespace-nowrap">
+                    Gestart <span className="font-semibold text-white">{shortDate(buildup.startDate)}</span>
+                    {' '}· {buildup.spanWeeks} wkn, {buildup.weeksWithData} actief
                   </p>
                 )}
                 <div className="grid grid-cols-2 gap-2">
@@ -188,8 +184,8 @@ export default function WedstrijdDetailPage() {
                   <StatTile value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" accent="text-amber-300" />
                 </div>
                 {buildup.avgHR > 0 && (
-                  <p className="text-blue-200/70 text-xs text-center mt-3 pt-2.5 border-t border-white/10">
-                    Gemiddelde hartslag {buildup.avgHR} bpm · ~{Math.round(buildup.totalTrimp / Math.max(1, buildup.weeksWithData))} TRIMP per actieve week
+                  <p className="text-blue-200/70 text-xs text-center mt-3 pt-2.5 border-t border-white/10 whitespace-nowrap">
+                    Gem. HR {buildup.avgHR} bpm · ~{Math.round(buildup.totalTrimp / Math.max(1, buildup.weeksWithData))} TRIMP/week
                   </p>
                 )}
               </div>
@@ -272,6 +268,10 @@ function StatTile({ value, label, accent }: { value: string; label: string; acce
       <p className="text-xs text-blue-200/80 mt-0.5">{label}</p>
     </div>
   );
+}
+
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function fmtHours(minutes: number): string {
