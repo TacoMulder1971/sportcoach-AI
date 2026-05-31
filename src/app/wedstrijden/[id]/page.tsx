@@ -165,28 +165,30 @@ export default function WedstrijdDetailPage() {
 
       {/* Aanloop naar de wedstrijd */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Aanloop</h2>
-        <p className="text-xs text-gray-400 mb-3">Je training in de weken vóór de wedstrijd</p>
+        <div className="flex items-baseline gap-2 mb-2">
+          <h2 className="text-base font-semibold text-gray-900">Aanloop</h2>
+          <p className="text-xs text-gray-400">training vóór de wedstrijd</p>
+        </div>
         {buildup && buildup.totalSessions > 0 ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Samenvatting — zelfde donkere stijl als de hero */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-5 text-white shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-4 text-white shadow-lg">
               <div className="absolute -right-8 -top-10 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl" />
               <div className="relative">
                 {buildup.startDate && (
-                  <p className="text-blue-200/80 text-sm mb-4">
+                  <p className="text-blue-200/80 text-sm mb-3">
                     Gestart op <span className="font-semibold text-white">{formatRaceDateNL(buildup.startDate)}</span>
                     {' '}— {buildup.spanWeeks} weken, {buildup.weeksWithData} actief.
                   </p>
                 )}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <StatTile value={`${buildup.totalSessions}`} label="Trainingen" accent="text-sky-300" />
                   <StatTile value={fmtHours(buildup.totalMinutes)} label="Trainingstijd" accent="text-violet-300" />
                   <StatTile value={`${buildup.totalKm}`} label="Kilometer" accent="text-emerald-300" />
                   <StatTile value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" accent="text-amber-300" />
                 </div>
                 {buildup.avgHR > 0 && (
-                  <p className="text-blue-200/70 text-xs text-center mt-4 pt-3 border-t border-white/10">
+                  <p className="text-blue-200/70 text-xs text-center mt-3 pt-2.5 border-t border-white/10">
                     Gemiddelde hartslag {buildup.avgHR} bpm · ~{Math.round(buildup.totalTrimp / Math.max(1, buildup.weeksWithData))} TRIMP per actieve week
                   </p>
                 )}
@@ -265,8 +267,8 @@ export default function WedstrijdDetailPage() {
 
 function StatTile({ value, label, accent }: { value: string; label: string; accent: string }) {
   return (
-    <div className="bg-white/10 border border-white/10 rounded-xl px-3 py-3 text-center">
-      <p className={`text-2xl font-extrabold ${accent}`}>{value}</p>
+    <div className="bg-white/10 border border-white/10 rounded-xl px-3 py-2 text-center">
+      <p className={`text-xl font-extrabold ${accent}`}>{value}</p>
       <p className="text-xs text-blue-200/80 mt-0.5">{label}</p>
     </div>
   );
