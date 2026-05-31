@@ -169,25 +169,28 @@ export default function WedstrijdDetailPage() {
         <p className="text-xs text-gray-400 mb-3">Je training in de weken vóór de wedstrijd</p>
         {buildup && buildup.totalSessions > 0 ? (
           <div className="space-y-4">
-            {/* Samenvatting */}
-            <div className="bg-white rounded-xl p-4 border border-gray-200">
-              {buildup.startDate && (
-                <p className="text-sm text-gray-600 mb-3">
-                  Gestart op <span className="font-semibold text-gray-900">{formatRaceDateNL(buildup.startDate)}</span>
-                  {' '}— {buildup.spanWeeks} weken, {buildup.weeksWithData} actief.
-                </p>
-              )}
-              <div className="grid grid-cols-2 gap-2">
-                <StatTile value={`${buildup.totalSessions}`} label="Trainingen" bg="bg-blue-50" text="text-blue-600" />
-                <StatTile value={fmtHours(buildup.totalMinutes)} label="Trainingstijd" bg="bg-indigo-50" text="text-indigo-600" />
-                <StatTile value={`${buildup.totalKm}`} label="Kilometer" bg="bg-green-50" text="text-green-600" />
-                <StatTile value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" bg="bg-amber-50" text="text-amber-600" />
+            {/* Samenvatting — zelfde donkere stijl als de hero */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 p-5 text-white shadow-lg">
+              <div className="absolute -right-8 -top-10 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl" />
+              <div className="relative">
+                {buildup.startDate && (
+                  <p className="text-blue-200/80 text-sm mb-4">
+                    Gestart op <span className="font-semibold text-white">{formatRaceDateNL(buildup.startDate)}</span>
+                    {' '}— {buildup.spanWeeks} weken, {buildup.weeksWithData} actief.
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <StatTile value={`${buildup.totalSessions}`} label="Trainingen" />
+                  <StatTile value={fmtHours(buildup.totalMinutes)} label="Trainingstijd" />
+                  <StatTile value={`${buildup.totalKm}`} label="Kilometer" />
+                  <StatTile value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" />
+                </div>
+                {buildup.avgHR > 0 && (
+                  <p className="text-blue-200/70 text-xs text-center mt-4 pt-3 border-t border-white/10">
+                    Gemiddelde hartslag {buildup.avgHR} bpm · ~{Math.round(buildup.totalTrimp / Math.max(1, buildup.weeksWithData))} TRIMP per actieve week
+                  </p>
+                )}
               </div>
-              {buildup.avgHR > 0 && (
-                <p className="text-xs text-gray-400 text-center mt-3 pt-3 border-t border-gray-100">
-                  Gemiddelde hartslag {buildup.avgHR} bpm · ~{Math.round(buildup.totalTrimp / Math.max(1, buildup.weeksWithData))} TRIMP per actieve week
-                </p>
-              )}
             </div>
 
             {/* Verdeling per sport */}
@@ -260,11 +263,11 @@ export default function WedstrijdDetailPage() {
   );
 }
 
-function StatTile({ value, label, bg, text }: { value: string; label: string; bg: string; text: string }) {
+function StatTile({ value, label }: { value: string; label: string }) {
   return (
-    <div className={`${bg} rounded-xl px-3 py-3 text-center`}>
-      <p className={`text-2xl font-extrabold ${text}`}>{value}</p>
-      <p className="text-xs text-gray-600 mt-0.5">{label}</p>
+    <div className="bg-white/5 rounded-xl px-3 py-3 text-center">
+      <p className="text-2xl font-extrabold text-white">{value}</p>
+      <p className="text-xs text-blue-200/80 mt-0.5">{label}</p>
     </div>
   );
 }
