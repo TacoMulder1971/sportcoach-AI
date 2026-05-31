@@ -13,7 +13,7 @@ import { GOAL_TYPES, RaceWeather } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import RaceSplitBar from '@/components/RaceSplitBar';
 import WeatherCard from '@/components/WeatherCard';
-import TrendLineChart from '@/components/TrendLineChart';
+import BuildupBarChart from '@/components/BuildupBarChart';
 
 export default function WedstrijdDetailPage() {
   const params = useParams();
@@ -177,11 +177,11 @@ export default function WedstrijdDetailPage() {
                   {' '}— {buildup.spanWeeks} weken, {buildup.weeksWithData} actief.
                 </p>
               )}
-              <div className="grid grid-cols-2 gap-3 text-center">
-                <Stat value={`${buildup.totalSessions}`} label="Trainingen" color="text-blue-600" />
-                <Stat value={fmtHours(buildup.totalMinutes)} label="Trainingstijd" color="text-indigo-600" />
-                <Stat value={`${buildup.totalKm}`} label="Kilometer" color="text-green-600" />
-                <Stat value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" color="text-amber-500" />
+              <div className="grid grid-cols-2 gap-2">
+                <StatTile value={`${buildup.totalSessions}`} label="Trainingen" bg="bg-blue-50" text="text-blue-600" />
+                <StatTile value={fmtHours(buildup.totalMinutes)} label="Trainingstijd" bg="bg-indigo-50" text="text-indigo-600" />
+                <StatTile value={`${buildup.totalKm}`} label="Kilometer" bg="bg-green-50" text="text-green-600" />
+                <StatTile value={`${buildup.totalTrimp}`} label="Belasting (TRIMP)" bg="bg-amber-50" text="text-amber-600" />
               </div>
               {buildup.avgHR > 0 && (
                 <p className="text-xs text-gray-400 text-center mt-3 pt-3 border-t border-gray-100">
@@ -215,9 +215,9 @@ export default function WedstrijdDetailPage() {
 
             {/* Weekgrafieken */}
             {buildup.weekly.length > 0 && (
-              <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-5">
+              <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-6">
                 {buildup.weekly.map(t => (
-                  <TrendLineChart key={t.label} data={t.data} color={t.color} unit={t.unit} title={t.label} invertY={t.invertY} />
+                  <BuildupBarChart key={t.label} data={t.data} color={t.color} unit={t.unit} title={t.label} />
                 ))}
               </div>
             )}
@@ -260,11 +260,11 @@ export default function WedstrijdDetailPage() {
   );
 }
 
-function Stat({ value, label, color }: { value: string; label: string; color: string }) {
+function StatTile({ value, label, bg, text }: { value: string; label: string; bg: string; text: string }) {
   return (
-    <div>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-gray-500">{label}</p>
+    <div className={`${bg} rounded-xl px-3 py-3 text-center`}>
+      <p className={`text-2xl font-extrabold ${text}`}>{value}</p>
+      <p className="text-xs text-gray-600 mt-0.5">{label}</p>
     </div>
   );
 }

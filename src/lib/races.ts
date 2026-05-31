@@ -208,7 +208,7 @@ const SPORT_META: Record<string, { label: string; color: string }> = {
   overig:       { label: 'Overig', color: '#6b7280' },
 };
 
-const BUILDUP_WEEKS = 12;
+const BUILDUP_WEEKS = 20;
 
 /**
  * Volledig beeld van de trainingsaanloop in de N weken vóór (en t/m) de racedag:
