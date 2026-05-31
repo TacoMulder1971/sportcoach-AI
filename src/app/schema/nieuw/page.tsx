@@ -8,13 +8,27 @@ import {
   getActivePlan, getGarminData, getRecentCheckIns,
   saveStoredPlan, setActivePlanId, generateId,
   getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText,
+  getActivityArchive, getHealthArchive, getEquipment, getActivityAssignments,
 } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
+import { buildPerformanceSummary } from '@/lib/performance-summary';
+import { filterStatsActivities } from '@/lib/equipment';
 import { AgendaInput, DayPreference, TrainingWeek } from '@/lib/types';
 import { getCurrentPhase, getPhaseProgress, TRAINING_PHASES } from '@/lib/periodization';
 
 const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
 const FULL_DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+
+// Strip markdown-symbolen zodat de coachnotitie als nette platte tekst toont
+function cleanStrategyText(text: string): string {
+  return text
+    .replace(/^#{1,6}\s*/gm, '')   // kopjes: ## Titel → Titel
+    .replace(/\*\*(.+?)\*\*/g, '$1') // **vet** → vet
+    .replace(/^\s*[-*]\s+/gm, '• ')  // lijst-bullets uniform maken
+    .replace(/^---+$/gm, '')         // horizontale lijnen weg
+    .replace(/\n{3,}/g, '\n\n')      // overtollige lege regels
+    .trim();
+}
 
 export default function NieuwSchemaPage() {
   const router = useRouter();
@@ -29,6 +43,8 @@ export default function NieuwSchemaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<TrainingWeek[] | null>(null);
+  const [strategy, setStrategy] = useState<string | null>(null);
+  const [showStrategy, setShowStrategy] = useState(false);
   const [previewWeek, setPreviewWeek] = useState<1 | 2>(1);
   const [feedback, setFeedback] = useState('');
   const [refining, setRefining] = useState(false);
@@ -86,6 +102,14 @@ export default function NieuwSchemaPage() {
       : null;
     const daysUntilRace = getDaysUntilRace(getActiveRaceDate());
 
+    // Prestatie-samenvatting uit het archief (stadsfiets uitgesloten)
+    const statsActivities = filterStatsActivities(
+      getActivityArchive(),
+      getEquipment(),
+      getActivityAssignments(),
+    );
+    const performanceSummary = buildPerformanceSummary(statsActivities, getHealthArchive());
+
     try {
       const currentPhase = getCurrentPhase();
       const phaseProgress = getPhaseProgress();
@@ -111,6 +135,7 @@ export default function NieuwSchemaPage() {
           nextPhase: nextPhase ? { label: nextPhase.label } : null,
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
+          performanceSummary,
         }),
       });
 
@@ -118,6 +143,8 @@ export default function NieuwSchemaPage() {
       if (!res.ok) throw new Error(data.error || 'Genereren mislukt');
 
       setProposal(data.plan);
+      setStrategy(data.strategy || null);
+      setShowStrategy(false);
       setPreviewWeek(1);
       setFeedback('');
       setStep(2);
@@ -292,6 +319,11 @@ export default function NieuwSchemaPage() {
             'Schema genereren'
           )}
         </button>
+        {loading && (
+          <p className="text-center text-xs text-gray-500 -mt-2">
+            De coach analyseert je prestaties van de afgelopen weken — dit duurt ongeveer een halve minuut.
+          </p>
+        )}
 
         {error && (
           <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">{error}</div>
@@ -310,6 +342,28 @@ export default function NieuwSchemaPage() {
           <h1 className="text-2xl font-bold text-gray-900">Voorstel</h1>
           <p className="text-gray-500 text-sm">Bekijk het schema en geef feedback</p>
         </div>
+
+        {/* Waarom dit schema — coachstrategie obv recente prestaties */}
+        {strategy && (
+          <div className="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setShowStrategy((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+            >
+              <span className="text-sm font-semibold text-blue-800">
+                💡 Waarom dit schema
+              </span>
+              <span className="text-blue-500 text-xs">
+                {showStrategy ? 'Verbergen ▲' : 'Toon analyse ▼'}
+              </span>
+            </button>
+            {showStrategy && (
+              <div className="px-4 pb-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed border-t border-blue-100 pt-3">
+                {cleanStrategyText(strategy)}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Week selector */}
         <div className="flex gap-2">
@@ -376,6 +430,7 @@ export default function NieuwSchemaPage() {
           <button
             onClick={() => {
               setProposal(null);
+              setStrategy(null);
               setFeedback('');
               setStep(1);
             }}

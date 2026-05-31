@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
+export const maxDuration = 30; // Opus coach-chat kan langer duren dan de standaard 10s
+
 const BASE_PROMPT = `Je bent My Sport Coach AI, een persoonlijke trainingscoach voor duursporters (hardlopen, fietsen, zwemmen, triatlon). Je spreekt Nederlands.
 
 ATLEET PROFIEL:
@@ -216,7 +218,7 @@ Week 2:
     const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-opus-4-8',
       max_tokens: 1024,
       system: fullSystemPrompt,
       messages: messages.slice(-20),

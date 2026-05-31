@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek, DayPreference } from '@/lib/types';
 
-export const maxDuration = 30; // Vercel timeout verlengen naar 30 seconden
+export const maxDuration = 60; // Vercel timeout: twee-traps (Opus-redenering + snelle JSON) past hierin
 
 const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'rust'];
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
@@ -177,6 +177,7 @@ export async function POST(request: NextRequest) {
       nextPhase,
       raceContext,
       goalsHistory,
+      performanceSummary,
     } = body;
 
     const client = new Anthropic({ apiKey });
@@ -231,6 +232,9 @@ ${JSON_FORMAT_SPEC}`;
     }
 
     let performanceText = '';
+    if (performanceSummary && typeof performanceSummary === 'string') {
+      performanceText += `\n${performanceSummary}\n`;
+    }
     if (checkIns && checkIns.length > 0) {
       performanceText += '\nRECENTE CHECK-INS (gevoel na trainingen):\n';
       for (const ci of checkIns) {
@@ -290,21 +294,57 @@ ${JSON_FORMAT_SPEC}`;
       phaseAdvice = 'FASE: Wedstrijdweek — minimale belasting, rust en voorbereiding.';
     }
 
-    const systemPrompt = `Je bent My Sport Coach AI planmaker. Genereer een 2-weekse trainingsplanning als JSON.
-
-ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
+    // Gedeelde atleet-context voor beide traps
+    const athleteContext = `ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 ${phaseAdvice}
-${goalsHistory ? `\n${goalsHistory}\n` : ''}${blockedText}${preferencesText}${previousPlanText}${performanceText}
+${goalsHistory ? `\n${goalsHistory}\n` : ''}${blockedText}${preferencesText}${previousPlanText}${performanceText}`;
+
+    // --- TRAP 1: Opus denkt na over de coachstrategie (extended thinking) ---
+    const strategyPrompt = `Je bent een ervaren triatloncoach. Analyseer de situatie van de atleet en bepaal de strategie voor de komende 2 trainingsweken. Schrijf GEEN schema in JSON — alleen je redenering en concrete richtlijnen.
+
+${athleteContext}
+
+Houd expliciet rekening met de PRESTATIES van de afgelopen weken:
+- Is het volume/de intensiteit aan het stijgen, stabiel of dalend? Bouw logisch voort.
+- Zijn er sporten die achterblijven of juist te zwaar belast zijn? Herbalanceer.
+- Wat zeggen herstel (slaap, HRV, rust-HR) en training load over hoeveel belasting verantwoord is?
+- Sluit de progressie aan op de huidige trainingsfase en de dagen tot de wedstrijd?
+
+Geef je antwoord als beknopte coachnotitie in het Nederlands:
+1. KORTE ANALYSE (2-4 zinnen): hoe staat de atleet ervoor op basis van de recente prestaties en herstel.
+2. STRATEGIE WEEK 1 en WEEK 2: belasting-progressie, accenten per discipline, intensiteitsverdeling, herstel.
+3. CONCRETE SESSIE-RICHTLIJNEN per week: welke type sessies, ongeveer hoeveel en welke duur/zone, plus minimaal 1 brick-sessie per 2 weken.
+Wees specifiek met getallen (duur, zones) zodat een schema hier 1-op-1 op gebouwd kan worden.`;
+
+    const strategyResponse = await client.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 4000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium' },
+      system: 'Je bent een ervaren, data-gedreven triatloncoach die trainingsschema\'s afstemt op recente prestaties en herstel.',
+      messages: [{ role: 'user', content: strategyPrompt }],
+    });
+
+    const strategy = strategyResponse.content
+      .filter((b) => b.type === 'text')
+      .map((b) => (b.type === 'text' ? b.text : ''))
+      .join('\n')
+      .trim();
+
+    // --- TRAP 2: Haiku zet de strategie snel om naar gevalideerde JSON ---
+    const formatPrompt = `Je bent My Sport Coach AI planmaker. Zet de coachstrategie hieronder exact om naar een 2-weekse trainingsplanning als JSON.
+
+${athleteContext}
+
+COACHSTRATEGIE (volg deze exact):
+${strategy}
+
 REGELS:
+- Volg de coachstrategie hierboven nauwgezet (belasting, accenten, sessietypes, zones).
 - Geblokkeerde dagen MOETEN rustdagen zijn (sport:"rust", type:"rust", isRestDay:true)
 - Respecteer de dagvoorkeuren van de atleet (tijdstippen, specifieke sporten)
-- Bouw voort op het vorige schema: verhoog geleidelijk duur (+5-10%) of intensiteit
-- Als training load hoog/overbelast is: verminder volume, meer herstel
-- Als check-in gevoelens laag (1-2): pas aan naar minder intensief
-- Balanceer zwemmen/fietsen/hardlopen over de week
-- Minimaal 1 brick-sessie (fietsen+lopen) per 2 weken
 - Maximaal 2 sessies per dag
 - Descriptions max 10 woorden, Nederlands
 
@@ -313,8 +353,8 @@ ${JSON_FORMAT_SPEC}`;
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: 'Genereer het trainingsschema.' }],
+      system: formatPrompt,
+      messages: [{ role: 'user', content: 'Genereer het trainingsschema als JSON volgens de strategie.' }],
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
@@ -323,7 +363,7 @@ ${JSON_FORMAT_SPEC}`;
     if (!result.valid) {
       return NextResponse.json({ error: `Validatie mislukt: ${result.errors.join(', ')}` }, { status: 422 });
     }
-    return NextResponse.json({ plan: result.plan });
+    return NextResponse.json({ plan: result.plan, strategy });
   } catch (error) {
     console.error('Generate plan error:', error);
     return NextResponse.json({ error: 'Er ging iets mis bij het genereren van het schema' }, { status: 500 });
