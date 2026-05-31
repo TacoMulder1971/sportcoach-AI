@@ -172,7 +172,12 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
 
       if (todayActivities.length > 0) {
         feedbackPrompt += buildVerifiedFactsBlock('vandaag', sessions, todayActivities);
-        feedbackPrompt += `\nOPDRACHT: Geef in 2-3 zinnen feedback op basis van bovenstaande feiten. Gebruik de getallen exact zoals ze hier staan — verzin geen andere HR-waarden, zones of snelheden. Begin met of de doelen gehaald zijn (zie VERGELIJKING), benoem 1 hoogtepunt en 1 concreet verbeterpunt voor de volgende keer.`;
+        if (sessions.length > 0) {
+          feedbackPrompt += `\nOPDRACHT: Geef in 2-3 zinnen feedback op basis van bovenstaande feiten. Gebruik de getallen exact zoals ze hier staan — verzin geen andere HR-waarden, zones of snelheden. Begin met of de doelen gehaald zijn (zie VERGELIJKING), benoem 1 hoogtepunt en 1 concreet verbeterpunt voor de volgende keer.`;
+        } else {
+          // Ongeplande activiteit op een rustdag — er zijn geen geplande doelen
+          feedbackPrompt += `\nCONTEXT: Dit was een RUSTDAG, maar de atleet heeft toch getraind. Gebruik de getallen exact zoals ze hier staan — verzin geen andere HR-waarden, zones of snelheden.\nOPDRACHT: Geef in 2-3 zinnen feedback op deze ongeplande sessie. Benoem 1 hoogtepunt, maar bewaak ook het herstel: was dit verstandig op een rustdag, en waar moet hij op letten qua belasting?`;
+        }
       } else {
         feedbackPrompt += '\nGEEN Garmin-activiteit beschikbaar voor vandaag.\n\nGeplande sessies:\n';
         for (const s of sessions) {

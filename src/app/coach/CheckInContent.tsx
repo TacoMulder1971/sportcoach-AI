@@ -14,6 +14,37 @@ function getHRZoneLabel(avgHR: number): string {
   return 'Onder Z1';
 }
 
+/** Garmin-activiteiten van vandaag als compacte kaartjes (Duur/Afstand/HR). */
+function TodayActivities({ activities }: { activities: GarminActivity[] }) {
+  if (activities.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {activities.map((a) => (
+        <div key={a.id} className="bg-gray-50 rounded-lg p-3">
+          <div className="flex items-center gap-2 mb-1">
+            <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="sm" />
+            <p className="text-sm font-medium">{a.activityName}</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-sm font-bold text-gray-800">{a.durationMinutes}m</p>
+              <p className="text-[10px] text-gray-400">Duur</p>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-800">{a.distanceKm > 0 ? `${a.distanceKm}km` : '–'}</p>
+              <p className="text-[10px] text-gray-400">Afstand</p>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-red-500">{a.avgHR || '–'}</p>
+              <p className="text-[10px] text-gray-400">{a.avgHR > 0 ? getHRZoneLabel(a.avgHR) : 'Gem HR'}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function CheckInContent({ onComplete }: { onComplete: () => void }) {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
   const [todayActivities, setTodayActivities] = useState<GarminActivity[]>([]);
@@ -90,30 +121,7 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
           {todayActivities.length > 0 && (
             <div className="mb-4 pb-4 border-b border-gray-100">
               <p className="text-xs text-gray-400 mb-2">Garmin activiteiten vandaag</p>
-              <div className="space-y-2">
-                {todayActivities.map((a) => (
-                  <div key={a.id} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="sm" />
-                      <p className="text-sm font-medium">{a.activityName}</p>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <p className="text-sm font-bold text-gray-800">{a.durationMinutes}m</p>
-                        <p className="text-[10px] text-gray-400">Duur</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-gray-800">{a.distanceKm > 0 ? `${a.distanceKm}km` : '–'}</p>
-                        <p className="text-[10px] text-gray-400">Afstand</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-red-500">{a.avgHR || '–'}</p>
-                        <p className="text-[10px] text-gray-400">{a.avgHR > 0 ? getHRZoneLabel(a.avgHR) : 'Gem HR'}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <TodayActivities activities={todayActivities} />
             </div>
           )}
 
@@ -152,34 +160,7 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
             {todayActivities.length > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-50">
                 <p className="text-xs text-gray-400 mb-2">Garmin activiteiten vandaag</p>
-                <div className="space-y-2">
-                  {todayActivities.map((a) => (
-                    <div key={a.id} className="bg-gray-50 rounded-lg p-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="sm" />
-                        <p className="text-sm font-medium">{a.activityName}</p>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <p className="text-sm font-bold text-gray-800">{a.durationMinutes}m</p>
-                          <p className="text-[10px] text-gray-400">Duur</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-800">
-                            {a.distanceKm > 0 ? `${a.distanceKm}km` : '–'}
-                          </p>
-                          <p className="text-[10px] text-gray-400">Afstand</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-red-500">{a.avgHR || '–'}</p>
-                          <p className="text-[10px] text-gray-400">
-                            {a.avgHR > 0 ? getHRZoneLabel(a.avgHR) : 'Gem HR'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <TodayActivities activities={todayActivities} />
               </div>
             )}
           </div>
@@ -187,6 +168,24 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
           <CheckInForm
             sessions={todayTraining.sessions}
             dayLabel={todayTraining.day}
+            garminActivities={todayActivities}
+            onComplete={onComplete}
+          />
+        </div>
+      ) : todayActivities.length > 0 ? (
+        // Rustdag, maar er is toch getraind — bied alsnog een check-out + gesprek aan
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="mb-4 pb-4 border-b border-gray-100">
+            <div className="flex items-center gap-2 mb-2">
+              <SportIcon sport="rust" size="sm" />
+              <p className="text-sm font-medium text-gray-700">Rustdag — maar je hebt toch getraind</p>
+            </div>
+            <TodayActivities activities={todayActivities} />
+          </div>
+
+          <CheckInForm
+            sessions={[]}
+            dayLabel={todayTraining?.day || 'Rustdag'}
             garminActivities={todayActivities}
             onComplete={onComplete}
           />
