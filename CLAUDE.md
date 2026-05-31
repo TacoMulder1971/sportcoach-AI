@@ -22,7 +22,7 @@ SportCoach AI — een Nederlandstalige AI-sportcoach-webapp (Next.js, PWA) voor 
 - **Taal:** alle UI en gebruikerstekst is **Nederlands**. Houd dit aan.
 - **Opslag:** alles via `src/lib/storage.ts` (localStorage). Niet direct localStorage aanroepen elders.
 - **Types:** centraal in `src/lib/types.ts`. Voeg nieuwe types daar toe.
-- **AI-modellen:** Haiku voor snelle feedback, Sonnet voor coach-chat (zie `src/app/api/*`).
+- **AI-modellen:** Haiku (`claude-haiku-4-5-20251001`) voor snelle feedback/JSON-formattering, Opus 4.8 (`claude-opus-4-8`) voor coach-chat én de schema-redenering, Sonnet (`claude-sonnet-4-6`) voor snelle dag-aanpassingen (`adjust-day`). Zie `src/app/api/*`. **Vercel-timeout:** standaard 10s; verleng met `export const maxDuration` als een endpoint Opus gebruikt (chat=30, generate-plan=60). Opus' nieuwe thinking-API = `thinking: { type: 'adaptive' }` + `output_config: { effort }` (niet `budget_tokens`).
 - **Navigatie:** tab-layout in `src/components/Navigation.tsx`.
 - **Pure logica** in `src/lib/*` (bijv. `equipment.ts`, `swim.ts`, `training-load.ts`, `periodization.ts`, `races.ts`), UI in `src/components/*`.
 
@@ -33,6 +33,7 @@ SportCoach AI — een Nederlandstalige AI-sportcoach-webapp (Next.js, PWA) voor 
 - **Multisport (triatlon/duatlon/brick):** Garmin slaat dit op als **parent met child-activiteiten**. De disciplines zitten NIET in `/splits`, maar in `metadataDTO.childIds` → per child `activityTypeDTO.typeKey` + `summaryDTO`. Zie `src/app/api/garmin/sync/route.ts`.
 - **Wedstrijden (tabblad "Races", `/wedstrijden`):** races komen uit het **Doelen-systeem** (geen aparte opslag); `src/lib/races.ts` koppelt elk `Goal` aan de Garmin-activiteit van ±1 dag voor echte splits/pace/HR. Weer via `src/app/api/weather/route.ts` (Open-Meteo, geen API-key), gecached per goalId.
 - **Activiteiten-archief:** de Garmin-sync overschrijft de live-data, dus voor historische trends (bijv. de aanloop naar een wedstrijd) is er een **groeiend archief** in `storage.ts` (`ACTIVITY_ARCHIVE` + `HEALTH_ARCHIVE`, dedup). De sync haalt nu 150 activiteiten op; beide sync-handlers (`page.tsx`, `data/page.tsx`) mergen álles in het archief en trimmen de live-weergave tot 40.
+- **Schema-generatie (`/schema/nieuw` → `/api/generate-plan`, generate-mode):** twee-traps. **Trap 1** = Opus 4.8 met extended thinking schrijft een coachstrategie (geen JSON) op basis van de **prestatie-samenvatting** van de afgelopen weken; **trap 2** = Haiku zet die strategie om naar gevalideerde JSON. De prestatie-samenvatting komt uit `src/lib/performance-summary.ts` (`buildPerformanceSummary`): 4-weekse breakdown uit het archief (volume/afstand/HR per sport, TRIMP-trend, herstel-trend), stadsfiets uitgesloten via `filterStatsActivities`. De API geeft naast `plan` ook `strategy` terug; die toont de UI als inklapbare "Waarom dit schema"-kaart (markdown opgeschoond met `cleanStrategyText`). Duurt ~40s — bewust. De refine-mode en `adjust-day` blijven snel (Haiku/Sonnet, één call).
 
 ## Git
 - **Werkwijze (voorkeur gebruiker, 2026-05-31): bij UI-wijzigingen eerst een preview tonen en de gebruiker laten bevestigen dat het goed is; pas ná akkoord committen + pushen. Niet ongevraagd pushen.** Werk direct op `main`, geen feature-branch nodig.
