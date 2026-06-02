@@ -377,9 +377,9 @@ function GoalFormModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="p-5 border-b border-gray-100 sticky top-0 bg-white">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col">
+        <div className="p-5 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold">{isNew ? 'Nieuw doel' : 'Doel bewerken'}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -390,7 +390,7 @@ function GoalFormModal({
           </div>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 flex-1 overflow-y-auto">
           <div>
             <label className="text-xs font-medium text-gray-600 mb-1 block">Type</label>
             <select
@@ -523,7 +523,7 @@ function GoalFormModal({
           </div>
         </div>
 
-        <div className="p-5 border-t border-gray-100 flex gap-2 sticky bottom-0 bg-white">
+        <div className="p-5 border-t border-gray-100 flex gap-2 flex-shrink-0">
           {!isNew && goal && (
             <button
               onClick={() => onDelete(goal.id)}
@@ -616,9 +616,9 @@ function GoalResultModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="p-5 border-b border-gray-100 sticky top-0 bg-white">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col">
+        <div className="p-5 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold">🏁 Resultaat invullen</h2>
@@ -632,8 +632,8 @@ function GoalResultModal({
           </div>
         </div>
 
-        <div className="p-5 space-y-4">
-          <div>
+        <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+<div>
             <label className="text-xs font-medium text-gray-600 mb-1 block">Eindtijd * (hh:mm:ss)</label>
             <input
               type="text"
@@ -711,7 +711,7 @@ function GoalResultModal({
           </div>
         </div>
 
-        <div className="p-5 border-t border-gray-100 flex gap-2 justify-end sticky bottom-0 bg-white">
+        <div className="p-5 border-t border-gray-100 flex gap-2 justify-end flex-shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
