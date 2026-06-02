@@ -617,6 +617,14 @@ export function getArchivedGoals(): Goal[] {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/** Alle actieve doelen met datum ≥ vandaag, gesorteerd op datum (vroegste eerst). */
+export function getUpcomingGoals(): Goal[] {
+  const today = new Date().toISOString().split('T')[0];
+  return getGoals()
+    .filter(g => g.status === 'active' && g.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export function saveGoal(goal: Goal): void {
   const goals = getGoals();
   const idx = goals.findIndex(g => g.id === goal.id);
@@ -645,18 +653,16 @@ export function archiveGoal(id: string, result: GoalResult): void {
 }
 
 /**
- * Check of een actief doel al voorbij is (datum < vandaag)
- * en er nog geen resultaat is ingevuld. Gebruikt voor popup.
+ * Check of er een actief doel voorbij is (datum < vandaag)
+ * zonder resultaat. Geeft de meest recente voorbije terug. Gebruikt voor popup.
  */
 export function getPendingResultGoal(): Goal | null {
-  const active = getActiveGoal();
-  if (!active || active.result) return null;
   const today = new Date().toISOString().split('T')[0];
-  if (active.date >= today) return null;
-  // Check of user de popup al weggeklikt heeft
   const dismissed = getItem<string[]>(KEYS.GOAL_RESULT_DISMISSED, []);
-  if (dismissed.includes(active.id)) return null;
-  return active;
+  const past = getGoals()
+    .filter(g => g.status === 'active' && g.date < today && !g.result && !dismissed.includes(g.id))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  return past[0] ?? null;
 }
 
 export function dismissGoalResultPrompt(goalId: string): void {
@@ -766,16 +772,39 @@ export function formatRaceDateNL(dateStr?: string): string {
 }
 
 /**
- * Context-string voor AI prompts.
- * Bv. "1/4 triatlon op 13 juni 2026, nog 51 dagen. Doel: onder 3:00:00."
+ * Context-string voor AI prompts. Toont eerstvolgende race als primair doel,
+ * plus alle overige aankomende races zodat de coach de jaarplanning ziet.
  */
 export function buildRaceContextText(): string {
-  const label = getActiveRaceLabel();
-  const dateFmt = formatRaceDateNL();
-  const days = getDaysUntilActiveRace();
-  const goalText = getActiveRaceGoalText();
-  const daysText = days >= 0 ? `, nog ${days} dagen` : ` (voorbij)`;
-  return `${label} op ${dateFmt}${daysText}. Doel: ${goalText}.`;
+  const upcoming = getUpcomingGoals();
+  if (upcoming.length === 0) {
+    // Fallback naar profiel als er geen doelen zijn
+    const label = getActiveRaceLabel();
+    const dateFmt = formatRaceDateNL();
+    const days = getDaysUntilActiveRace();
+    const goalText = getActiveRaceGoalText();
+    const daysText = days >= 0 ? `, nog ${days} dagen` : ` (voorbij)`;
+    return `${label} op ${dateFmt}${daysText}. Doel: ${goalText}.`;
+  }
+
+  const next = upcoming[0];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const lines: string[] = [];
+
+  for (const g of upcoming) {
+    const info = GOAL_TYPES.find(t => t.type === g.type);
+    const typeLabel = (info?.label || g.name).toLowerCase();
+    const dateFmt = formatRaceDateNL(g.date);
+    const raceDate = new Date(g.date);
+    raceDate.setHours(0, 0, 0, 0);
+    const days = Math.ceil((raceDate.getTime() - today.getTime()) / 86400000);
+    const goalText = g.targetTimeSeconds ? `doel: onder ${formatDuration(g.targetTimeSeconds)}` : '';
+    const primary = g.id === next.id ? ' ← VOLGENDE' : '';
+    lines.push(`- ${g.name} (${typeLabel}) op ${dateFmt}, nog ${days} dagen${goalText ? ', ' + goalText : ''}${primary}`);
+  }
+
+  return `AANKOMENDE WEDSTRIJDEN:\n${lines.join('\n')}`;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { GarminActivity, GarminHealthStats } from './types';
+import { GarminActivity, GarminHealthStats, Goal, GOAL_TYPES } from './types';
 import { calcTRIMP } from './training-load';
 
 /**
@@ -33,6 +33,14 @@ function mondayOf(ref: Date): Date {
   return d;
 }
 
+function fmtDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 interface SportTotals {
   count: number;
   minutes: number;
@@ -48,14 +56,16 @@ function emptyTotals(): SportTotals {
 /**
  * @param activities  Vooraf gefilterd op stats-relevante activiteiten (geen stadsfiets).
  * @param health      Health-archief (slaap/HRV/rust-HR per dag).
+ * @param goals       Gearchiveerde doelen met resultaten (wedstrijden).
  * @param referenceDate  Standaard vandaag; injecteerbaar voor tests.
- * @param weeksBack   Aantal volledige weken terug (incl. huidige), standaard 4.
+ * @param weeksBack   Aantal volledige weken terug (incl. huidige), standaard 8.
  */
 export function buildPerformanceSummary(
   activities: GarminActivity[],
   health: GarminHealthStats[],
+  goals: Goal[] = [],
   referenceDate: Date = new Date(),
-  weeksBack = 4
+  weeksBack = 8
 ): string {
   if (!activities || activities.length === 0) {
     return 'PRESTATIES AFGELOPEN WEKEN: geen activiteiten-data beschikbaar in het archief.';
@@ -71,7 +81,15 @@ export function buildPerformanceSummary(
 
   const inWindow = activities.filter((a) => a.date >= windowStart);
 
-  const lines: string[] = ['PRESTATIES AFGELOPEN WEKEN (uit archief, oudste → nieuwste):'];
+  // Wedstrijden met resultaat, geïndexeerd op datum
+  const racesByDate = new Map<string, Goal>();
+  for (const g of goals) {
+    if (g.result && g.date >= windowStart) {
+      racesByDate.set(g.date, g);
+    }
+  }
+
+  const lines: string[] = [`PRESTATIES AFGELOPEN ${weeksBack} WEKEN (uit archief, oudste → nieuwste):`];
 
   for (let w = weeksBack - 1; w >= 0; w--) {
     const monday = new Date(thisMonday);
@@ -82,6 +100,11 @@ export function buildPerformanceSummary(
     const sStr = sunday.toISOString().split('T')[0];
 
     const weekActs = inWindow.filter((a) => a.date >= mStr && a.date <= sStr);
+
+    // Wedstrijden in deze week
+    const weekRaces = [...racesByDate.entries()]
+      .filter(([date]) => date >= mStr && date <= sStr)
+      .map(([, g]) => g);
 
     const perSport = new Map<string, SportTotals>();
     let weekTrimp = 0;
@@ -105,7 +128,7 @@ export function buildPerformanceSummary(
     const label = monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
     const totalMin = weekActs.reduce((s, a) => s + (a.durationMinutes || 0), 0);
 
-    if (weekActs.length === 0) {
+    if (weekActs.length === 0 && weekRaces.length === 0) {
       lines.push(`- Week van ${label}: geen trainingen geregistreerd`);
       continue;
     }
@@ -119,10 +142,24 @@ export function buildPerformanceSummary(
       parts.push(`${SPORT_LABEL[sport]} ${t.count}× (${Math.round(t.minutes)}min${km}${hr})`);
     }
 
-    lines.push(
+    let weekLine =
       `- Week van ${label}: ${weekActs.length} sessies, ${Math.round(totalMin)}min totaal, TRIMP ${weekTrimp}` +
-        (parts.length ? `\n    ${parts.join(' · ')}` : '')
-    );
+      (parts.length ? `\n    ${parts.join(' · ')}` : '');
+
+    // Wedstrijdresultaten toevoegen
+    for (const g of weekRaces) {
+      const typeInfo = GOAL_TYPES.find(t => t.type === g.type);
+      const typeLabel = typeInfo?.label || g.name;
+      const time = g.result!.totalTimeSeconds ? fmtDuration(g.result!.totalTimeSeconds) : '?';
+      const rating = g.result!.rating ? ` (${g.result!.rating}/5)` : '';
+      const splits = g.result!.splits?.length
+        ? ' [' + g.result!.splits.map(s => `${s.discipline} ${fmtDuration(s.timeSeconds)}`).join(', ') + ']'
+        : '';
+      weekLine += `\n    WEDSTRIJD: ${g.name} (${typeLabel}) — ${time}${splits}${rating}`;
+      if (g.result!.timeReflection) weekLine += `\n      Reflectie: ${g.result!.timeReflection.slice(0, 150)}`;
+    }
+
+    lines.push(weekLine);
   }
 
   // Herstel-trend: laatste 7 dagen vs daarvoor

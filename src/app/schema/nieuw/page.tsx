@@ -8,7 +8,7 @@ import {
   getActivePlan, getGarminData, getRecentCheckIns,
   saveStoredPlan, setActivePlanId, generateId,
   getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText,
-  getActivityArchive, getHealthArchive, getEquipment, getActivityAssignments,
+  getActivityArchive, getHealthArchive, getEquipment, getActivityAssignments, getArchivedGoals,
 } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildPerformanceSummary } from '@/lib/performance-summary';
@@ -108,7 +108,7 @@ export default function NieuwSchemaPage() {
       getEquipment(),
       getActivityAssignments(),
     );
-    const performanceSummary = buildPerformanceSummary(statsActivities, getHealthArchive());
+    const performanceSummary = buildPerformanceSummary(statsActivities, getHealthArchive(), getArchivedGoals());
 
     try {
       const currentPhase = getCurrentPhase();

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Goal, GoalResult, GoalSplit, GOAL_TYPES, GoalType } from '@/lib/types';
 import {
   getGoals,
-  getActiveGoal,
+  getUpcomingGoals,
   getArchivedGoals,
   saveGoal,
   deleteGoal,
@@ -21,7 +21,7 @@ interface GoalsSectionProps {
 }
 
 export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSectionProps) {
-  const [active, setActive] = useState<Goal | null>(null);
+  const [upcoming, setUpcoming] = useState<Goal[]>([]);
   const [archived, setArchived] = useState<Goal[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
@@ -30,7 +30,7 @@ export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSect
   const [showSchemaPrompt, setShowSchemaPrompt] = useState<Goal | null>(null);
 
   const refresh = () => {
-    setActive(getActiveGoal());
+    setUpcoming(getUpcomingGoals());
     setArchived(getArchivedGoals());
   };
 
@@ -65,60 +65,58 @@ export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSect
 
   return (
     <div className="space-y-4">
-      {/* Actief doel */}
-      {active ? (
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide">Actief doel</p>
-              <h3 className="text-lg font-bold text-gray-900">{active.name}</h3>
-              <p className="text-xs text-gray-500">{typeLabel(active.type)}</p>
-            </div>
-            <button
-              onClick={() => setEditGoal(active)}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded"
+      {/* Aankomende doelen */}
+      {upcoming.length > 0 ? (
+        <div className="space-y-3">
+          {upcoming.map((g, idx) => (
+            <div
+              key={g.id}
+              className={`rounded-xl p-4 border ${idx === 0
+                ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200'
+                : 'bg-white border-gray-200'}`}
             >
-              Wijzig
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm mt-3">
-            <div>
-              <p className="text-xs text-gray-500">Datum</p>
-              <p className="font-semibold">{formatDate(active.date)}</p>
-            </div>
-            {active.targetTimeSeconds && (
-              <div>
-                <p className="text-xs text-gray-500">Streeftijd</p>
-                <p className="font-semibold">{formatDuration(active.targetTimeSeconds)}</p>
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  {idx === 0 && (
+                    <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide mb-0.5">Volgende wedstrijd</p>
+                  )}
+                  <h3 className={`font-bold text-gray-900 ${idx === 0 ? 'text-lg' : 'text-base'}`}>{g.name}</h3>
+                  <p className="text-xs text-gray-500">{typeLabel(g.type)}</p>
+                </div>
+                <button
+                  onClick={() => setEditGoal(g)}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded"
+                >
+                  Wijzig
+                </button>
               </div>
-            )}
-            <div>
-              <p className="text-xs text-gray-500">Nog</p>
-              <p className="font-semibold">
-                {daysUntil(active.date) >= 0
-                  ? `${daysUntil(active.date)} dagen`
-                  : 'Voorbij'}
-              </p>
+
+              <div className="flex items-center gap-4 text-sm mt-2">
+                <div>
+                  <p className="text-xs text-gray-500">Datum</p>
+                  <p className="font-semibold">{formatDate(g.date)}</p>
+                </div>
+                {g.targetTimeSeconds && (
+                  <div>
+                    <p className="text-xs text-gray-500">Streeftijd</p>
+                    <p className="font-semibold">{formatDuration(g.targetTimeSeconds)}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-gray-500">Nog</p>
+                  <p className="font-semibold">{daysUntil(g.date)} dagen</p>
+                </div>
+              </div>
+
+              {g.location && (
+                <p className="text-xs text-gray-500 mt-2">📍 {g.location}</p>
+              )}
             </div>
-          </div>
-
-          {active.location && (
-            <p className="text-xs text-gray-500 mt-2">📍 {active.location}</p>
-          )}
-
-          {daysUntil(active.date) < 0 && (
-            <button
-              onClick={() => setResultGoal(active)}
-              className="w-full mt-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700"
-            >
-              Resultaat invullen
-            </button>
-          )}
+          ))}
         </div>
       ) : (
         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center">
-          <p className="text-sm text-gray-500">Nog geen doel ingesteld</p>
+          <p className="text-sm text-gray-500">Nog geen wedstrijden gepland</p>
         </div>
       )}
 
