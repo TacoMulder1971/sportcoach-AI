@@ -801,7 +801,14 @@ export function buildRaceContextText(): string {
     const days = Math.ceil((raceDate.getTime() - today.getTime()) / 86400000);
     const goalText = g.targetTimeSeconds ? `doel: onder ${formatDuration(g.targetTimeSeconds)}` : '';
     const primary = g.id === next.id ? ' ← VOLGENDE' : '';
-    lines.push(`- ${g.name} (${typeLabel}) op ${dateFmt}, nog ${days} dagen${goalText ? ', ' + goalText : ''}${primary}`);
+    const d = g.disciplineDistancesKm;
+    const distParts: string[] = [];
+    if (d?.swim) distParts.push(`zwem ${d.swim}km`);
+    if (d?.bike) distParts.push(`fiets ${d.bike}km`);
+    if (d?.run) distParts.push(d.run2 ? `loop1 ${d.run}km` : `loop ${d.run}km`);
+    if (d?.run2) distParts.push(`loop2 ${d.run2}km`);
+    const distText = distParts.length ? ` [${distParts.join(', ')}]` : '';
+    lines.push(`- ${g.name} (${typeLabel}) op ${dateFmt}, nog ${days} dagen${distText}${goalText ? ', ' + goalText : ''}${primary}`);
   }
 
   return `AANKOMENDE WEDSTRIJDEN:\n${lines.join('\n')}`;
@@ -819,8 +826,15 @@ export function buildGoalsHistoryText(): string {
     const label = info?.label || g.name;
     const dateFmt = formatRaceDateNL(g.date);
     const time = g.result?.totalTimeSeconds ? formatDuration(g.result.totalTimeSeconds) : '?';
+    const d = g.disciplineDistancesKm;
+    const distParts: string[] = [];
+    if (d?.swim) distParts.push(`zwem ${d.swim}km`);
+    if (d?.bike) distParts.push(`fiets ${d.bike}km`);
+    if (d?.run) distParts.push(d.run2 ? `loop1 ${d.run}km` : `loop ${d.run}km`);
+    if (d?.run2) distParts.push(`loop2 ${d.run2}km`);
+    const distText = distParts.length ? ` [${distParts.join(', ')}]` : '';
     const reflection = g.result?.trainingReflection ? ` — ${g.result.trainingReflection.slice(0, 120)}` : '';
-    return `- ${label} (${dateFmt}): ${time}${reflection}`;
+    return `- ${g.name} (${label}, ${dateFmt})${distText}: ${time}${reflection}`;
   });
   return `RECENTE DOELEN:\n${lines.join('\n')}`;
 }

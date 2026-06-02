@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Goal, GoalResult, GoalSplit, GOAL_TYPES, GoalType } from '@/lib/types';
+import { Goal, GoalResult, GoalSplit, GOAL_TYPES, GoalType, DisciplineDistances } from '@/lib/types';
 import {
   getGoals,
   getUpcomingGoals,
@@ -339,15 +339,33 @@ function GoalFormModal({
   );
   const [location, setLocation] = useState(goal?.location || '');
   const [note, setNote] = useState(goal?.note || '');
+  const [distSwim, setDistSwim] = useState(goal?.disciplineDistancesKm?.swim?.toString() || '');
+  const [distBike, setDistBike] = useState(goal?.disciplineDistancesKm?.bike?.toString() || '');
+  const [distRun, setDistRun] = useState(goal?.disciplineDistancesKm?.run?.toString() || '');
+  const [distRun2, setDistRun2] = useState(goal?.disciplineDistancesKm?.run2?.toString() || '');
+
+  const typeInfo = GOAL_TYPES.find(t => t.type === type);
+  const isMultiSport = typeInfo?.multiSport ?? false;
+  const isDuatlon = type === 'duatlon';
 
   function handleSubmit() {
     if (!name.trim() || !date) return;
+    let disciplineDistancesKm: DisciplineDistances | undefined;
+    if (isMultiSport) {
+      const d: DisciplineDistances = {};
+      if (distSwim) d.swim = parseFloat(distSwim);
+      if (distBike) d.bike = parseFloat(distBike);
+      if (distRun) d.run = parseFloat(distRun);
+      if (isDuatlon && distRun2) d.run2 = parseFloat(distRun2);
+      if (Object.keys(d).length > 0) disciplineDistancesKm = d;
+    }
     const newGoal: Goal = {
       id: goal?.id || generateId(),
       type,
       name: name.trim(),
       date,
       targetTimeSeconds: targetTime ? parseDuration(targetTime) : undefined,
+      disciplineDistancesKm,
       location: location.trim() || undefined,
       note: note.trim() || undefined,
       status: goal?.status || 'active',
@@ -430,6 +448,68 @@ function GoalFormModal({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
             />
           </div>
+
+          {isMultiSport && (
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-2 block">
+                Afstanden per onderdeel (km, optioneel)
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {!isDuatlon && (
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Zwemmen</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={distSwim}
+                      onChange={(e) => setDistSwim(e.target.value)}
+                      placeholder="bv. 1.5"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Fietsen</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={distBike}
+                    onChange={(e) => setDistBike(e.target.value)}
+                    placeholder="bv. 40"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">{isDuatlon ? 'Lopen (1e)' : 'Lopen'}</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={distRun}
+                    onChange={(e) => setDistRun(e.target.value)}
+                    placeholder="bv. 10"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+                {isDuatlon && (
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Lopen (2e)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={distRun2}
+                      onChange={(e) => setDistRun2(e.target.value)}
+                      placeholder="bv. 5"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-medium text-gray-600 mb-1 block">Notitie (optioneel)</label>

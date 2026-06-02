@@ -304,12 +304,20 @@ export interface GoalResult {
   filledAt: string;          // ISO datum dat resultaat is ingevuld
 }
 
+export interface DisciplineDistances {
+  swim?: number;   // km
+  bike?: number;   // km
+  run?: number;    // km (of eerste loop bij duatlon)
+  run2?: number;   // km tweede loop (alleen duatlon)
+}
+
 export interface Goal {
   id: string;                  // UUID — forward-compatible met multi-user DB
   type: GoalType;
   name: string;                // bv. "1/4 Triatlon Eindhoven"
   date: string;                // ISO "2026-06-13"
   targetTimeSeconds?: number;  // streeftijd in seconden (optioneel)
+  disciplineDistancesKm?: DisciplineDistances; // werkelijke afstanden per onderdeel
   location?: string;
   note?: string;
   status: 'active' | 'archived';
