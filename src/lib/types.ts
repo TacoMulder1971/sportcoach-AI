@@ -1,5 +1,10 @@
 export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'wandelen' | 'voetballen' | 'multisport' | 'rust';
 
+export interface GarminCredentials {
+  email: string;
+  password: string;
+}
+
 // Zwem-locatie varianten — onderscheiden binnen-/buitenbad en openwater per activiteit
 export type SwimVariant = 'zwembad_binnen' | 'zwembad_buiten' | 'openwater';
 

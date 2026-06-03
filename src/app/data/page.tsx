@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
@@ -15,6 +15,7 @@ import SwimVariantIcon from '@/components/SwimVariantIcon';
 import SwimVariantChip from '@/components/SwimVariantChip';
 import { filterStatsActivities, equipmentForActivity } from '@/lib/equipment';
 import { swimVariantForActivity } from '@/lib/swim';
+import GarminSetupCard from '@/components/GarminSetupCard';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -51,11 +52,12 @@ export default function DataPage() {
     try {
       const existingData = getGarminData();
       const existingActivityIds = existingData?.activities?.map(a => a.id) || [];
+      const creds = getGarminCredentials();
 
       const res = await fetch('/api/garmin/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ existingActivityIds }),
+        body: JSON.stringify({ existingActivityIds, email: creds?.email, password: creds?.password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync mislukt');
@@ -692,6 +694,9 @@ export default function DataPage() {
           </div>
         </section>
       )}
+
+      {/* Garmin-koppeling instellen */}
+      <GarminSetupCard onConnect={handleGarminSync} />
 
       {/* Garmin sync knop */}
       <button

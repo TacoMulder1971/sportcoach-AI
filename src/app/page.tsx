@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import TrainingCard from '@/components/TrainingCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, mergeActivitiesIntoArchive, mergeHealthIntoArchive } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials } from '@/lib/storage';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice } from '@/lib/training-load';
 import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
@@ -85,8 +85,8 @@ export default function Dashboard() {
     setGarmin(getGarminData());
     setPendingResultGoal(getPendingResultGoal());
 
-    // Auto-sync max 1x per dag
-    if (shouldAutoSync()) {
+    // Auto-sync max 1x per dag — alleen als Garmin-credentials beschikbaar zijn
+    if (shouldAutoSync() && getGarminCredentials()) {
       handleGarminSync();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,11 +99,12 @@ export default function Dashboard() {
       // Stuur bestaande activity IDs mee zodat server alleen details ophaalt voor nieuwe
       const existingData = getGarminData();
       const existingActivityIds = existingData?.activities?.map(a => a.id) || [];
+      const creds = getGarminCredentials();
 
       const res = await fetch('/api/garmin/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ existingActivityIds }),
+        body: JSON.stringify({ existingActivityIds, email: creds?.email, password: creds?.password }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync mislukt');

@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -27,6 +27,7 @@ const KEYS = {
   ACTIVITY_ARCHIVE: 'tricoach_activity_archive',
   HEALTH_ARCHIVE: 'tricoach_health_archive',
   RACE_WEATHER: 'tricoach_race_weather',
+  GARMIN_CREDENTIALS: 'tricoach_garmin_credentials',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -992,4 +993,19 @@ export function getLastSwimVariant(): SwimVariant {
 
 export function setLastSwimVariant(variant: SwimVariant): void {
   setItem(KEYS.LAST_SWIM_VARIANT, variant);
+}
+
+// ─── Garmin-inloggegevens (per gebruiker in localStorage) ────────
+
+export function getGarminCredentials(): GarminCredentials | null {
+  return getItem<GarminCredentials | null>(KEYS.GARMIN_CREDENTIALS, null);
+}
+
+export function saveGarminCredentials(creds: GarminCredentials): void {
+  setItem(KEYS.GARMIN_CREDENTIALS, creds);
+}
+
+export function clearGarminCredentials(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.GARMIN_CREDENTIALS);
 }

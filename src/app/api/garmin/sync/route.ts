@@ -44,23 +44,26 @@ function mapSwimVariant(typeKey: string): SwimVariant | undefined {
 
 export async function POST(request: Request) {
   try {
-    const email = process.env.GARMIN_EMAIL;
-    const password = process.env.GARMIN_PASSWORD;
+    // Credentials komen uit het request body (per-gebruiker via localStorage).
+    // Env vars blijven als fallback zodat bestaande server-configuratie intact blijft.
+    let existingActivityIds: number[] = [];
+    let email: string | undefined;
+    let password: string | undefined;
+    try {
+      const body = await request.json();
+      existingActivityIds = body.existingActivityIds || [];
+      email = body.email || process.env.GARMIN_EMAIL;
+      password = body.password || process.env.GARMIN_PASSWORD;
+    } catch {
+      email = process.env.GARMIN_EMAIL;
+      password = process.env.GARMIN_PASSWORD;
+    }
 
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Garmin credentials niet geconfigureerd' },
         { status: 500 }
       );
-    }
-
-    // Parse existing activity IDs from request body
-    let existingActivityIds: number[] = [];
-    try {
-      const body = await request.json();
-      existingActivityIds = body.existingActivityIds || [];
-    } catch {
-      // No body or invalid JSON — treat as no existing IDs
     }
 
     const GC = new GarminConnect({ username: email, password });
