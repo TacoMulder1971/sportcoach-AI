@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
@@ -16,6 +16,7 @@ import SwimVariantChip from '@/components/SwimVariantChip';
 import { filterStatsActivities, equipmentForActivity } from '@/lib/equipment';
 import { swimVariantForActivity } from '@/lib/swim';
 import GarminSetupCard from '@/components/GarminSetupCard';
+import WeeklyVolumeChart, { WeeklyVolumeData } from '@/components/WeeklyVolumeChart';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -198,6 +199,64 @@ export default function DataPage() {
 
     return { hrData, runTempoData, raceSpeedData, mtbSpeedData, powerData, swimPaceData };
   }, [garmin, statsActivities]);
+
+  // Wekelijks volume per sport (8 weken) — uit activiteiten-archief
+  const volumeData = useMemo((): WeeklyVolumeData[] => {
+    const archive = filterStatsActivities(getActivityArchive(), equipment, assignments);
+    if (archive.length === 0) return [];
+    const now = new Date();
+    const result: WeeklyVolumeData[] = [];
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i * 7);
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+      const weekStart = monday.toISOString().split('T')[0];
+      const weekEnd = new Date(monday);
+      weekEnd.setDate(monday.getDate() + 6);
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      const label = monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' });
+      const week = archive.filter(a => a.date >= weekStart && a.date <= weekEndStr);
+      result.push({
+        label,
+        zwemmen: week.filter(a => a.sport === 'zwemmen').reduce((s, a) => s + a.durationMinutes, 0),
+        fietsen: week.filter(a => a.sport === 'fietsen' || a.sport === 'mountainbike').reduce((s, a) => s + a.durationMinutes, 0),
+        hardlopen: week.filter(a => a.sport === 'hardlopen').reduce((s, a) => s + a.durationMinutes, 0),
+      });
+    }
+    return result;
+  }, [garmin, equipment, assignments]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Rusthart- en HRV-trend per week (8 weken) — uit health-archief
+  const healthTrends = useMemo(() => {
+    const archive = getHealthArchive();
+    if (archive.length === 0) return null;
+    const now = new Date();
+    const restingHRData: { label: string; value: number }[] = [];
+    const hrvData: { label: string; value: number }[] = [];
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i * 7);
+      const day = d.getDay();
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+      const weekStart = monday.toISOString().split('T')[0];
+      const weekEnd = new Date(monday);
+      weekEnd.setDate(monday.getDate() + 6);
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      const label = monday.toLocaleDateString('nl-NL', { day: 'numeric', month: 'numeric' });
+      const week = archive.filter(h => h.date >= weekStart && h.date <= weekEndStr);
+      const withHR = week.filter(h => (h.restingHR || 0) > 0);
+      const withHRV = week.filter(h => (h.avgOvernightHrv || 0) > 0);
+      restingHRData.push({ label, value: withHR.length > 0 ? Math.round(withHR.reduce((s, h) => s + (h.restingHR || 0), 0) / withHR.length) : 0 });
+      hrvData.push({ label, value: withHRV.length > 0 ? Math.round(withHRV.reduce((s, h) => s + (h.avgOvernightHrv || 0), 0) / withHRV.length) : 0 });
+    }
+    const hasHR = restingHRData.some(d => d.value > 0);
+    const hasHRV = hrvData.some(d => d.value > 0);
+    if (!hasHR && !hasHRV) return null;
+    return { restingHRData, hrvData, hasHR, hasHRV };
+  }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleGenerateReport() {
     if (!garmin) return;
@@ -711,18 +770,32 @@ export default function DataPage() {
       </button>
 
       {/* Trends grafieken */}
-      {weeklyTrends && (
+      {(weeklyTrends || volumeData.some(d => d.zwemmen + d.fietsen + d.hardlopen > 0) || healthTrends) && (
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Trends (8 weken)</h2>
           <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-5">
-            <TrendLineChart data={weeklyTrends.hrData} color="#ef4444" unit="bpm" title="Gemiddelde hartslag per week" />
-            <TrendLineChart data={weeklyTrends.runTempoData} color="#f97316" unit="min/km" title="Hardlooptempo per week (min/km)" invertY={true} />
-            <TrendLineChart data={weeklyTrends.raceSpeedData} color="#22c55e" unit="km/h" title="Snelheid racefiets per week" />
-            <TrendLineChart data={weeklyTrends.mtbSpeedData} color="#10b981" unit="km/h" title="Snelheid mountainbike per week" />
-            {weeklyTrends.powerData.some(d => d.value > 0) && (
-              <TrendLineChart data={weeklyTrends.powerData} color="#f59e0b" unit="W" title="Gemiddeld vermogen fietsen per week" />
+            {/* Volume per sport */}
+            <WeeklyVolumeChart data={volumeData} />
+
+            {/* Herstel: rusthart + HRV */}
+            {healthTrends?.hasHR && (
+              <TrendLineChart data={healthTrends.restingHRData} color="#8b5cf6" unit="bpm" title="Rusthartslag per week" />
             )}
-            <TrendLineChart data={weeklyTrends.swimPaceData} color="#3b82f6" unit="s/100m" title="Zwemtempo per week (sec/100m)" invertY={true} />
+            {healthTrends?.hasHRV && (
+              <TrendLineChart data={healthTrends.hrvData} color="#06b6d4" unit="ms" title="HRV per week (nacht)" />
+            )}
+
+            {/* Prestatiemetrieken */}
+            {weeklyTrends && (<>
+              <TrendLineChart data={weeklyTrends.hrData} color="#ef4444" unit="bpm" title="Gemiddelde hartslag per week" />
+              <TrendLineChart data={weeklyTrends.runTempoData} color="#f97316" unit="min/km" title="Hardlooptempo per week (min/km)" invertY={true} />
+              <TrendLineChart data={weeklyTrends.raceSpeedData} color="#22c55e" unit="km/h" title="Snelheid racefiets per week" />
+              <TrendLineChart data={weeklyTrends.mtbSpeedData} color="#10b981" unit="km/h" title="Snelheid mountainbike per week" />
+              {weeklyTrends.powerData.some(d => d.value > 0) && (
+                <TrendLineChart data={weeklyTrends.powerData} color="#f59e0b" unit="W" title="Gemiddeld vermogen fietsen per week" />
+              )}
+              <TrendLineChart data={weeklyTrends.swimPaceData} color="#3b82f6" unit="s/100m" title="Zwemtempo per week (sec/100m)" invertY={true} />
+            </>)}
           </div>
         </section>
       )}
