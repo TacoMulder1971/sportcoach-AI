@@ -15,6 +15,8 @@ export function getCurrentWeekNumber(cycleStartDate?: string): 1 | 2 {
   const diffDays = Math.floor(
     (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
+  // Cyclus nog niet begonnen → altijd week 1
+  if (diffDays < 0) return 1;
   const weeksSinceStart = Math.floor(diffDays / 7);
   return (weeksSinceStart % 2 === 0 ? 1 : 2) as 1 | 2;
 }
@@ -74,7 +76,7 @@ export function getTrainingForDayOffset(
   const dayIndex = target.getDay() === 0 ? 6 : target.getDay() - 1;
   const startDate = new Date(cycleStartDate || DEFAULT_CYCLE_START);
   const diffDays = Math.floor((target.getTime() - startDate.getTime()) / 86400000);
-  const weekNum: 1 | 2 = (Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2) as 1 | 2;
+  const weekNum: 1 | 2 = (diffDays < 0 || Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2) as 1 | 2;
   const week = p.find((w) => w.weekNumber === weekNum);
   return week?.days.find((d) => d.dayIndex === dayIndex) ?? null;
 }
