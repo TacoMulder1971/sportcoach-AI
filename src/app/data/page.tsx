@@ -7,7 +7,7 @@ import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, Acti
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
-import TrendLineChart from '@/components/TrendLineChart';
+import BuildupBarChart from '@/components/BuildupBarChart';
 import MaterialSection from '@/components/MaterialSection';
 import EquipmentAssignChip from '@/components/EquipmentAssignChip';
 import EquipmentIcon from '@/components/EquipmentIcon';
@@ -773,28 +773,28 @@ export default function DataPage() {
       {(weeklyTrends || volumeData.some(d => d.zwemmen + d.fietsen + d.hardlopen > 0) || healthTrends) && (
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Trends (8 weken)</h2>
-          <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-5">
+          <div className="bg-gray-100 rounded-xl p-4 space-y-5">
             {/* Volume per sport */}
             <WeeklyVolumeChart data={volumeData} />
 
             {/* Herstel: rusthart + HRV */}
             {healthTrends?.hasHR && (
-              <TrendLineChart data={healthTrends.restingHRData} color="#8b5cf6" unit="bpm" title="Rusthartslag per week" />
+              <BuildupBarChart data={healthTrends.restingHRData} color="#8b5cf6" unit="bpm" title="Rusthartslag per week" />
             )}
             {healthTrends?.hasHRV && (
-              <TrendLineChart data={healthTrends.hrvData} color="#06b6d4" unit="ms" title="HRV per week (nacht)" />
+              <BuildupBarChart data={healthTrends.hrvData} color="#06b6d4" unit="ms" title="HRV per week (nacht)" />
             )}
 
             {/* Prestatiemetrieken */}
             {weeklyTrends && (<>
-              <TrendLineChart data={weeklyTrends.hrData} color="#ef4444" unit="bpm" title="Gemiddelde hartslag per week" />
-              <TrendLineChart data={weeklyTrends.runTempoData} color="#f97316" unit="min/km" title="Hardlooptempo per week (min/km)" invertY={true} />
-              <TrendLineChart data={weeklyTrends.raceSpeedData} color="#22c55e" unit="km/h" title="Snelheid racefiets per week" />
-              <TrendLineChart data={weeklyTrends.mtbSpeedData} color="#10b981" unit="km/h" title="Snelheid mountainbike per week" />
+              <BuildupBarChart data={weeklyTrends.hrData} color="#ef4444" unit="bpm" title="Gemiddelde hartslag per week" />
+              <BuildupBarChart data={weeklyTrends.runTempoData} color="#f97316" unit="min/km" title="Hardlooptempo per week" />
+              <BuildupBarChart data={weeklyTrends.raceSpeedData} color="#22c55e" unit="km/h" title="Snelheid racefiets per week" />
+              <BuildupBarChart data={weeklyTrends.mtbSpeedData} color="#10b981" unit="km/h" title="Snelheid mountainbike per week" />
               {weeklyTrends.powerData.some(d => d.value > 0) && (
-                <TrendLineChart data={weeklyTrends.powerData} color="#f59e0b" unit="W" title="Gemiddeld vermogen fietsen per week" />
+                <BuildupBarChart data={weeklyTrends.powerData} color="#f59e0b" unit="W" title="Gemiddeld vermogen fietsen per week" />
               )}
-              <TrendLineChart data={weeklyTrends.swimPaceData} color="#3b82f6" unit="s/100m" title="Zwemtempo per week (sec/100m)" invertY={true} />
+              <BuildupBarChart data={weeklyTrends.swimPaceData} color="#3b82f6" unit="s/100m" title="Zwemtempo per week" />
             </>)}
           </div>
         </section>
