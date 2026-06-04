@@ -9,6 +9,7 @@ import {
   saveStoredPlan, setActivePlanId, generateId,
   getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText,
   getActivityArchive, getHealthArchive, getEquipment, getActivityAssignments, getArchivedGoals,
+  buildHRZoneText,
 } from '@/lib/storage';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildPerformanceSummary } from '@/lib/performance-summary';
@@ -136,6 +137,7 @@ export default function NieuwSchemaPage() {
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
           performanceSummary,
+          hrZoneText: buildHRZoneText(),
         }),
       });
 
@@ -172,6 +174,7 @@ export default function NieuwSchemaPage() {
           refinementFeedback: feedback.trim(),
           daysUntilRace,
           raceContext: buildRaceContextText(),
+          hrZoneText: buildHRZoneText(),
         }),
       });
 

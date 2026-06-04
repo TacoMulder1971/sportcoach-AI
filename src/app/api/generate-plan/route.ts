@@ -178,6 +178,7 @@ export async function POST(request: NextRequest) {
       raceContext,
       goalsHistory,
       performanceSummary,
+      hrZoneText,
     } = body;
 
     const client = new Anthropic({ apiKey });
@@ -188,7 +189,7 @@ export async function POST(request: NextRequest) {
 
       const refinePrompt = `Je bent My Sport Coach AI planmaker. Je hebt eerder een 2-weekse trainingsplanning gemaakt.
 
-ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
+ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
@@ -295,7 +296,7 @@ ${JSON_FORMAT_SPEC}`;
     }
 
     // Gedeelde atleet-context voor beide traps
-    const athleteContext = `ATLEET: Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)
+    const athleteContext = `ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 ${phaseAdvice}

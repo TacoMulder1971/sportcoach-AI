@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -143,6 +143,22 @@ export function getProfile(): UserProfile {
 
 export function saveProfile(profile: UserProfile): void {
   setItem(KEYS.PROFILE, profile);
+}
+
+/** Effectieve cycling max HR: uit profiel of maxHR - 8 als fallback. */
+export function getMaxHRCycling(): number {
+  const p = getProfile();
+  return p.maxHRCycling ?? (p.maxHR - 8);
+}
+
+/** Zone-tekst voor AI-prompts, per sport. */
+export function buildHRZoneText(): string {
+  const p = getProfile();
+  const runZones = computeHRZones(p.maxHR);
+  const bikeZones = computeHRZones(getMaxHRCycling());
+  const fmt = (z: ReturnType<typeof computeHRZones>) =>
+    z.map(z => `${z.zone}(${z.min}-${z.max} ${z.label})`).join(', ');
+  return `Hardlopen: Max HR ${p.maxHR} bpm, Zones: ${fmt(runZones)} | Fietsen: Max HR ${getMaxHRCycling()} bpm, Zones: ${fmt(bikeZones)}`;
 }
 
 // Garmin data

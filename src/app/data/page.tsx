@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive } from '@/lib/storage';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, saveProfile } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
@@ -34,6 +34,9 @@ export default function DataPage() {
   const touchStartY = useRef(0);
   const PULL_THRESHOLD = 65;
 
+  const [maxHRRun, setMaxHRRun] = useState<string>('');
+  const [maxHRBike, setMaxHRBike] = useState<string>('');
+
   const refreshEquipment = useCallback(() => {
     setEquipment(getEquipment());
     setAssignments(getActivityAssignments());
@@ -45,7 +48,19 @@ export default function DataPage() {
     const cached = getWeeklyReport();
     if (cached) setWeeklyReport(cached.summary);
     refreshEquipment();
+    const p = getProfile();
+    setMaxHRRun(String(p.maxHR));
+    setMaxHRBike(String(p.maxHRCycling ?? (p.maxHR - 8)));
   }, [refreshEquipment]);
+
+  function saveMaxHR() {
+    const run = parseInt(maxHRRun);
+    const bike = parseInt(maxHRBike);
+    if (!run || run < 100 || run > 230) return;
+    if (!bike || bike < 100 || bike > 230) return;
+    const p = getProfile();
+    saveProfile({ ...p, maxHR: run, maxHRCycling: bike });
+  }
 
   async function handleGarminSync() {
     setSyncing(true);
@@ -378,6 +393,47 @@ export default function DataPage() {
           <p className="text-gray-500 text-sm">Trek omlaag of tik de knop om je Garmin data op te halen</p>
         </div>
 
+        {/* Hartslag instellingen */}
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Hartslaggrenzen</h2>
+          <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
+            <p className="text-xs text-gray-500">Stel je maximale hartslag in per sport. Wordt gebruikt voor zones en TRIMP-berekening.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Max HR hardlopen</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={100}
+                    max={230}
+                    value={maxHRRun}
+                    onChange={e => setMaxHRRun(e.target.value)}
+                    onBlur={saveMaxHR}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                  <span className="text-xs text-gray-400 whitespace-nowrap">bpm</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Max HR fietsen</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={100}
+                    max={230}
+                    value={maxHRBike}
+                    onChange={e => setMaxHRBike(e.target.value)}
+                    onBlur={saveMaxHR}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  />
+                  <span className="text-xs text-gray-400 whitespace-nowrap">bpm</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">Wijzigingen worden automatisch opgeslagen bij het verlaten van het veld.</p>
+          </div>
+        </section>
+
         {/* Data beheer — ook zonder Garmin beschikbaar */}
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Data beheer</h2>
@@ -614,7 +670,7 @@ export default function DataPage() {
               </div>
               <div className="text-right text-xs text-gray-400">
                 <p>TRIMP (7 dagen)</p>
-                <p>Max HR: 172 bpm</p>
+                <p>Max HR: {getProfile().maxHR} bpm</p>
               </div>
             </div>
             {/* Load zones */}

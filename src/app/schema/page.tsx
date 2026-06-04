@@ -6,8 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText } from '@/lib/storage';
-import { HEART_RATE_ZONES, TrainingWeek, TrainingDay, GarminHealthStats } from '@/lib/types';
+import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getProfile } from '@/lib/storage';
+import { computeHRZones, TrainingWeek, TrainingDay, GarminHealthStats } from '@/lib/types';
 import { TRAINING_PHASES, getPhaseProgress, getPhaseStatus, getPhaseDateRange } from '@/lib/periodization';
 
 type TabSelection = 1 | 2 | 'longterm';
@@ -89,6 +89,7 @@ function SchemaPageInner() {
           adjustmentRequest: adjustText.trim(),
           daysUntilRace: getDaysUntilRace(getActiveRaceDate()),
           raceContext: buildRaceContextText(),
+          hrZoneText: buildHRZoneText(),
         }),
       });
 
@@ -313,15 +314,20 @@ function SchemaPageInner() {
 
           {/* Hartslagzones legenda */}
           <section>
+            {(() => {
+              const profile = getProfile();
+              const runZones = computeHRZones(profile.maxHR);
+              return (
+            <>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">
-              Hartslagzones (max HR: 172)
+              Hartslagzones hardlopen (max HR: {profile.maxHR})
             </h2>
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              {HEART_RATE_ZONES.map((zone, idx) => (
+              {runZones.map((zone, idx) => (
                 <div
                   key={zone.zone}
                   className={`flex items-center justify-between p-3 ${
-                    idx < HEART_RATE_ZONES.length - 1 ? 'border-b border-gray-100' : ''
+                    idx < runZones.length - 1 ? 'border-b border-gray-100' : ''
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -349,6 +355,30 @@ function SchemaPageInner() {
                 </div>
               )}
             </div>
+            {/* Fietszones */}
+            {(() => {
+              const bikeMaxHR = profile.maxHRCycling ?? (profile.maxHR - 8);
+              const bikeZones = computeHRZones(bikeMaxHR);
+              return (
+                <div className="mt-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Hartslagzones fietsen (max HR: {bikeMaxHR})</h3>
+                  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    {bikeZones.map((zone, idx) => (
+                      <div key={zone.zone} className={`flex items-center justify-between p-3 ${idx < bikeZones.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                        <div className="flex items-center gap-3">
+                          <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: zone.color }}>{zone.zone}</span>
+                          <span className="text-sm font-medium">{zone.label}</span>
+                        </div>
+                        <span className="text-sm text-gray-500">{zone.min}–{zone.max} bpm</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            </>
+              );
+            })()}
           </section>
         </>
       )}

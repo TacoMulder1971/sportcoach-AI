@@ -1,16 +1,17 @@
 import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HEART_RATE_ZONES } from './types';
 
-const MAX_HR = 172;
+const DEFAULT_MAX_HR = 172;
 const REST_HR = 55; // geschatte rustHR, wordt overschreven door Garmin data
 
 /**
  * Bereken TRIMP (Training Impulse) per activiteit
  * TRIMP = duur(min) × intensiteitsfactor
  * Intensiteitsfactor = (avgHR - restHR) / (maxHR - restHR)
+ * maxHR is sport-specifiek: fietsen krijgt cycling max HR mee als die beschikbaar is.
  */
-export function calcTRIMP(activity: GarminActivity, restingHR: number): number {
+export function calcTRIMP(activity: GarminActivity, restingHR: number, maxHR = DEFAULT_MAX_HR): number {
   if (!activity.avgHR || activity.avgHR <= restingHR) return 0;
-  const intensity = (activity.avgHR - restingHR) / (MAX_HR - restingHR);
+  const intensity = (activity.avgHR - restingHR) / (maxHR - restingHR);
   return Math.round(activity.durationMinutes * intensity);
 }
 
@@ -269,7 +270,7 @@ export function estimatePlannedTRIMP(sessions: TrainingSession[]): number {
   for (const s of sessions) {
     const avgHR = zoneAvgHR[s.zone || 'Z2'] || 112;
     const duration = s.durationMinutes || 30;
-    const intensity = (avgHR - REST_HR) / (MAX_HR - REST_HR);
+    const intensity = (avgHR - REST_HR) / (DEFAULT_MAX_HR - REST_HR);
     if (intensity > 0) {
       total += Math.round(duration * intensity);
     }

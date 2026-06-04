@@ -74,19 +74,29 @@ export interface ChatMessage {
 
 export interface UserProfile {
   name: string;
-  maxHR: number;
-  raceDate: string; // ISO date
+  maxHR: number;           // max hartslag hardlopen
+  maxHRCycling?: number;   // max hartslag fietsen (optioneel, standaard maxHR - 8)
+  raceDate: string;        // ISO date
   raceGoal: string;
   raceType: string;
 }
 
-export const HEART_RATE_ZONES: HeartRateZoneInfo[] = [
-  { zone: 'Z1', label: 'Herstel', min: 86, max: 103, color: '#9ca3af' },
-  { zone: 'Z2', label: 'Basis', min: 103, max: 120, color: '#22c55e' },
-  { zone: 'Z3', label: 'Aeroob', min: 120, max: 138, color: '#3b82f6' },
-  { zone: 'Z4', label: 'Drempel', min: 138, max: 155, color: '#f59e0b' },
-  { zone: 'Z5', label: 'VO2max', min: 155, max: 172, color: '#ef4444' },
-];
+/**
+ * Bereken zones op basis van max HR (50/60/70/80/90/100%).
+ */
+export function computeHRZones(maxHR: number): HeartRateZoneInfo[] {
+  const pct = (p: number) => Math.round(p * maxHR);
+  return [
+    { zone: 'Z1', label: 'Herstel',  min: pct(0.50), max: pct(0.60), color: '#9ca3af' },
+    { zone: 'Z2', label: 'Basis',    min: pct(0.60), max: pct(0.70), color: '#22c55e' },
+    { zone: 'Z3', label: 'Aeroob',   min: pct(0.70), max: pct(0.80), color: '#3b82f6' },
+    { zone: 'Z4', label: 'Drempel',  min: pct(0.80), max: pct(0.90), color: '#f59e0b' },
+    { zone: 'Z5', label: 'VO2max',   min: pct(0.90), max: maxHR,     color: '#ef4444' },
+  ];
+}
+
+/** Zones voor hardlopen bij standaard max HR 172 (backward-compat). */
+export const HEART_RATE_ZONES: HeartRateZoneInfo[] = computeHRZones(172);
 
 export const SPORT_ICONS: Record<Sport, string> = {
   zwemmen: 'Z',
@@ -121,6 +131,7 @@ export const FEELING_SCALE: Record<number, { label: string; color: string; textC
 export const DEFAULT_PROFILE: UserProfile = {
   name: '',
   maxHR: 172,
+  maxHRCycling: 164,
   raceDate: '2026-06-13',
   raceGoal: 'Onder de 3 uur',
   raceType: '1/4 Triatlon',
