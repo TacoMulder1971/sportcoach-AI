@@ -72,11 +72,22 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+export interface HRZoneConfig {
+  z1min: number; // ondergrens Z1 (Z1 loopt van z1min t/m z2min-1)
+  z2min: number;
+  z3min: number;
+  z4min: number;
+  z5min: number;
+  maxHR: number; // bovengrens Z5
+}
+
 export interface UserProfile {
   name: string;
-  maxHR: number;           // max hartslag hardlopen
-  maxHRCycling?: number;   // max hartslag fietsen (optioneel, standaard maxHR - 8)
-  raceDate: string;        // ISO date
+  maxHR: number;                // max hartslag hardlopen (legacy, ook z5max)
+  maxHRCycling?: number;        // max hartslag fietsen (legacy)
+  hrZonesRun?: HRZoneConfig;    // aangepaste zones hardlopen
+  hrZonesCycling?: HRZoneConfig;// aangepaste zones fietsen
+  raceDate: string;
   raceGoal: string;
   raceType: string;
 }
@@ -136,6 +147,17 @@ export const DEFAULT_PROFILE: UserProfile = {
   raceGoal: 'Onder de 3 uur',
   raceType: '1/4 Triatlon',
 };
+
+/** Zet een HRZoneConfig om naar HeartRateZoneInfo[]. */
+export function hrZoneConfigToZones(cfg: HRZoneConfig): HeartRateZoneInfo[] {
+  return [
+    { zone: 'Z1', label: 'Herstel',  min: cfg.z1min, max: cfg.z2min - 1, color: '#9ca3af' },
+    { zone: 'Z2', label: 'Basis',    min: cfg.z2min, max: cfg.z3min - 1, color: '#22c55e' },
+    { zone: 'Z3', label: 'Aeroob',   min: cfg.z3min, max: cfg.z4min - 1, color: '#3b82f6' },
+    { zone: 'Z4', label: 'Drempel',  min: cfg.z4min, max: cfg.z5min - 1, color: '#f59e0b' },
+    { zone: 'Z5', label: 'VO2max',   min: cfg.z5min, max: cfg.maxHR,     color: '#ef4444' },
+  ];
+}
 
 // Garmin types
 export interface GarminActivity {

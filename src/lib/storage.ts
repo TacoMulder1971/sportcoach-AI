@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -145,20 +145,36 @@ export function saveProfile(profile: UserProfile): void {
   setItem(KEYS.PROFILE, profile);
 }
 
-/** Effectieve cycling max HR: uit profiel of maxHR - 8 als fallback. */
+/** Effectieve cycling max HR. */
 export function getMaxHRCycling(): number {
   const p = getProfile();
-  return p.maxHRCycling ?? (p.maxHR - 8);
+  return p.hrZonesCycling?.maxHR ?? p.maxHRCycling ?? (p.maxHR - 8);
+}
+
+/** Zones voor hardlopen: aangepaste config of berekend uit max HR. */
+export function getRunZones(): HeartRateZoneInfo[] {
+  const p = getProfile();
+  if (p.hrZonesRun) return hrZoneConfigToZones(p.hrZonesRun);
+  return computeHRZones(p.maxHR);
+}
+
+/** Zones voor fietsen: aangepaste config of berekend uit max HR. */
+export function getCyclingZones(): HeartRateZoneInfo[] {
+  const p = getProfile();
+  if (p.hrZonesCycling) return hrZoneConfigToZones(p.hrZonesCycling);
+  return computeHRZones(getMaxHRCycling());
 }
 
 /** Zone-tekst voor AI-prompts, per sport. */
 export function buildHRZoneText(): string {
   const p = getProfile();
-  const runZones = computeHRZones(p.maxHR);
-  const bikeZones = computeHRZones(getMaxHRCycling());
-  const fmt = (z: ReturnType<typeof computeHRZones>) =>
+  const runZones = getRunZones();
+  const bikeZones = getCyclingZones();
+  const runMaxHR = p.hrZonesRun?.maxHR ?? p.maxHR;
+  const bikeMaxHR = getMaxHRCycling();
+  const fmt = (z: HeartRateZoneInfo[]) =>
     z.map(z => `${z.zone}(${z.min}-${z.max} ${z.label})`).join(', ');
-  return `Hardlopen: Max HR ${p.maxHR} bpm, Zones: ${fmt(runZones)} | Fietsen: Max HR ${getMaxHRCycling()} bpm, Zones: ${fmt(bikeZones)}`;
+  return `Hardlopen: Max HR ${runMaxHR} bpm, Zones: ${fmt(runZones)} | Fietsen: Max HR ${bikeMaxHR} bpm, Zones: ${fmt(bikeZones)}`;
 }
 
 // Garmin data
