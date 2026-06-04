@@ -404,12 +404,11 @@ export default function DataPage() {
           <p className="text-gray-500 text-sm">Trek omlaag of tik de knop om je Garmin data op te halen</p>
         </div>
 
-        {/* Hartslagzones instellen */}
+        {/* Hartslagzones instellen — ook zonder Garmin beschikbaar */}
         <section>
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Hartslagzones instellen</h2>
           <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-4">
             <p className="text-xs text-gray-500">Stel de ondergrens van elke zone in (bpm). De bovengrens van Z5 is je max hartslag.</p>
-            {/* Tabel: zone | hardlopen | fietsen */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -424,34 +423,21 @@ export default function DataPage() {
                     <tr key={label} className="border-b border-gray-50">
                       <td className="py-2 pr-3 font-semibold text-gray-700 whitespace-nowrap">{label}</td>
                       <td className="py-1 px-2">
-                        <input
-                          type="number"
-                          min={60}
-                          max={230}
-                          value={zonesRun[idx]}
+                        <input type="number" min={60} max={230} value={zonesRun[idx]}
                           onChange={e => setZonesRun(z => z.map((v, i) => i === idx ? e.target.value : v))}
-                          className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center"
-                        />
+                          className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center" />
                       </td>
                       <td className="py-1 pl-2">
-                        <input
-                          type="number"
-                          min={60}
-                          max={230}
-                          value={zonesBike[idx]}
+                        <input type="number" min={60} max={230} value={zonesBike[idx]}
                           onChange={e => setZonesBike(z => z.map((v, i) => i === idx ? e.target.value : v))}
-                          className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center"
-                        />
+                          className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center" />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <button
-              onClick={saveZones}
-              className="w-full py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
-            >
+            <button onClick={saveZones} className="w-full py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700">
               {zonesSaved ? '✓ Opgeslagen' : 'Opslaan'}
             </button>
           </div>
@@ -1004,6 +990,58 @@ export default function DataPage() {
           </div>
         </section>
       )}
+
+      {/* Hartslagzones instellen */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Hartslagzones instellen</h2>
+        <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-4">
+          <p className="text-xs text-gray-500">Stel de ondergrens van elke zone in (bpm). De bovengrens van Z5 is je max hartslag.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 border-b border-gray-100">
+                  <th className="text-left py-2 pr-3 font-medium">Zone</th>
+                  <th className="text-center py-2 px-2 font-medium">Hardlopen</th>
+                  <th className="text-center py-2 pl-2 font-medium">Fietsen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Max HR'].map((label, idx) => (
+                  <tr key={label} className="border-b border-gray-50">
+                    <td className="py-2 pr-3 font-semibold text-gray-700 whitespace-nowrap">{label}</td>
+                    <td className="py-1 px-2">
+                      <input
+                        type="number"
+                        min={60}
+                        max={230}
+                        value={zonesRun[idx]}
+                        onChange={e => setZonesRun(z => z.map((v, i) => i === idx ? e.target.value : v))}
+                        className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center"
+                      />
+                    </td>
+                    <td className="py-1 pl-2">
+                      <input
+                        type="number"
+                        min={60}
+                        max={230}
+                        value={zonesBike[idx]}
+                        onChange={e => setZonesBike(z => z.map((v, i) => i === idx ? e.target.value : v))}
+                        className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button
+            onClick={saveZones}
+            className="w-full py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
+          >
+            {zonesSaved ? '✓ Opgeslagen' : 'Opslaan'}
+          </button>
+        </div>
+      </section>
 
       {/* Data beheer */}
       <section>
