@@ -36,6 +36,7 @@ DATA-INTEGRITEIT (KRITIEK):
 - Als er een blok "GEVERIFIEERDE FEITEN" of "VERGELIJKING" staat: behandel die als waarheid en spreek deze niet tegen.
 - Bij multisport-activiteiten: gebruik per onderdeel de splits, niet het totaal-gemiddelde.
 - Als data ontbreekt: zeg dat eerlijk in plaats van te gokken.
+- TIMING (KRITIEK): noem een activiteit alleen "gisteren" als die het label [GISTEREN] heeft, en "vandaag" alleen bij [VANDAAG]. Voor alles ouder: gebruik de WEEKDAG-naam uit het label (bijv. "woensdag"), NIET "gisteren" of "eergisteren". Verzin NOOIT wanneer iets gedaan is.
 
 ATLEET: ${raceContext || `Traint voor een wedstrijd (nog ${daysUntilRace} dagen).`}
 
@@ -135,10 +136,19 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     }
 
     if (garminActivities && garminActivities.length > 0) {
-      prompt += `\nRECENTE ACTIVITEITEN:\n`;
+      prompt += `\nRECENTE ACTIVITEITEN (let op de timing per activiteit — gebruik die exact):\n`;
       for (const a of garminActivities.slice(0, 3)) {
         const actDayName = days[new Date(a.date).getDay()];
-        prompt += `- ${a.activityName} (${actDayName} ${a.date}${a.startTime ? ` om ${a.startTime}` : ''}): ${a.durationMinutes}min`;
+        // Relatief dag-label zodat de coach niet gokt ("gisteren" terwijl het 4 dagen geleden was).
+        // Voor alles ouder dan gisteren forceren we de weekdag-naam (vriendelijke termen als
+        // "eergisteren" worden door het model snel verkeerd toegepast).
+        const daysAgoAct = Math.round(
+          (new Date(amsterdamTodayStr).getTime() - new Date(a.date).getTime()) / 86400000
+        );
+        const relLabel = daysAgoAct <= 0 ? 'VANDAAG'
+          : daysAgoAct === 1 ? 'GISTEREN'
+          : `${actDayName.toUpperCase()}, ${daysAgoAct} DAGEN GELEDEN`;
+        prompt += `- [${relLabel}] ${a.activityName} (${a.date}${a.startTime ? ` om ${a.startTime}` : ''}): ${a.durationMinutes}min`;
         if (a.distanceKm > 0) prompt += `, ${a.distanceKm}km`;
         if (a.avgPace) prompt += `, tempo ${a.avgPace}`;
         if (a.avgHR > 0) prompt += `, gem HR ${a.avgHR}`;
@@ -235,7 +245,7 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     if (isRestDay) {
       prompt += `\n\nSTRUCTUUR (RUSTDAG):
 1. Erken kort dat het een rustdag is — positief framen als bewuste keuze voor herstel
-2. Verwijs eventueel naar gisteren (als er data is): was het zwaar, is rust nu logisch?
+2. Verwijs eventueel naar de laatste training (als er data is) met de JUISTE dag/timing: was het zwaar, is rust nu logisch?
 3. Geef een concrete tip over "${topic}" die past bij een rustdag
 4. Als er een schema-afwijking is: benoem het vriendelijk en stel voor of het schema aangepast moet worden
 BELANGRIJK: Geef GEEN aansporing om te trainen. Rust IS de training vandaag.
@@ -250,7 +260,7 @@ BELANGRIJK: Spreek NOOIT over de training in toekomende tijd ("ga ervoor", "zet 
 Houd het bij 3-5 zinnen totaal. Niet meer.`;
     } else {
       prompt += `\n\nSTRUCTUUR (TRAININGSDAG):
-1. Begin met een recap van gisteren (als er data is)
+1. Begin met een korte terugblik op de laatste training — gebruik de JUISTE dag (zie het dag-label per activiteit). Zeg alleen "gisteren" als het écht gisteren was; gebruik anders de weekdag-naam (bijv. "woensdag"). Was de laatste training al een paar dagen geleden, benoem dat dan eerlijk.
 2. Benoem kort wat vandaag op het programma staat
 3. Geef een korte, concrete tip over "${topic}"
 4. Als er een schema-afwijking is: benoem het vriendelijk en stel voor of aanpassing nodig is (bijv. "wil je dat ik het schema aanpas?")
