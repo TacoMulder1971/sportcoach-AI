@@ -85,8 +85,11 @@ export default function Dashboard() {
     setGarmin(getGarminData());
     setPendingResultGoal(getPendingResultGoal());
 
-    // Auto-sync max 1x per dag — alleen als Garmin-credentials beschikbaar zijn
-    if (shouldAutoSync() && getGarminCredentials()) {
+    // Eerst syncen, dan pas de Coach van de dag genereren (zodat die verse data ziet).
+    // Sync als er credentials zijn én er nog geen dagbericht voor vandaag is, of als de
+    // dagelijkse auto-sync nog moet. Zonder credentials valt de coach terug op de cache.
+    const hasMessageForToday = getDailyMessage() !== null;
+    if (getGarminCredentials() && (shouldAutoSync() || !hasMessageForToday)) {
       handleGarminSync();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,6 +133,19 @@ export default function Dashboard() {
       setSyncError(e instanceof Error ? e.message : 'Sync mislukt');
     } finally {
       setSyncing(false);
+    }
+  }
+
+  // Coach van de dag handmatig vernieuwen: eerst syncen (als er creds zijn), dan
+  // genereren. Na de sync regenereert de reactieve effect-hook het bericht vanzelf
+  // (cache is gewist). Zonder creds genereren we direct uit de huidige cache.
+  async function refreshDailyMessage() {
+    clearDailyMessage();
+    setDailyMessage(null);
+    if (getGarminCredentials()) {
+      await handleGarminSync();
+    } else {
+      fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness, yesterdayTraining);
     }
   }
 
@@ -302,11 +318,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-semibold text-blue-600">Coach van de dag</p>
               <button
-                onClick={() => {
-                  clearDailyMessage();
-                  setDailyMessage(null);
-                  fetchDailyMessage(todayTraining, garmin, trainingLoad, readiness, yesterdayTraining);
-                }}
+                onClick={refreshDailyMessage}
                 disabled={loadingDaily || syncing}
                 className="text-blue-500 hover:text-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Bericht vernieuwen"
