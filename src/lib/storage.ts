@@ -373,6 +373,30 @@ export function setActivePlanId(id: string): void {
   clearDailyMessage();
 }
 
+/**
+ * Lijn het cyclus-anker uit op de race: als de race binnen de cyclus valt,
+ * koppel de week mét de race aan de LAATSTE planweek (bv. wedstrijdweek = week 2).
+ * Past GEEN plan-inhoud of opgeslagen data aan — corrigeert alleen de ankerdatum
+ * waarmee de "huidige week" wordt berekend, zodat de wedstrijdweek "huidig" is.
+ * Laat de oorspronkelijke datum staan als er geen race binnen de cyclus valt.
+ */
+function alignCycleStartToRace(cycleStartDate: string, numWeeks: number, raceDate: string): string {
+  if (!raceDate || numWeeks < 1) return cycleStartDate;
+  // Reken volledig in UTC zodat de ankerdatum niet wegglijdt door de tijdzone.
+  const race = new Date(`${raceDate}T00:00:00Z`);
+  if (isNaN(race.getTime())) return cycleStartDate;
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
+  const today = new Date(`${todayStr}T00:00:00Z`);
+  const daysUntil = Math.round((race.getTime() - today.getTime()) / 86400000);
+  // Race al voorbij of buiten de cyclus → niet uitlijnen
+  if (daysUntil < 0 || daysUntil >= numWeeks * 7) return cycleStartDate;
+  // Maandag van de raceweek, daarna terug naar de eerste planweek (race-week = laatste week)
+  const anchor = new Date(race);
+  const dow = anchor.getUTCDay();
+  anchor.setUTCDate(anchor.getUTCDate() - (dow === 0 ? 6 : dow - 1) - (numWeeks - 1) * 7);
+  return anchor.toISOString().split('T')[0];
+}
+
 export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string; id: string } {
   runZoneMigration();
   const activeId = getItem<string | null>(KEYS.ACTIVE_PLAN_ID, null);
@@ -380,7 +404,8 @@ export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string;
     const plans = getStoredPlans();
     const active = plans.find((p) => p.id === activeId);
     if (active) {
-      return { plan: active.plan, cycleStartDate: active.cycleStartDate, id: active.id };
+      const cycleStartDate = alignCycleStartToRace(active.cycleStartDate, active.plan.length, getActiveRaceDate());
+      return { plan: active.plan, cycleStartDate, id: active.id };
     }
   }
   return { plan: trainingPlan, cycleStartDate: DEFAULT_CYCLE_START, id: 'default' };
