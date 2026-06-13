@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { getGoals, getActivityArchive, formatDuration, formatRaceDateNL } from '@/lib/storage';
 import { getDaysUntilRace } from '@/lib/schedule';
 import { buildRaces, getRaceTotalSeconds, getRaceSplits, Race } from '@/lib/races';
-import { GOAL_TYPES } from '@/lib/types';
+import { GOAL_TYPES, Sport } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
+import RaceDayFlag from '@/components/RaceDayFlag';
 
 function typeLabel(race: Race): string {
   return GOAL_TYPES.find(t => t.type === race.goal.type)?.label || race.goal.name;
@@ -17,9 +18,9 @@ function HeroIcons({ race }: { race: Race }) {
   if (info?.multiSport) {
     return (
       <div className="flex gap-1.5">
-        <SportIcon sport="zwemmen" size="md" />
-        <SportIcon sport="fietsen" size="md" />
-        <SportIcon sport="hardlopen" size="md" />
+        {(info.disciplines ?? []).map((d, i) => (
+          <SportIcon key={i} sport={d as Sport} size="md" />
+        ))}
       </div>
     );
   }
@@ -78,24 +79,47 @@ export default function WedstrijdenPage() {
             </div>
 
             <div className="relative mt-5 flex items-end justify-between">
-              <div>
-                <p className="text-4xl font-extrabold leading-none">
-                  {(() => {
-                    const d = getDaysUntilRace(nextRace.goal.date);
-                    return d > 0 ? d : d === 0 ? '🎉' : '–';
-                  })()}
-                </p>
-                <p className="text-blue-200/80 text-xs mt-1">
-                  {getDaysUntilRace(nextRace.goal.date) > 0 ? 'dagen te gaan'
-                    : getDaysUntilRace(nextRace.goal.date) === 0 ? 'vandaag!' : 'geweest'}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-blue-100 text-sm font-medium">{formatRaceDateNL(nextRace.goal.date)}</p>
-                {nextRace.goal.targetTimeSeconds && (
-                  <p className="text-blue-300 text-xs">Doel: {formatDuration(nextRace.goal.targetTimeSeconds)}</p>
-                )}
-              </div>
+              {(() => {
+                const total = getRaceTotalSeconds(nextRace);
+                const target = nextRace.goal.targetTimeSeconds;
+                if (total != null) {
+                  return (
+                    <>
+                      <div>
+                        <p className="text-4xl font-extrabold leading-none tabular-nums">{formatDuration(total)}</p>
+                        <p className="text-blue-200/80 text-xs mt-1">eindtijd</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-blue-100 text-sm font-medium">{formatRaceDateNL(nextRace.goal.date)}</p>
+                        {target && (
+                          <p className={`text-xs font-semibold ${total <= target ? 'text-green-400' : 'text-orange-300'}`}>
+                            {total <= target ? '−' : '+'}{formatDuration(Math.abs(total - target))} t.o.v. doel
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  );
+                }
+                const d = getDaysUntilRace(nextRace.goal.date);
+                return (
+                  <>
+                    <div>
+                      <p className="text-4xl font-extrabold leading-none">
+                        {d > 0 ? d : d === 0 ? <RaceDayFlag /> : '–'}
+                      </p>
+                      <p className="text-blue-200/80 text-xs mt-1">
+                        {d > 0 ? 'dagen te gaan' : d === 0 ? 'vandaag!' : 'geweest'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-blue-100 text-sm font-medium">{formatRaceDateNL(nextRace.goal.date)}</p>
+                      {target && (
+                        <p className="text-blue-300 text-xs">Doel: {formatDuration(target)}</p>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </Link>

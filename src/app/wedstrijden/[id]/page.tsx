@@ -9,8 +9,9 @@ import {
 } from '@/lib/storage';
 import { getDaysUntilRace } from '@/lib/schedule';
 import { buildRaces, getRaceSplits, getRaceTotalSeconds, getPreRaceBuildup, Race } from '@/lib/races';
-import { GOAL_TYPES, RaceWeather } from '@/lib/types';
+import { GOAL_TYPES, RaceWeather, Sport } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
+import RaceDayFlag from '@/components/RaceDayFlag';
 import RaceSplitBar from '@/components/RaceSplitBar';
 import WeatherCard from '@/components/WeatherCard';
 import BuildupBarChart from '@/components/BuildupBarChart';
@@ -91,9 +92,9 @@ export default function WedstrijdDetailPage() {
           </div>
           {info?.multiSport ? (
             <div className="flex gap-1.5">
-              <SportIcon sport="zwemmen" size="md" />
-              <SportIcon sport="fietsen" size="md" />
-              <SportIcon sport="hardlopen" size="md" />
+              {(info.disciplines ?? []).map((d, i) => (
+                <SportIcon key={i} sport={d as Sport} size="md" />
+              ))}
             </div>
           ) : (
             <SportIcon sport="hardlopen" size="lg" />
@@ -101,10 +102,10 @@ export default function WedstrijdDetailPage() {
         </div>
 
         <div className="relative mt-5">
-          {race.status === 'upcoming' ? (
+          {race.status === 'upcoming' && total == null ? (
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-4xl font-extrabold leading-none">{days > 0 ? days : days === 0 ? '🎉' : '–'}</p>
+                <p className="text-4xl font-extrabold leading-none">{days > 0 ? days : days === 0 ? <RaceDayFlag /> : '–'}</p>
                 <p className="text-blue-200/80 text-xs mt-1">{days > 0 ? 'dagen te gaan' : days === 0 ? 'vandaag!' : 'geweest'}</p>
               </div>
               {race.goal.targetTimeSeconds && (
