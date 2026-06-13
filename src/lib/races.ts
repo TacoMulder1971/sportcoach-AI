@@ -156,10 +156,16 @@ export function getRaceSplits(race: Race): RaceSplit[] {
   return [];
 }
 
-/** Eindtijd in seconden: GoalResult → anders totale duur van de gekoppelde activiteit. */
+/**
+ * Eindtijd in seconden: GoalResult → totale duur van de gekoppelde activiteit →
+ * anders de som van de splits (multisport-children incl. transities), zodat de
+ * gehele tijd ook verschijnt als de parent-activiteit geen eigen duur heeft.
+ */
 export function getRaceTotalSeconds(race: Race): number | undefined {
   if (race.goal.result?.totalTimeSeconds) return race.goal.result.totalTimeSeconds;
   if (race.activity?.durationMinutes) return Math.round(race.activity.durationMinutes * 60);
+  const splitsSum = getRaceSplits(race).reduce((acc, s) => acc + (s.timeSeconds || 0), 0);
+  if (splitsSum > 0) return splitsSum;
   return undefined;
 }
 
