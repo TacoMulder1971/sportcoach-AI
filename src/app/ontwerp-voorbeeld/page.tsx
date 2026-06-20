@@ -37,27 +37,26 @@ function IconRun({ className }: { className?: string }) {
 
 export default function DesignVoorbeeld() {
   return (
-    <div className="bg-[#0B0F1A] min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-b-[32px] px-5 pt-8 pb-10">
-        <div className="absolute -top-10 -right-10 w-44 h-44 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute top-20 -left-10 w-32 h-32 bg-fuchsia-400/20 rounded-full blur-2xl" />
+      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 rounded-b-[32px] px-5 pt-8 pb-9 shadow-lg shadow-indigo-200/50">
+        <div className="absolute -top-10 -right-10 w-44 h-44 bg-white/15 rounded-full blur-2xl" />
 
         <div className="relative flex items-center justify-between">
           <div>
-            <p className="text-white/70 text-sm">Goedemorgen</p>
+            <p className="text-white/75 text-sm">Goedemorgen</p>
             <h1 className="text-white text-2xl font-bold">Taco</h1>
           </div>
-          <div className="w-11 h-11 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-white font-semibold">
+          <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white font-semibold">
             T
           </div>
         </div>
 
         {/* Countdown ring */}
-        <div className="relative mt-6 flex items-center gap-4 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15">
+        <div className="relative mt-6 flex items-center gap-4 bg-white/15 backdrop-blur-md rounded-2xl p-4 border border-white/20">
           <div className="relative w-16 h-16 flex-shrink-0">
             <svg viewBox="0 0 36 36" className="w-16 h-16 -rotate-90">
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+              <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
               <circle cx="18" cy="18" r="15.5" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray="97.4" strokeDashoffset="32" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
@@ -66,7 +65,7 @@ export default function DesignVoorbeeld() {
           </div>
           <div>
             <p className="text-white font-semibold">Triatlon 1/4</p>
-            <p className="text-white/70 text-xs">Opbouwfase · 67% voltooid</p>
+            <p className="text-white/75 text-xs">Opbouwfase · 67% voltooid</p>
           </div>
         </div>
       </div>
@@ -74,32 +73,32 @@ export default function DesignVoorbeeld() {
       <div className="px-5 -mt-5 space-y-4 pb-8">
         {/* Stat chips */}
         <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none]">
-          <div className="flex-shrink-0 bg-[#151A2B] rounded-2xl p-4 w-32 border border-white/5">
-            <p className="text-white/40 text-[11px]">Load</p>
-            <p className="text-emerald-400 text-xl font-bold mt-1">412</p>
-            <p className="text-emerald-400/70 text-[11px]">Optimaal</p>
+          <div className="flex-shrink-0 bg-white rounded-2xl p-4 w-32 shadow-sm shadow-gray-200/60 border border-gray-100">
+            <p className="text-gray-400 text-[11px]">Load</p>
+            <p className="text-emerald-600 text-xl font-bold mt-1">412</p>
+            <p className="text-emerald-600/80 text-[11px]">Optimaal</p>
           </div>
-          <div className="flex-shrink-0 bg-[#151A2B] rounded-2xl p-4 w-32 border border-white/5">
-            <p className="text-white/40 text-[11px]">Gereedheid</p>
-            <p className="text-amber-400 text-xl font-bold mt-1">7/9</p>
-            <p className="text-amber-400/70 text-[11px]">Goed</p>
+          <div className="flex-shrink-0 bg-white rounded-2xl p-4 w-32 shadow-sm shadow-gray-200/60 border border-gray-100">
+            <p className="text-gray-400 text-[11px]">Gereedheid</p>
+            <p className="text-amber-500 text-xl font-bold mt-1">7/9</p>
+            <p className="text-amber-500/80 text-[11px]">Goed</p>
           </div>
-          <div className="flex-shrink-0 bg-[#151A2B] rounded-2xl p-4 w-32 border border-white/5">
-            <p className="text-white/40 text-[11px]">Rust HR</p>
-            <p className="text-sky-400 text-xl font-bold mt-1">48</p>
-            <p className="text-sky-400/70 text-[11px]">-2 vs vorige week</p>
+          <div className="flex-shrink-0 bg-white rounded-2xl p-4 w-32 shadow-sm shadow-gray-200/60 border border-gray-100">
+            <p className="text-gray-400 text-[11px]">Rust HR</p>
+            <p className="text-sky-600 text-xl font-bold mt-1">48</p>
+            <p className="text-sky-600/80 text-[11px]">-2 vs vorige week</p>
           </div>
         </div>
 
         {/* Coach bericht */}
-        <div className="bg-[#151A2B] rounded-2xl p-4 border border-white/5">
+        <div className="bg-white rounded-2xl p-4 shadow-sm shadow-gray-200/60 border border-gray-100">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
               <IconChat className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="text-white/40 text-[11px] font-medium uppercase tracking-wide">Coach van de dag</p>
-              <p className="text-white/90 text-sm mt-1 leading-relaxed">
+              <p className="text-indigo-500 text-[11px] font-semibold uppercase tracking-wide">Coach van de dag</p>
+              <p className="text-gray-700 text-sm mt-1 leading-relaxed">
                 Goed herstel na gisteren. Vandaag staat een duurloop op het programma — hou de
                 snelheid bewust laag, de focus ligt op aerobe basis.
               </p>
@@ -109,20 +108,20 @@ export default function DesignVoorbeeld() {
 
         {/* Training vandaag */}
         <div>
-          <p className="text-white/40 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Training vandaag</p>
-          <div className="bg-gradient-to-br from-orange-500/15 to-orange-500/5 rounded-2xl p-4 border border-orange-500/20">
+          <p className="text-gray-400 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Training vandaag</p>
+          <div className="bg-gradient-to-br from-orange-50 to-orange-50/30 rounded-2xl p-4 border border-orange-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                  <IconRun className="w-5 h-5 text-orange-400" />
+                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <IconRun className="w-5 h-5 text-orange-500" />
                 </div>
                 <div>
-                  <p className="text-white font-semibold">Duurloop</p>
-                  <p className="text-white/50 text-xs">60 min · Z2 · 9.5 km</p>
+                  <p className="text-gray-900 font-semibold">Duurloop</p>
+                  <p className="text-gray-500 text-xs">60 min · Z2 · 9.5 km</p>
                 </div>
               </div>
-              <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <IconBolt className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
+                <IconBolt className="w-3.5 h-3.5 text-emerald-600" />
               </div>
             </div>
           </div>
@@ -130,7 +129,7 @@ export default function DesignVoorbeeld() {
 
         {/* Snel naar */}
         <div>
-          <p className="text-white/40 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Snel naar</p>
+          <p className="text-gray-400 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Snel naar</p>
           <div className="grid grid-cols-4 gap-2.5">
             {[
               { label: 'Check-out', Icon: IconCheck, color: 'from-emerald-500 to-emerald-600' },
@@ -138,11 +137,11 @@ export default function DesignVoorbeeld() {
               { label: 'Schema', Icon: IconCalendar, color: 'from-violet-500 to-violet-600' },
               { label: 'Data', Icon: IconData, color: 'from-amber-500 to-amber-600' },
             ].map((a) => (
-              <div key={a.label} className="bg-[#151A2B] rounded-2xl p-3 border border-white/5 flex flex-col items-center text-center gap-1.5">
+              <div key={a.label} className="bg-white rounded-2xl p-3 shadow-sm shadow-gray-200/60 border border-gray-100 flex flex-col items-center text-center gap-1.5">
                 <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${a.color} flex items-center justify-center`}>
                   <a.Icon className="w-4 h-4 text-white" />
                 </div>
-                <p className="text-white/80 text-[11px] font-medium">{a.label}</p>
+                <p className="text-gray-700 text-[11px] font-medium">{a.label}</p>
               </div>
             ))}
           </div>
@@ -150,21 +149,21 @@ export default function DesignVoorbeeld() {
 
         {/* Volume per sport */}
         <div>
-          <p className="text-white/40 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Volume deze week</p>
-          <div className="bg-[#151A2B] rounded-2xl p-4 border border-white/5 space-y-3">
+          <p className="text-gray-400 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Volume deze week</p>
+          <div className="bg-white rounded-2xl p-4 shadow-sm shadow-gray-200/60 border border-gray-100 space-y-3">
             {[
               { label: 'Zwemmen', Icon: IconSwim, value: '2.1 km', pct: 35, color: 'bg-cyan-400' },
               { label: 'Fietsen', Icon: IconBike, value: '64 km', pct: 70, color: 'bg-emerald-400' },
               { label: 'Hardlopen', Icon: IconRun, value: '22 km', pct: 55, color: 'bg-orange-400' },
             ].map((s) => (
               <div key={s.label} className="flex items-center gap-3">
-                <s.Icon className="w-4 h-4 text-white/40 flex-shrink-0" />
+                <s.Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <div className="flex-1">
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-white/70">{s.label}</span>
-                    <span className="text-white/40">{s.value}</span>
+                    <span className="text-gray-600">{s.label}</span>
+                    <span className="text-gray-400">{s.value}</span>
                   </div>
-                  <div className="bg-white/10 rounded-full h-1.5">
+                  <div className="bg-gray-100 rounded-full h-1.5">
                     <div className={`${s.color} rounded-full h-1.5`} style={{ width: `${s.pct}%` }} />
                   </div>
                 </div>
@@ -175,23 +174,23 @@ export default function DesignVoorbeeld() {
 
         {/* Volgende wedstrijd */}
         <div>
-          <p className="text-white/40 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Volgende wedstrijd</p>
-          <div className="bg-[#151A2B] rounded-2xl p-4 border border-white/5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-fuchsia-500/20 flex items-center justify-center flex-shrink-0">
-              <IconTrophy className="w-5 h-5 text-fuchsia-400" />
+          <p className="text-gray-400 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Volgende wedstrijd</p>
+          <div className="bg-white rounded-2xl p-4 shadow-sm shadow-gray-200/60 border border-gray-100 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-fuchsia-100 flex items-center justify-center flex-shrink-0">
+              <IconTrophy className="w-5 h-5 text-fuchsia-500" />
             </div>
             <div className="flex-1">
-              <p className="text-white font-semibold text-sm">Triatlon Almere · 1/4</p>
-              <p className="text-white/40 text-xs">13 juli 2026 · over 23 dagen</p>
+              <p className="text-gray-900 font-semibold text-sm">Triatlon Almere · 1/4</p>
+              <p className="text-gray-400 text-xs">13 juli 2026 · over 23 dagen</p>
             </div>
-            <span className="text-white/30 text-xs">→</span>
+            <span className="text-gray-300 text-xs">→</span>
           </div>
         </div>
 
         {/* Navigatie-voorbeeld (statisch, los van de echte app-navigatie) */}
         <div>
-          <p className="text-white/40 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Navigatie-stijl (voorbeeld)</p>
-          <div className="bg-[#151A2B] rounded-2xl border border-white/5 p-2 flex justify-around">
+          <p className="text-gray-400 text-[11px] font-medium uppercase tracking-wide mb-2 px-1">Navigatie-stijl (voorbeeld)</p>
+          <div className="bg-white rounded-2xl shadow-sm shadow-gray-200/60 border border-gray-100 p-2 flex justify-around">
             {[
               { label: 'Home', Icon: IconHome, active: true },
               { label: 'Schema', Icon: IconCalendar },
@@ -202,15 +201,15 @@ export default function DesignVoorbeeld() {
             ].map((n) => (
               <div key={n.label} className="flex flex-col items-center gap-1 py-1.5 px-1">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${n.active ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : ''}`}>
-                  <n.Icon className={`w-4 h-4 ${n.active ? 'text-white' : 'text-white/30'}`} />
+                  <n.Icon className={`w-4 h-4 ${n.active ? 'text-white' : 'text-gray-300'}`} />
                 </div>
-                <span className={`text-[9px] ${n.active ? 'text-white font-semibold' : 'text-white/30'}`}>{n.label}</span>
+                <span className={`text-[9px] ${n.active ? 'text-indigo-600 font-semibold' : 'text-gray-300'}`}>{n.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="text-white/20 text-[11px] text-center pt-2">
+        <p className="text-gray-300 text-[11px] text-center pt-2">
           Dit is een los ontwerpvoorbeeld met vaste demo-data — niets hierop is al doorgevoerd in de echte app.
         </p>
       </div>
