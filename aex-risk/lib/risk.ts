@@ -69,7 +69,7 @@ function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
 
-function scoreToLevel(score: number): RiskLevel {
+export function scoreToLevel(score: number): RiskLevel {
   if (score >= 0.66) return 'hoog';
   if (score >= 0.33) return 'verhoogd';
   return 'laag';
@@ -82,12 +82,15 @@ function fmtPct(p: number): string {
 
 // ---- Hoofdberekening ----
 
-// Gewichten van de vier signalen in de composietscore.
-const WEIGHTS = { drawdown: 0.35, trend: 0.25, volatility: 0.25, momentum: 0.15 };
+// Gewichten zonder nieuws (price-only) en mét nieuws. Nieuws krijgt bewust een
+// bescheiden gewicht: sentiment is ruis, geen betrouwbare crash-voorspeller.
+const WEIGHTS_PRICE = { drawdown: 0.35, trend: 0.25, volatility: 0.25, momentum: 0.15 };
+const WEIGHTS_NEWS = { drawdown: 0.3, trend: 0.2, volatility: 0.2, momentum: 0.1, news: 0.2 };
 
 export function computeRisk(
   points: PricePoint[],
   source: 'stooq' | 'yahoo',
+  newsSignal?: RiskSignal,
 ): AexRisk {
   if (points.length < 2) {
     throw new Error('Te weinig koersdata om risico te berekenen');
@@ -203,9 +206,12 @@ export function computeRisk(
     explanation: momExpl,
   });
 
+  // Voeg het nieuws-signaal toe (indien aanwezig) en kies de bijbehorende weging.
+  if (newsSignal) signals.push(newsSignal);
+  const weights: Record<string, number> = newsSignal ? WEIGHTS_NEWS : WEIGHTS_PRICE;
+
   // Composietscore (0..1) -> 0..100.
-  const composite =
-    signals.reduce((acc, s) => acc + s.score * WEIGHTS[s.key], 0);
+  const composite = signals.reduce((acc, s) => acc + s.score * (weights[s.key] ?? 0), 0);
   const riskScore = Math.round(composite * 100);
   const riskLevel = scoreToLevel(composite);
 
@@ -221,6 +227,8 @@ export function computeRisk(
     history: points.slice(Math.max(0, points.length - 260)),
     sma200: smaSeries(closes, 200).slice(Math.max(0, closes.length - 260)),
     source,
+    newsItems: [],
+    newsEnabled: false,
     fetchedAt: new Date().toISOString(),
   };
 }

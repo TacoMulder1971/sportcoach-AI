@@ -14,9 +14,21 @@ inschat, zodat je zelf op tijd een verkoopoptie kunt overwegen.
   2. **Trend** — koers vs. SMA50/SMA200 (death cross).
   3. **Beweeglijkheid** — geannualiseerde realized volatility (20 dagen).
   4. **Momentum** — RSI(14) + 5-daags rendement.
+  5. **Nieuws-sentiment (AI, optioneel)** — Claude leest recente koppen en scoort de markt-stress.
   Gewogen som → composietscore (0–100) → niveau **laag / verhoogd / hoog**.
+- **Nieuws** (`lib/news.ts`): RSS-feeds in drie categorieën (AEX-specifiek, NL financieel,
+  internationaal), parallel opgehaald met per-feed graceful failure. De feed-lijst (`FEEDS`) is
+  makkelijk aan te passen. De koppen worden ook als context-paneel getoond.
 - **UI:** dagbericht-regel, risico-gauge met uitklapbare signalen, AEX-grafiek met SMA200,
-  en bij hoog risico een call-to-action. Resultaat wordt 1× per dag gecachet (localStorage).
+  nieuws-paneel, en bij hoog risico een call-to-action. Resultaat wordt 1× per dag gecachet
+  (localStorage).
+
+## API-key (nieuws-sentiment)
+Het AI-sentiment gebruikt **Claude (Haiku)** en vereist een **`ANTHROPIC_API_KEY`**:
+- **Zonder key** werkt de app volledig op koersdata (price-only) + toont het de koppen; het
+  AI-signaal wordt dan overgeslagen (geen fouten).
+- **Met key** weegt het nieuws-sentiment mee (bescheiden gewicht ~0,20). Zet de key op Vercel als
+  environment variable `ANTHROPIC_API_KEY`, of lokaal in `.env.local`.
 
 ## Lokaal draaien
 ```bash
@@ -33,9 +45,10 @@ npm run build
 Deze map (`aex-risk/`) is volledig zelfstandig en staat los van de SportCoach-code.
 1. Kopieer de inhoud van `aex-risk/` naar een **nieuwe, lege repo**.
 2. Koppel die repo aan een **nieuw Vercel-project**.
-3. Push naar `main` → Vercel auto-deploy. Geen environment variables nodig.
+3. (Optioneel) zet `ANTHROPIC_API_KEY` als environment variable voor het nieuws-sentiment.
+4. Push naar `main` → Vercel auto-deploy.
 
 ## Bewust buiten scope
 - Automatische handel / broker-koppeling.
 - Echte PWA-push-notificaties (kan later toegevoegd via service worker + push).
-- AI-gegenereerde tekst (het dagbericht is rule-based, dus key-loos).
+- Per-artikel volledige tekstanalyse (alleen koppen worden beoordeeld).

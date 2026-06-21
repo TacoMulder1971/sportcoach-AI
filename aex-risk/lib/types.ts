@@ -10,12 +10,23 @@ export interface PricePoint {
 
 // Eén berekend deelsignaal, met een score 0..1 (hoger = meer stress).
 export interface RiskSignal {
-  key: 'drawdown' | 'trend' | 'volatility' | 'momentum';
+  key: 'drawdown' | 'trend' | 'volatility' | 'momentum' | 'news';
   label: string; // NL label, bijv. "Koersdaling t.o.v. top"
   value: string; // leesbare waarde, bijv. "-8,4%"
   score: number; // 0..1
   level: RiskLevel;
   explanation: string; // korte NL uitleg
+}
+
+// Eén nieuwsbericht uit een RSS-feed.
+export type NewsCategory = 'aex' | 'nl' | 'intl';
+
+export interface NewsItem {
+  title: string;
+  link: string;
+  source: string; // bron-naam, bijv. "NOS Economie"
+  category: NewsCategory;
+  pubDate: string; // ISO timestamp (of '' als onbekend)
 }
 
 // Volledig risico-resultaat dat de API teruggeeft en de UI toont.
@@ -31,6 +42,9 @@ export interface AexRisk {
   history: PricePoint[]; // recente slotkoersen voor de grafiek
   sma200: (number | null)[]; // SMA200 per history-punt (null als te weinig data)
   source: 'stooq' | 'yahoo'; // welke bron leverde de data
+  newsItems: NewsItem[]; // recente koppen (context, ook zonder AI)
+  newsSummary?: string; // AI-samenvatting van het nieuws-sentiment (1 zin)
+  newsEnabled: boolean; // false = price-only (geen API-key of nieuws-fout)
   fetchedAt: string; // ISO timestamp
 }
 

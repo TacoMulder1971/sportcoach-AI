@@ -5,6 +5,7 @@ import { AexRisk, RISK_META } from '@/lib/types';
 import { getCachedRisk, saveRisk } from '@/lib/storage';
 import RiskCard from '@/components/RiskCard';
 import RiskChart from '@/components/RiskChart';
+import NewsPanel from '@/components/NewsPanel';
 import Disclaimer from '@/components/Disclaimer';
 
 export default function Home() {
@@ -79,6 +80,9 @@ export default function Home() {
       <div className="space-y-4">
         <RiskCard risk={risk} loading={loading} error={error} />
         {risk && <RiskChart history={risk.history} sma200={risk.sma200} />}
+        {risk && (
+          <NewsPanel items={risk.newsItems} summary={risk.newsSummary} newsEnabled={risk.newsEnabled} />
+        )}
         <Disclaimer />
       </div>
 
