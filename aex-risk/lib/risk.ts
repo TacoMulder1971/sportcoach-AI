@@ -87,12 +87,14 @@ function fmtPct(p: number): string {
 // of nieuws) klopt. Nieuws krijgt bewust een bescheiden gewicht (ruis); de
 // angstindex (VIX/VSTOXX) is een hard, voorwaarts kijkend signaal.
 const BASE_WEIGHTS: Record<RiskSignal['key'], number> = {
-  drawdown: 0.25,
-  trend: 0.18,
-  volatility: 0.15,
-  momentum: 0.12,
-  fear: 0.15,
-  news: 0.15,
+  drawdown: 0.2,
+  trend: 0.15,
+  volatility: 0.12,
+  momentum: 0.1,
+  fear: 0.13,
+  yield: 0.12,
+  breadth: 0.1,
+  news: 0.08,
 };
 
 export function computeRisk(

@@ -10,7 +10,7 @@ export interface PricePoint {
 
 // Eén berekend deelsignaal, met een score 0..1 (hoger = meer stress).
 export interface RiskSignal {
-  key: 'drawdown' | 'trend' | 'volatility' | 'momentum' | 'fear' | 'news';
+  key: 'drawdown' | 'trend' | 'volatility' | 'momentum' | 'fear' | 'yield' | 'breadth' | 'news';
   label: string; // NL label, bijv. "Koersdaling t.o.v. top"
   value: string; // leesbare waarde, bijv. "-8,4%"
   score: number; // 0..1
