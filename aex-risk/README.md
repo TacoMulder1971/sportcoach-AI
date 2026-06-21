@@ -27,7 +27,7 @@ inschat, zodat je zelf op tijd een verkoopoptie kunt overwegen.
   (localStorage).
 
 ## API-key (nieuws-sentiment)
-Het AI-sentiment gebruikt **Claude (Opus 4.8)** en vereist een **`ANTHROPIC_API_KEY`**:
+Het AI-sentiment gebruikt **Claude (Haiku)** en vereist een **`ANTHROPIC_API_KEY`**:
 - **Zonder key** werkt de app volledig op koersdata (price-only) + toont het de koppen; het
   AI-signaal wordt dan overgeslagen (geen fouten).
 - **Met key** weegt het nieuws-sentiment mee (bescheiden gewicht ~0,20). Zet de key op Vercel als

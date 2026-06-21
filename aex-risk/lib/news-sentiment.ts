@@ -11,7 +11,7 @@ export interface NewsSentiment {
   summary: string; // 1 NL zin
 }
 
-const MODEL = 'claude-opus-4-8';
+const MODEL = 'claude-haiku-4-5-20251001';
 
 function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));

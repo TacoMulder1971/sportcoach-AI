@@ -6,9 +6,9 @@ import { fetchNews } from '@/lib/news';
 import { analyzeNews } from '@/lib/news-sentiment';
 import { NewsItem, RiskSignal } from '@/lib/types';
 
-// Externe fetches (koers + angstindex + meerdere RSS-feeds) + een Opus-call
-// kunnen flink wat tijd kosten.
-export const maxDuration = 45;
+// Externe fetches (koers + angstindex + meerdere RSS-feeds) + een Haiku-call
+// kunnen >10s duren.
+export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
 function clamp01(x: number): number {
