@@ -14,8 +14,11 @@ inschat, zodat je zelf op tijd een verkoopoptie kunt overwegen.
   2. **Trend** — koers vs. SMA50/SMA200 (death cross).
   3. **Beweeglijkheid** — geannualiseerde realized volatility (20 dagen).
   4. **Momentum** — RSI(14) + 5-daags rendement.
-  5. **Nieuws-sentiment (AI, optioneel)** — Claude leest recente koppen en scoort de markt-stress.
-  Gewogen som → composietscore (0–100) → niveau **laag / verhoogd / hoog**.
+  5. **Angstindex** — VSTOXX (Europees, met VIX als fallback): hard, voorwaarts kijkend
+     volatiliteitssignaal. Zie `lib/fetch-fear.ts`.
+  6. **Nieuws-sentiment (AI, optioneel)** — Claude leest recente koppen en scoort de markt-stress.
+  De aanwezige signalen worden **gewogen en hernormaliseerd** → composietscore (0–100) →
+  niveau **laag / verhoogd / hoog**. Ontbreekt een bron, dan tellen de overige zwaarder.
 - **Nieuws** (`lib/news.ts`): RSS-feeds in drie categorieën (AEX-specifiek, NL financieel,
   internationaal), parallel opgehaald met per-feed graceful failure. De feed-lijst (`FEEDS`) is
   makkelijk aan te passen. De koppen worden ook als context-paneel getoond.
@@ -24,7 +27,7 @@ inschat, zodat je zelf op tijd een verkoopoptie kunt overwegen.
   (localStorage).
 
 ## API-key (nieuws-sentiment)
-Het AI-sentiment gebruikt **Claude (Haiku)** en vereist een **`ANTHROPIC_API_KEY`**:
+Het AI-sentiment gebruikt **Claude (Opus 4.8)** en vereist een **`ANTHROPIC_API_KEY`**:
 - **Zonder key** werkt de app volledig op koersdata (price-only) + toont het de koppen; het
   AI-signaal wordt dan overgeslagen (geen fouten).
 - **Met key** weegt het nieuws-sentiment mee (bescheiden gewicht ~0,20). Zet de key op Vercel als

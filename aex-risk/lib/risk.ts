@@ -82,15 +82,23 @@ function fmtPct(p: number): string {
 
 // ---- Hoofdberekening ----
 
-// Gewichten zonder nieuws (price-only) en mét nieuws. Nieuws krijgt bewust een
-// bescheiden gewicht: sentiment is ruis, geen betrouwbare crash-voorspeller.
-const WEIGHTS_PRICE = { drawdown: 0.35, trend: 0.25, volatility: 0.25, momentum: 0.15 };
-const WEIGHTS_NEWS = { drawdown: 0.3, trend: 0.2, volatility: 0.2, momentum: 0.1, news: 0.2 };
+// Relatieve gewichten per signaal. Alleen de AANWEZIGE signalen tellen mee en de
+// gewichten worden hernormaliseerd, zodat elke combinatie (met/zonder angstindex
+// of nieuws) klopt. Nieuws krijgt bewust een bescheiden gewicht (ruis); de
+// angstindex (VIX/VSTOXX) is een hard, voorwaarts kijkend signaal.
+const BASE_WEIGHTS: Record<RiskSignal['key'], number> = {
+  drawdown: 0.25,
+  trend: 0.18,
+  volatility: 0.15,
+  momentum: 0.12,
+  fear: 0.15,
+  news: 0.15,
+};
 
 export function computeRisk(
   points: PricePoint[],
   source: 'stooq' | 'yahoo',
-  newsSignal?: RiskSignal,
+  extraSignals: RiskSignal[] = [],
 ): AexRisk {
   if (points.length < 2) {
     throw new Error('Te weinig koersdata om risico te berekenen');
@@ -206,12 +214,15 @@ export function computeRisk(
     explanation: momExpl,
   });
 
-  // Voeg het nieuws-signaal toe (indien aanwezig) en kies de bijbehorende weging.
-  if (newsSignal) signals.push(newsSignal);
-  const weights: Record<string, number> = newsSignal ? WEIGHTS_NEWS : WEIGHTS_PRICE;
+  // Voeg extra signalen toe (angstindex en/of nieuws, indien aanwezig).
+  signals.push(...extraSignals);
+
+  // Hernormaliseer de gewichten over de aanwezige signalen.
+  const totalWeight = signals.reduce((acc, s) => acc + (BASE_WEIGHTS[s.key] ?? 0), 0) || 1;
 
   // Composietscore (0..1) -> 0..100.
-  const composite = signals.reduce((acc, s) => acc + s.score * (weights[s.key] ?? 0), 0);
+  const composite =
+    signals.reduce((acc, s) => acc + s.score * (BASE_WEIGHTS[s.key] ?? 0), 0) / totalWeight;
   const riskScore = Math.round(composite * 100);
   const riskLevel = scoreToLevel(composite);
 
