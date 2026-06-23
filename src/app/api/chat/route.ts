@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getAmsterdamNow, relativeDayLabel, buildTimingRule } from '@/lib/coach-dates';
 
 export const maxDuration = 30; // Opus coach-chat kan langer duren dan de standaard 10s
 
@@ -23,6 +24,7 @@ DATA-INTEGRITEIT (KRITIEK):
 - Als de gebruiker een blok "GEVERIFIEERDE FEITEN" of "VERGELIJKING" stuurt: behandel die als waarheid en spreek deze niet tegen.
 - Bij multisport-activiteiten: gebruik per onderdeel de splits, niet het totaal-gemiddelde, om over een specifieke sport te oordelen.
 - Als data ontbreekt of onduidelijk is: zeg dat eerlijk in plaats van te gokken.
+- TIMING: gebruik de [dag-labels] bij activiteiten/check-ins exact. Zeg alleen "vandaag"/"gisteren" als dat label er staat; gebruik anders de weekdag-naam. Gok NOOIT welke dag het is.
 
 STIJL:
 - Spreek de atleet informeel aan (je/jij)
@@ -91,12 +93,11 @@ Week 2:
 - Zo: Zwemmen (40min Z3) + Hardlopen duur (50min Z3)\n`;
     }
 
-    // Add current date/time context — gebruik Amsterdam tijdzone direct op de server
+    // Add current date/time context — betrouwbaar via Intl in de Amsterdam-tijdzone
+    // (toLocaleDateString is onbetrouwbaar in Node.js/Vercel, zie CLAUDE.md).
     const now = new Date();
-    const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
-    const dateStr = now.toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long', year: 'numeric' });
-    const timeStr = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' }).format(now);
-    const dayName = days[new Date(now.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' })).getDay()];
+    const ams = getAmsterdamNow(now);
+    const todayIso = ams.isoDate;
 
     // Determine current week in cycle
     const startStr = cycleStartDate || '2026-02-23';
@@ -106,7 +107,7 @@ Week 2:
 
     const daysUntilRace = typeof daysUntilRaceBody === 'number' ? daysUntilRaceBody : 0;
 
-    let contextMessage = `\n\nHUIDIGE CONTEXT:\n- Datum: ${dayName} ${dateStr}\n- Tijd: ${timeStr}\n- Week in cyclus: Week ${weekNum}\n- Dagen tot wedstrijd: ${daysUntilRace}\n`;
+    let contextMessage = `\n\nHUIDIGE CONTEXT:\n- ${buildTimingRule(ams)}\n- Datum: ${ams.dayName} ${ams.dateStr}\n- Tijd: ${ams.timeStr} (${ams.dagdeel})\n- Week in cyclus: Week ${weekNum}\n- Dagen tot wedstrijd: ${daysUntilRace}\n`;
 
     if (raceContext) {
       contextMessage += `- Actief doel: ${raceContext}\n`;
@@ -119,7 +120,7 @@ Week 2:
     if (checkIns && checkIns.length > 0) {
       contextMessage += '\nRECENTE CHECK-INS VAN DE ATLEET:\n';
       for (const ci of checkIns) {
-        contextMessage += `- ${ci.date} (${ci.trainingDay}): Gevoel ${ci.feeling}/5`;
+        contextMessage += `- [${relativeDayLabel(ci.date, todayIso)}] ${ci.date} (${ci.trainingDay}): Gevoel ${ci.feeling}/5`;
         if (ci.note) contextMessage += ` - "${ci.note}"`;
         contextMessage += '\n';
       }
@@ -129,7 +130,7 @@ Week 2:
     if (garminData) {
       if (garminData.health) {
         const h = garminData.health;
-        contextMessage += `\nGARMIN GEZONDHEIDSDATA (${h.date}):\n`;
+        contextMessage += `\nGARMIN GEZONDHEIDSDATA [${relativeDayLabel(h.date, todayIso)}] (${h.date}):\n`;
         contextMessage += `- Slaap: ${h.sleepDurationHours} uur (score: ${h.sleepScore}/100)\n`;
         contextMessage += `- Diepe slaap: ${h.deepSleepMinutes} min, REM: ${h.remSleepMinutes} min\n`;
         contextMessage += `- HRV: ${h.avgOvernightHrv} ms (status: ${h.hrvStatus})\n`;
@@ -145,9 +146,9 @@ Week 2:
         }
       }
       if (garminData.activities && garminData.activities.length > 0) {
-        contextMessage += '\nRECENTE GARMIN ACTIVITEITEN:\n';
+        contextMessage += '\nRECENTE GARMIN ACTIVITEITEN (let op het dag-label per activiteit — gebruik dat exact):\n';
         for (const a of garminData.activities.slice(0, 14)) {
-          contextMessage += `- ${a.date}${a.startTime ? ` om ${a.startTime}` : ''}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
+          contextMessage += `- [${relativeDayLabel(a.date, todayIso)}] ${a.date}${a.startTime ? ` om ${a.startTime}` : ''}: ${a.activityName} (${a.sport}) - ${a.durationMinutes}min`;
           if (a.distanceKm > 0) contextMessage += `, ${a.distanceKm}km`;
           if (a.avgHR > 0) contextMessage += `, gem HR ${a.avgHR}, max HR ${a.maxHR}`;
           if ((a.avgPower || 0) > 0) contextMessage += `, ${a.avgPower}W${(a.normalizedPower || 0) > 0 ? ` (NP ${a.normalizedPower}W)` : ''}`;
