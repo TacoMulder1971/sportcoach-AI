@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
+import { getAmsterdamNow, relativeDayLabel } from '@/lib/coach-dates';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,18 +14,9 @@ export async function POST(request: NextRequest) {
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
     const now = new Date();
-    const hours = parseInt(new Intl.DateTimeFormat('nl-NL', {
-      timeZone: 'Europe/Amsterdam', hour: 'numeric', hour12: false
-    }).format(now), 10);
-    const minutes = parseInt(new Intl.DateTimeFormat('nl-NL', {
-      timeZone: 'Europe/Amsterdam', minute: 'numeric'
-    }).format(now), 10);
-    const timeStr = `${hours}:${minutes.toString().padStart(2, '0')}`;
-    const dagdeel = hours < 12 ? 'ochtend' : hours < 17 ? 'middag' : 'avond';
-    // Gebruik Intl.DateTimeFormat exclusief — toLocaleDateString is onbetrouwbaar in Node.js/Vercel
+    const ams = getAmsterdamNow(now);
+    const { timeStr, dagdeel, dayName, dateStr } = ams;
     const days = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
-    const dayName = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'long' }).format(now);
-    const dateStr = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long', year: 'numeric' }).format(now);
 
     // Bouw de prompt op
     let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
@@ -50,7 +42,7 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     const isRestDay = !todayTraining || todayTraining.isRestDay;
 
     // Bepaal of training van vandaag al is gedaan (activiteit in Garmin van vandaag)
-    const amsterdamTodayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(now);
+    const amsterdamTodayStr = ams.isoDate;
     const todayGarminActs = (garminActivities || []).filter((a: { date: string }) => a.date === amsterdamTodayStr);
     const plannedSports: string[] = !isRestDay && todayTraining?.sessions
       ? todayTraining.sessions.map((s: { sport: string }) => s.sport.toLowerCase())
@@ -138,16 +130,8 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     if (garminActivities && garminActivities.length > 0) {
       prompt += `\nRECENTE ACTIVITEITEN (let op de timing per activiteit — gebruik die exact):\n`;
       for (const a of garminActivities.slice(0, 3)) {
-        const actDayName = days[new Date(a.date).getDay()];
         // Relatief dag-label zodat de coach niet gokt ("gisteren" terwijl het 4 dagen geleden was).
-        // Voor alles ouder dan gisteren forceren we de weekdag-naam (vriendelijke termen als
-        // "eergisteren" worden door het model snel verkeerd toegepast).
-        const daysAgoAct = Math.round(
-          (new Date(amsterdamTodayStr).getTime() - new Date(a.date).getTime()) / 86400000
-        );
-        const relLabel = daysAgoAct <= 0 ? 'VANDAAG'
-          : daysAgoAct === 1 ? 'GISTEREN'
-          : `${actDayName.toUpperCase()}, ${daysAgoAct} DAGEN GELEDEN`;
+        const relLabel = relativeDayLabel(a.date, amsterdamTodayStr);
         prompt += `- [${relLabel}] ${a.activityName} (${a.date}${a.startTime ? ` om ${a.startTime}` : ''}): ${a.durationMinutes}min`;
         if (a.distanceKm > 0) prompt += `, ${a.distanceKm}km`;
         if (a.avgPace) prompt += `, tempo ${a.avgPace}`;
