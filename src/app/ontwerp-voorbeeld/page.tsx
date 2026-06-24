@@ -174,10 +174,11 @@ export default function DesignVoorbeeld() {
           </div>
         </div>
 
-        {/* Navigatie-voorbeeld — donker, met neon-actief icoon zoals SportIcon */}
+        {/* Navigatie-voorbeeld — Apple Liquid Glass stijl: zwevende frosted-glass pilvorm */}
         <div>
           <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Navigatie-stijl (voorbeeld)</p>
-          <div className="bg-[#0d0d0f] rounded-2xl border border-white/5 p-2 flex justify-around">
+          <div className="relative rounded-full bg-white/[0.06] backdrop-blur-2xl border border-white/15 shadow-[0_8px_30px_rgba(0,0,0,0.55)] p-1.5 flex justify-around overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/15 via-white/0 to-white/0" />
             {[
               { label: 'Home', Icon: IconHome, active: true },
               { label: 'Schema', Icon: IconCalendar },
@@ -186,12 +187,17 @@ export default function DesignVoorbeeld() {
               { label: 'Voeding', Icon: IconFood },
               { label: 'Data', Icon: IconData },
             ].map((n) => (
-              <div key={n.label} className="flex flex-col items-center gap-1 py-1.5 px-1">
+              <div
+                key={n.label}
+                className={`relative flex flex-col items-center gap-0.5 py-2 px-2.5 rounded-full ${
+                  n.active ? 'bg-white/15 shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_10px_rgba(0,0,0,0.35)]' : ''
+                }`}
+              >
                 <n.Icon
                   className="w-5 h-5"
-                  style={n.active ? { color: '#fff', filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' } : { color: '#52525b' }}
+                  style={n.active ? { color: '#fff', filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.5))' } : { color: 'rgba(255,255,255,0.45)' }}
                 />
-                <span className={`text-xs ${n.active ? 'text-white font-semibold' : 'text-gray-600'}`}>{n.label}</span>
+                <span className={`text-[10px] ${n.active ? 'text-white font-semibold' : 'text-white/40'}`}>{n.label}</span>
               </div>
             ))}
           </div>
