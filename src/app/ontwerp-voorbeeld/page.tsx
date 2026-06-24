@@ -6,6 +6,7 @@
 // bestaande neon-glow SportIcon's uit de app.
 
 import SportIcon from '@/components/SportIcon';
+import Countdown from '@/components/Countdown';
 
 type IconProps = { className?: string; style?: React.CSSProperties };
 function IconChat({ className, style }: IconProps) {
@@ -53,36 +54,10 @@ function ScoreRing({ pct, label, sublabel, color, glow }: { pct: number; label: 
 export default function DesignVoorbeeld() {
   return (
     <div className="bg-black min-h-screen">
-      {/* Hero — gradient banner met countdown-ring, terug op verzoek */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-b-[32px] px-5 pt-8 pb-9">
-        <div className="absolute -top-10 -right-10 w-44 h-44 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute top-20 -left-10 w-32 h-32 bg-fuchsia-400/20 rounded-full blur-2xl" />
-
-        <div className="relative flex items-center justify-between">
-          <div>
-            <p className="text-white/70 text-sm">Goedemorgen</p>
-            <h1 className="text-white text-2xl font-bold">Taco</h1>
-          </div>
-          <div className="w-11 h-11 rounded-full bg-white/15 backdrop-blur flex items-center justify-center text-white font-semibold">
-            T
-          </div>
-        </div>
-
-        <div className="relative mt-6 flex items-center gap-4 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15">
-          <div className="relative w-16 h-16 flex-shrink-0">
-            <svg viewBox="0 0 36 36" className="w-16 h-16 -rotate-90">
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
-              <circle cx="18" cy="18" r="15.5" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeDasharray="97.4" strokeDashoffset="32" />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">23d</span>
-            </div>
-          </div>
-          <div>
-            <p className="text-white font-semibold">Triatlon 1/4</p>
-            <p className="text-white/70 text-xs">Opbouwfase · 67% voltooid</p>
-          </div>
-        </div>
+      {/* Hero — de bestaande Countdown-component (ongewijzigd qua inhoud/opmaak), alleen
+          een andere achtergrondkleur ter vergelijking met de huidige blauw/indigo. */}
+      <div className="px-5 pt-6">
+        <Countdown gradientClassName="bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700" />
       </div>
 
       <div className="px-5 -mt-5 space-y-5 pb-8">

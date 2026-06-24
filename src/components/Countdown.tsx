@@ -11,7 +11,11 @@ const PHASE_DURATIONS: Record<string, number> = {
   basis: 50, opbouw: 28, piek: 21, taper: 14, wedstrijd: 7,
 };
 
-export default function Countdown() {
+interface CountdownProps {
+  gradientClassName?: string;
+}
+
+export default function Countdown({ gradientClassName = 'bg-gradient-to-r from-blue-600 to-indigo-700' }: CountdownProps = {}) {
   const [days, setDays] = useState<number | null>(null);
   const [raceDate, setRaceDate] = useState<string>('2026-06-13');
   const [raceLabel, setRaceLabel] = useState<string>('1/4 triatlon');
@@ -32,7 +36,7 @@ export default function Countdown() {
   const totalPrep = Math.max(TOTAL_PREP_DAYS_DEFAULT, days + 7);
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white">
+    <div className={`${gradientClassName} rounded-2xl p-6 text-white`}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-blue-200 text-sm font-medium">Countdown</p>
