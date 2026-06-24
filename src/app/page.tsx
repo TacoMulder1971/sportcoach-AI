@@ -302,7 +302,7 @@ export default function Dashboard() {
         <Countdown gradientClassName="bg-gradient-to-br from-teal-700 via-cyan-800 to-blue-900" />
       </div>
 
-      <div className="px-5 -mt-5 space-y-5 pb-8">
+      <div className="px-5 space-y-5 pb-8">
         {/* Post-race resultaat prompt */}
         {pendingResultGoal && (
           <div className="bg-[#0d0d0f] border border-amber-500/20 rounded-3xl p-4">

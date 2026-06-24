@@ -36,14 +36,13 @@ export default function Countdown({ gradientClassName = 'bg-gradient-to-r from-b
   const totalPrep = Math.max(TOTAL_PREP_DAYS_DEFAULT, days + 7);
 
   return (
-    <div className={`${gradientClassName} rounded-2xl p-6 text-white`}>
+    <div className={`${gradientClassName} rounded-t-3xl p-6 text-white`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-blue-200 text-sm font-medium">Countdown</p>
-          <p className="text-3xl font-bold mt-1">
+          <p className="text-3xl font-bold">
             {days > 0 ? `${days} dagen` : days === 0 ? 'Vandaag!' : 'Voltooid'}
           </p>
-          <p className="text-blue-200 text-sm mt-1">tot {raceLabel}</p>
+          <p className="text-blue-50 text-base mt-1">tot {raceLabel}</p>
         </div>
         <div className="flex gap-2">
           <SportIcon sport="zwemmen" size="xl" />
@@ -80,8 +79,8 @@ export default function Countdown({ gradientClassName = 'bg-gradient-to-r from-b
             return (
               <div key={phase.id} style={{ width: `${widthPct}%` }} className="text-center">
                 <span
-                  className="text-[9px] leading-tight block truncate px-0.5"
-                  style={{ color: isCurrent ? 'white' : 'rgba(255,255,255,0.45)', fontWeight: isCurrent ? 700 : 400 }}
+                  className="text-[10px] leading-tight block truncate px-0.5"
+                  style={{ color: isCurrent ? 'white' : 'rgba(255,255,255,0.7)', fontWeight: isCurrent ? 700 : 400 }}
                 >
                   {phase.label.replace('fase', '').replace('week', 'wk').trim()}
                 </span>
@@ -91,7 +90,7 @@ export default function Countdown({ gradientClassName = 'bg-gradient-to-r from-b
         </div>
       </div>
 
-      <p className="text-blue-200 text-xs mt-2">
+      <p className="text-blue-50 text-sm mt-2">
         {raceDateFmt} · {currentPhase.label} · {phaseProgress}% voltooid
       </p>
     </div>
