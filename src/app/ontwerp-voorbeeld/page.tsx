@@ -43,9 +43,9 @@ function ScoreRing({ pct, label, sublabel, color, glow }: { pct: number; label: 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-white text-4xl font-bold tabular-nums">{pct}%</span>
-        <span className="text-gray-400 text-xs font-medium mt-1 uppercase tracking-wide">{label}</span>
-        <span className="text-gray-500 text-[11px] mt-0.5">{sublabel}</span>
+        <span className="text-white text-5xl font-bold tabular-nums">{pct}%</span>
+        <span className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-wide">{label}</span>
+        <span className="text-gray-500 text-sm mt-0.5">{sublabel}</span>
       </div>
     </div>
   );
@@ -57,7 +57,7 @@ export default function DesignVoorbeeld() {
       {/* Hero — de bestaande Countdown-component (ongewijzigd qua inhoud/opmaak), alleen
           een andere achtergrondkleur ter vergelijking met de huidige blauw/indigo. */}
       <div className="px-5 pt-6">
-        <Countdown gradientClassName="bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700" />
+        <Countdown gradientClassName="bg-gradient-to-br from-teal-700 via-cyan-800 to-blue-900" />
       </div>
 
       <div className="px-5 -mt-5 space-y-5 pb-8">
@@ -72,16 +72,16 @@ export default function DesignVoorbeeld() {
           />
           <div className="grid grid-cols-3 gap-2 mt-6">
             <div className="text-center">
-              <p className="text-gray-500 text-[11px] uppercase tracking-wide">HRV</p>
-              <p className="text-white font-bold text-lg mt-0.5">52<span className="text-gray-500 text-xs font-normal"> ms</span></p>
+              <p className="text-gray-500 text-sm uppercase tracking-wide">HRV</p>
+              <p className="text-white font-bold text-xl mt-0.5">52<span className="text-gray-500 text-sm font-normal"> ms</span></p>
             </div>
             <div className="text-center border-x border-white/5">
-              <p className="text-gray-500 text-[11px] uppercase tracking-wide">Rust HR</p>
-              <p className="text-white font-bold text-lg mt-0.5">48<span className="text-gray-500 text-xs font-normal"> bpm</span></p>
+              <p className="text-gray-500 text-sm uppercase tracking-wide">Rust HR</p>
+              <p className="text-white font-bold text-xl mt-0.5">48<span className="text-gray-500 text-sm font-normal"> bpm</span></p>
             </div>
             <div className="text-center">
-              <p className="text-gray-500 text-[11px] uppercase tracking-wide">Slaap</p>
-              <p className="text-white font-bold text-lg mt-0.5">7.4<span className="text-gray-500 text-xs font-normal"> u</span></p>
+              <p className="text-gray-500 text-sm uppercase tracking-wide">Slaap</p>
+              <p className="text-white font-bold text-xl mt-0.5">7.4<span className="text-gray-500 text-sm font-normal"> u</span></p>
             </div>
           </div>
         </div>
@@ -89,12 +89,12 @@ export default function DesignVoorbeeld() {
         {/* Training load (Whoop "Strain") */}
         <div className="bg-[#0d0d0f] rounded-3xl p-5 border border-white/5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wide">Training load</p>
-            <span className="text-sky-400 text-xs font-semibold">Optimaal</span>
+            <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide">Training load</p>
+            <span className="text-sky-400 text-sm font-semibold">Optimaal</span>
           </div>
           <div className="flex items-end gap-3">
-            <span className="text-white text-4xl font-bold tabular-nums" style={{ filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.5))' }}>412</span>
-            <span className="text-gray-500 text-sm mb-1">/ 600 TRIMP deze week</span>
+            <span className="text-white text-5xl font-bold tabular-nums" style={{ filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.5))' }}>412</span>
+            <span className="text-gray-500 text-base mb-1">/ 600 TRIMP deze week</span>
           </div>
           <div className="flex gap-1 mt-3 h-8 items-end">
             {[30, 55, 20, 70, 45, 90, 60].map((h, i) => (
@@ -105,14 +105,14 @@ export default function DesignVoorbeeld() {
 
         {/* Training vandaag — met bestaande SportIcon */}
         <div>
-          <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2 px-1">Training vandaag</p>
+          <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Training vandaag</p>
           <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 flex items-center gap-3">
             <SportIcon sport="hardlopen" size="lg" />
             <div className="flex-1">
-              <p className="text-white font-semibold">Duurloop</p>
-              <p className="text-gray-500 text-xs">60 min · Zone 2 · 9.5 km</p>
+              <p className="text-white font-semibold text-lg">Duurloop</p>
+              <p className="text-gray-500 text-sm">60 min · Zone 2 · 9.5 km</p>
             </div>
-            <span className="text-gray-500 text-xs">→</span>
+            <span className="text-gray-500 text-sm">→</span>
           </div>
         </div>
 
@@ -123,8 +123,8 @@ export default function DesignVoorbeeld() {
               <IconChat className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="text-gray-400 text-[11px] font-semibold uppercase tracking-wide">Coach van de dag</p>
-              <p className="text-gray-200 text-sm mt-1 leading-relaxed">
+              <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide">Coach van de dag</p>
+              <p className="text-gray-200 text-base mt-1 leading-relaxed">
                 Goed herstel na gisteren. Vandaag staat een duurloop op het programma — hou de
                 snelheid bewust laag, de focus ligt op aerobe basis.
               </p>
@@ -134,7 +134,7 @@ export default function DesignVoorbeeld() {
 
         {/* Snel naar — neon glow-stijl zoals SportIcon */}
         <div>
-          <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2 px-1">Snel naar</p>
+          <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Snel naar</p>
           <div className="grid grid-cols-4 gap-2.5">
             {[
               { label: 'Coach', Icon: IconChat, color: '#3b82f6' },
@@ -149,7 +149,7 @@ export default function DesignVoorbeeld() {
                     style={{ color: a.color, filter: `drop-shadow(0 0 6px ${a.color})` }}
                   />
                 </div>
-                <p className="text-gray-300 text-[11px] font-medium">{a.label}</p>
+                <p className="text-gray-300 text-sm font-medium">{a.label}</p>
               </div>
             ))}
           </div>
@@ -157,7 +157,7 @@ export default function DesignVoorbeeld() {
 
         {/* Volume per sport — met bestaande SportIcon's */}
         <div>
-          <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2 px-1">Volume deze week</p>
+          <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Volume deze week</p>
           <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
             {[
               { sport: 'zwemmen' as const, label: 'Zwemmen', value: '2.1 km', pct: 35 },
@@ -167,7 +167,7 @@ export default function DesignVoorbeeld() {
               <div key={s.label} className="flex items-center gap-3">
                 <SportIcon sport={s.sport} size="sm" />
                 <div className="flex-1">
-                  <div className="flex justify-between text-xs mb-1">
+                  <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-300">{s.label}</span>
                     <span className="text-gray-500">{s.value}</span>
                   </div>
@@ -182,7 +182,7 @@ export default function DesignVoorbeeld() {
 
         {/* Navigatie-voorbeeld — donker, met neon-actief icoon zoals SportIcon */}
         <div>
-          <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-2 px-1">Navigatie-stijl (voorbeeld)</p>
+          <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Navigatie-stijl (voorbeeld)</p>
           <div className="bg-[#0d0d0f] rounded-2xl border border-white/5 p-2 flex justify-around">
             {[
               { label: 'Home', Icon: IconHome, active: true },
@@ -197,13 +197,13 @@ export default function DesignVoorbeeld() {
                   className="w-5 h-5"
                   style={n.active ? { color: '#fff', filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.6))' } : { color: '#52525b' }}
                 />
-                <span className={`text-[9px] ${n.active ? 'text-white font-semibold' : 'text-gray-600'}`}>{n.label}</span>
+                <span className={`text-xs ${n.active ? 'text-white font-semibold' : 'text-gray-600'}`}>{n.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="text-gray-600 text-[11px] text-center pt-2">
+        <p className="text-gray-600 text-sm text-center pt-2">
           Dit is een los ontwerpvoorbeeld met vaste demo-data — niets hierop is al doorgevoerd in de echte app.
         </p>
       </div>
