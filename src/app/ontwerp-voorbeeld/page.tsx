@@ -33,8 +33,8 @@ function ScoreRing({ pct, label, sublabel, color, glow }: { pct: number; label: 
   const r = 70;
   const c = 2 * Math.PI * r;
   return (
-    <div className="relative w-48 h-48 mx-auto">
-      <svg viewBox="0 0 160 160" className="w-48 h-48 -rotate-90">
+    <div className="relative w-36 h-36 mx-auto">
+      <svg viewBox="0 0 160 160" className="w-36 h-36 -rotate-90">
         <circle cx="80" cy="80" r={r} fill="none" stroke="#1c1c1e" strokeWidth="10" />
         <circle
           cx="80" cy="80" r={r} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
@@ -43,7 +43,7 @@ function ScoreRing({ pct, label, sublabel, color, glow }: { pct: number; label: 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-white text-5xl font-bold tabular-nums">{pct}%</span>
+        <span className="text-white text-4xl font-bold tabular-nums">{pct}%</span>
         <span className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-wide">{label}</span>
         <span className="text-gray-500 text-sm mt-0.5">{sublabel}</span>
       </div>
