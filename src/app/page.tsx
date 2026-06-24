@@ -19,12 +19,13 @@ function IconTrophy({ className, style }: IconProps) {
 }
 
 // Whoop-achtige ring: groot, dun, met gloed in de score-kleur
-function ScoreRing({ pct, label, sublabel, color, glow }: { pct: number; label: string; sublabel: string; color: string; glow: string }) {
+function ScoreRing({ pct, label, sublabel, color, glow, size = 144 }: { pct: number; label: string; sublabel: string; color: string; glow: string; size?: number }) {
   const r = 70;
   const c = 2 * Math.PI * r;
+  const compact = size < 130;
   return (
-    <div className="relative w-36 h-36 mx-auto">
-      <svg viewBox="0 0 160 160" className="w-36 h-36 -rotate-90">
+    <div className="relative mx-auto" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 160 160" className="-rotate-90" style={{ width: size, height: size }}>
         <circle cx="80" cy="80" r={r} fill="none" stroke="#1c1c1e" strokeWidth="10" />
         <circle
           cx="80" cy="80" r={r} fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
@@ -33,9 +34,9 @@ function ScoreRing({ pct, label, sublabel, color, glow }: { pct: number; label: 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-white text-4xl font-bold tabular-nums">{pct}%</span>
-        <span className="text-gray-400 text-sm font-medium mt-1 uppercase tracking-wide">{label}</span>
-        <span className="text-gray-500 text-sm mt-0.5">{sublabel}</span>
+        <span className={`text-white font-bold tabular-nums ${compact ? 'text-2xl' : 'text-4xl'}`}>{pct}%</span>
+        <span className={`text-gray-300 font-medium mt-1 uppercase tracking-wide ${compact ? 'text-[10px]' : 'text-sm'}`}>{label}</span>
+        {!compact && <span className="text-gray-400 text-sm mt-0.5">{sublabel}</span>}
       </div>
     </div>
   );
@@ -311,7 +312,7 @@ export default function Dashboard() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-amber-400">Wedstrijd voltooid!</p>
-                <p className="text-sm text-gray-400 mt-0.5">
+                <p className="text-sm text-gray-300 mt-0.5">
                   Je {pendingResultGoal.name} was voorbij. Vul je resultaat in.
                 </p>
                 <div className="flex gap-2 mt-2">
@@ -326,7 +327,7 @@ export default function Dashboard() {
                       dismissGoalResultPrompt(pendingResultGoal.id);
                       setPendingResultGoal(null);
                     }}
-                    className="text-xs text-gray-500 px-2 py-1.5"
+                    className="text-xs text-gray-400 px-2 py-1.5"
                   >
                     Later
                   </button>
@@ -336,84 +337,82 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Gereedheid-score (Whoop "Recovery") */}
-        <div className="bg-[#0d0d0f] rounded-3xl p-6 border border-white/5">
-          {readiness ? (
-            <>
-              <ScoreRing
-                pct={Math.round((readiness.score / readiness.maxScore) * 100)}
-                label="Gereedheid"
-                sublabel={readiness.label}
-                {...readinessRingColor(readiness.color)}
-              />
-              <div className="grid grid-cols-3 gap-2 mt-6">
-                {[
-                  { label: readiness.factors.label1, val: readiness.factors.score1, max: readiness.factors.max1 },
-                  { label: readiness.factors.label2, val: readiness.factors.score2, max: readiness.factors.max2 },
-                  { label: readiness.factors.label3, val: readiness.factors.score3, max: readiness.factors.max3 },
-                ].map((f, i) => (
-                  <div key={i} className={`text-center ${i === 1 ? 'border-x border-white/5' : ''}`}>
-                    <p className="text-gray-500 text-sm uppercase tracking-wide">{f.label}</p>
-                    <div className="flex gap-px justify-center mt-1.5">
-                      {f.val === null
-                        ? Array.from({ length: f.max }, (_, j) => (
-                            <div key={j} className="w-2.5 h-2.5 rounded-sm bg-white/5 border border-dashed border-white/15" />
-                          ))
-                        : Array.from({ length: f.max }, (_, j) => j + 1).map((j) => (
-                            <div
-                              key={j}
-                              className={`w-2.5 h-2.5 rounded-sm ${
-                                j <= f.val!
-                                  ? f.val! >= f.max * 0.6 ? 'bg-green-400' : f.val! >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
-                                  : 'bg-white/10'
-                              }`}
-                            />
-                          ))}
+        {/* Gereedheid + Training load naast elkaar (Whoop "Recovery" / "Strain") */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
+            {readiness ? (
+              <>
+                <ScoreRing
+                  pct={Math.round((readiness.score / readiness.maxScore) * 100)}
+                  label="Gereedheid"
+                  sublabel={readiness.label}
+                  size={104}
+                  {...readinessRingColor(readiness.color)}
+                />
+                <div className="grid grid-cols-3 gap-1 mt-4">
+                  {[
+                    { label: readiness.factors.label1, val: readiness.factors.score1, max: readiness.factors.max1 },
+                    { label: readiness.factors.label2, val: readiness.factors.score2, max: readiness.factors.max2 },
+                    { label: readiness.factors.label3, val: readiness.factors.score3, max: readiness.factors.max3 },
+                  ].map((f, i) => (
+                    <div key={i} className={`text-center ${i === 1 ? 'border-x border-white/5' : ''}`}>
+                      <p className="text-gray-400 text-[9px] uppercase tracking-wide truncate">{f.label}</p>
+                      <div className="flex gap-px justify-center mt-1">
+                        {f.val === null
+                          ? Array.from({ length: f.max }, (_, j) => (
+                              <div key={j} className="w-2 h-2 rounded-sm bg-white/5 border border-dashed border-white/15" />
+                            ))
+                          : Array.from({ length: f.max }, (_, j) => j + 1).map((j) => (
+                              <div
+                                key={j}
+                                className={`w-2 h-2 rounded-sm ${
+                                  j <= f.val!
+                                    ? f.val! >= f.max * 0.6 ? 'bg-green-400' : f.val! >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
+                                    : 'bg-white/10'
+                                }`}
+                              />
+                            ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="text-gray-500 text-sm text-center py-8">Sync voor gereedheid-data</p>
-          )}
-        </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-400 text-sm text-center py-8">Sync voor gereedheid-data</p>
+            )}
+          </div>
 
-        {/* Training load (Whoop "Strain") */}
-        <div className="bg-[#0d0d0f] rounded-3xl p-5 border border-white/5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide">Training load</p>
+          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 flex flex-col">
+            <p className="text-gray-300 text-sm font-semibold uppercase tracking-wide">Training load</p>
             {trainingLoad && (
               <span className={`${loadAccent(trainingLoad.statusColor).text} text-sm font-semibold capitalize`}>
                 {trainingLoad.status}
               </span>
             )}
-          </div>
-          {trainingLoad ? (
-            <>
-              <div className="flex items-end gap-3">
-                <span className="text-white text-5xl font-bold tabular-nums" style={{ filter: loadAccent(trainingLoad.statusColor).glow }}>
+            {trainingLoad ? (
+              <>
+                <span className="text-white text-3xl font-bold tabular-nums mt-2" style={{ filter: loadAccent(trainingLoad.statusColor).glow }}>
                   {trainingLoad.weekLoad}
                 </span>
-                <span className="text-gray-500 text-base mb-1">TRIMP, laatste 7 dagen</span>
-              </div>
-              <div className="flex gap-1 mt-3 h-8 items-end">
-                {dailyTrimp.map((v, i) => {
-                  const maxV = Math.max(...dailyTrimp, 1);
-                  const h = Math.max(6, Math.round((v / maxV) * 100));
-                  return (
-                    <div
-                      key={i}
-                      className={`flex-1 rounded-sm ${loadAccent(trainingLoad.statusColor).bar}`}
-                      style={{ height: `${h}%`, opacity: i === dailyTrimp.length - 1 ? 1 : 0.35 }}
-                    />
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            <p className="text-gray-500 text-sm py-2">Sync voor data</p>
-          )}
+                <span className="text-gray-400 text-xs">TRIMP · 7 dagen</span>
+                <div className="flex gap-1 mt-3 h-8 items-end">
+                  {dailyTrimp.map((v, i) => {
+                    const maxV = Math.max(...dailyTrimp, 1);
+                    const h = Math.max(6, Math.round((v / maxV) * 100));
+                    return (
+                      <div
+                        key={i}
+                        className={`flex-1 rounded-sm ${loadAccent(trainingLoad.statusColor).bar}`}
+                        style={{ height: `${h}%`, opacity: i === dailyTrimp.length - 1 ? 1 : 0.35 }}
+                      />
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-400 text-sm py-2">Sync voor data</p>
+            )}
+          </div>
         </div>
 
         {/* Dagelijks coach-bericht */}
@@ -424,11 +423,11 @@ export default function Dashboard() {
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide">Coach van de dag</p>
+                <p className="text-gray-300 text-sm font-semibold uppercase tracking-wide">Coach van de dag</p>
                 <button
                   onClick={refreshDailyMessage}
                   disabled={loadingDaily || syncing}
-                  className="text-gray-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   aria-label="Bericht vernieuwen"
                   title="Bericht vernieuwen"
                 >
@@ -444,12 +443,12 @@ export default function Dashboard() {
                     <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.1s]" />
                     <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
                   </div>
-                  <span className="text-sm text-gray-500">{syncing ? 'Syncing...' : 'Coach denkt na...'}</span>
+                  <span className="text-sm text-gray-400">{syncing ? 'Syncing...' : 'Coach denkt na...'}</span>
                 </div>
               ) : dailyMessage ? (
-                <p className="text-base text-gray-200 leading-relaxed">{dailyMessage}</p>
+                <p className="text-base text-gray-100 leading-relaxed">{dailyMessage}</p>
               ) : (
-                <p className="text-base text-gray-200">
+                <p className="text-base text-gray-100">
                   {readiness?.advice || trainingLoad?.advice || 'Even geduld, coach laadt...'}
                 </p>
               )}
@@ -460,7 +459,7 @@ export default function Dashboard() {
 
         {/* Training vandaag */}
         <div>
-          <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Training vandaag</p>
+          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Training vandaag</p>
           {trainingAdvice && (
             <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 mb-3">
               <div className="flex items-start gap-3">
@@ -475,7 +474,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className={`text-sm font-semibold ${trainingAdvice.level === 'go' ? 'text-green-400' : trainingAdvice.level === 'adjust' ? 'text-amber-400' : 'text-red-400'}`}>{trainingAdvice.label}</p>
-                  <p className="text-sm text-gray-400 mt-0.5">{trainingAdvice.message}</p>
+                  <p className="text-sm text-gray-300 mt-0.5">{trainingAdvice.message}</p>
                 </div>
               </div>
             </div>
@@ -483,8 +482,8 @@ export default function Dashboard() {
           {todayTraining ? (
             todayTraining.isRestDay ? (
               <div className="bg-[#0d0d0f] rounded-3xl p-6 border border-white/5 text-center">
-                <p className="text-gray-300 font-medium">Rustdag</p>
-                <p className="text-gray-500 text-sm mt-1">Geen training gepland — focus op herstel.</p>
+                <p className="text-gray-200 font-medium">Rustdag</p>
+                <p className="text-gray-400 text-sm mt-1">Geen training gepland — focus op herstel.</p>
               </div>
             ) : (
               <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 divide-y divide-white/5">
@@ -493,7 +492,7 @@ export default function Dashboard() {
                     <SportIcon sport={session.sport} size="lg" />
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold text-lg truncate">{session.description}</p>
-                      <p className="text-gray-500 text-sm">
+                      <p className="text-gray-400 text-sm">
                         {session.durationMinutes ? formatDuration(session.durationMinutes) : ''}
                         {session.zone ? ` · ${session.zone}` : ''}
                       </p>
@@ -504,14 +503,14 @@ export default function Dashboard() {
             )
           ) : (
             <div className="bg-[#0d0d0f] rounded-3xl p-6 border border-white/5 text-center">
-              <p className="text-gray-500">Geen training gepland vandaag</p>
+              <p className="text-gray-400">Geen training gepland vandaag</p>
             </div>
           )}
         </div>
 
         {/* Volume per sport — vergeleken met vorige week */}
         <div>
-          <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Volume deze week</p>
+          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Volume deze week</p>
           <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
             {volumeComparison.map((s) => {
               const isUp = s.delta.startsWith('+');
@@ -521,12 +520,12 @@ export default function Dashboard() {
                   <SportIcon sport={s.sport} size="sm" />
                   <div className="flex-1">
                     <div className="flex justify-between items-baseline text-sm mb-1">
-                      <span className="text-gray-300">{s.label}</span>
+                      <span className="text-gray-200">{s.label}</span>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-gray-500">{s.value}</span>
+                        <span className="text-gray-400">{s.value}</span>
                         <span
                           className={`text-xs font-semibold ${
-                            isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-500'
+                            isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-400'
                           }`}
                         >
                           {isUp ? '↑' : isDown ? '↓' : ''} {s.delta} vs vorige week
@@ -550,7 +549,7 @@ export default function Dashboard() {
         {/* Recente check-outs */}
         {recentCheckIns.length > 0 && (
           <div>
-            <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Laatste check-out</p>
+            <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Laatste check-out</p>
             <div className="space-y-2">
               {recentCheckIns.map((ci) => (
                 <div
@@ -566,10 +565,10 @@ export default function Dashboard() {
                         {ci.trainingDay}
                       </p>
                       {ci.note && (
-                        <p className="text-sm text-gray-500 truncate">{ci.note}</p>
+                        <p className="text-sm text-gray-400 truncate">{ci.note}</p>
                       )}
                     </div>
-                    <span className="text-sm text-gray-500">{ci.date}</span>
+                    <span className="text-sm text-gray-400">{ci.date}</span>
                   </div>
                   {(() => {
                     // Toon laatste assistant-bericht uit gesprek, of fallback naar feedback
@@ -579,8 +578,8 @@ export default function Dashboard() {
                     return (
                       <div className="px-4 pb-4 pt-0">
                         <div className="bg-white/5 rounded-xl p-3 flex items-start gap-2">
-                          <IconChat className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-gray-400 leading-relaxed">{displayText}</p>
+                          <IconChat className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-gray-300 leading-relaxed">{displayText}</p>
                         </div>
                       </div>
                     );
