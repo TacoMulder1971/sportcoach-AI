@@ -155,28 +155,45 @@ export default function DesignVoorbeeld() {
           </div>
         </div>
 
-        {/* Volume per sport — met bestaande SportIcon's */}
+        {/* Volume per sport — met bestaande SportIcon's, incl. vergelijking met vorige week */}
         <div>
           <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Volume deze week</p>
           <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
             {[
-              { sport: 'zwemmen' as const, label: 'Zwemmen', value: '2.1 km', pct: 35 },
-              { sport: 'fietsen' as const, label: 'Fietsen', value: '64 km', pct: 70 },
-              { sport: 'hardlopen' as const, label: 'Hardlopen', value: '22 km', pct: 55 },
-            ].map((s) => (
-              <div key={s.label} className="flex items-center gap-3">
-                <SportIcon sport={s.sport} size="sm" />
-                <div className="flex-1">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-300">{s.label}</span>
-                    <span className="text-gray-500">{s.value}</span>
-                  </div>
-                  <div className="bg-white/5 rounded-full h-1.5">
-                    <div className="rounded-full h-1.5 bg-gradient-to-r from-white/40 to-white/80" style={{ width: `${s.pct}%` }} />
+              { sport: 'zwemmen' as const, label: 'Zwemmen', value: '2.1 km', pct: 35, prevPct: 28, delta: '+25%' },
+              { sport: 'fietsen' as const, label: 'Fietsen', value: '64 km', pct: 70, prevPct: 78, delta: '-10%' },
+              { sport: 'hardlopen' as const, label: 'Hardlopen', value: '22 km', pct: 55, prevPct: 55, delta: '0%' },
+            ].map((s) => {
+              const isUp = s.delta.startsWith('+');
+              const isDown = s.delta.startsWith('-');
+              return (
+                <div key={s.label} className="flex items-center gap-3">
+                  <SportIcon sport={s.sport} size="sm" />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-baseline text-sm mb-1">
+                      <span className="text-gray-300">{s.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-500">{s.value}</span>
+                        <span
+                          className={`text-xs font-semibold ${
+                            isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-500'
+                          }`}
+                        >
+                          {isUp ? '↑' : isDown ? '↓' : ''} {s.delta} vs vorige week
+                        </span>
+                      </div>
+                    </div>
+                    <div className="relative bg-white/5 rounded-full h-1.5">
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 w-px h-3 bg-white/30"
+                        style={{ left: `${s.prevPct}%` }}
+                      />
+                      <div className="rounded-full h-1.5 bg-gradient-to-r from-white/40 to-white/80" style={{ width: `${s.pct}%` }} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
