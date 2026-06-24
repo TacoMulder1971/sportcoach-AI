@@ -49,6 +49,7 @@ SportCoach AI — een Nederlandstalige AI-sportcoach-webapp (Next.js, PWA). Oors
 - **Werkwijze (voorkeur gebruiker, 2026-05-31): bij UI-wijzigingen eerst een preview tonen en de gebruiker laten bevestigen dat het goed is; pas ná akkoord committen + pushen. Niet ongevraagd pushen.** Werk direct op `main`, geen feature-branch nodig.
 - Verifieer áltijd met `npx tsc --noEmit` + `npm run build` vóór de push.
 - Push naar `main` → Vercel auto-deploy (productie).
+- **"Unverified" commits op GitHub (2026-06-24):** de stop-hook waarschuwt soms dat een commit op GitHub als Unverified getoond wordt. Dit is **geen echt signing-probleem**: `git cat-file commit <sha>` laat zien dat er wél een geldige `gpgsig` (SSH-signature) in de commit staat, met de juiste committer-email (`noreply@anthropic.com`). `git log --show-signature` meldt lokaal "No signature"/een fout, maar dat komt alleen omdat `gpg.ssh.allowedSignersFile` hier niet is geconfigureerd — dat is puur een *lokale verificatie*-beperking, geen indicatie dat de signature ontbreekt. Als GitHub de commit toch als Unverified toont, ligt dat aan de registratie van de SSH-signing-key bij het GitHub-account (buiten bereik vanuit deze sandbox) — **niet** oplosbaar door te amenden/opnieuw te committen. Niet zonder overleg force-pushen om dit te "fixen".
 
 ## Verdere context
 Uitgebreide feature-historie staat in het projectgeheugen onder
