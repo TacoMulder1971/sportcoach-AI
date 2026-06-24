@@ -8,7 +8,7 @@ import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurr
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials } from '@/lib/storage';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP } from '@/lib/training-load';
-import { TrainingDay, CheckIn, FEELING_SCALE, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
+import { TrainingDay, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
 
 type IconProps = { className?: string; style?: React.CSSProperties };
 function IconChat({ className, style }: IconProps) {
@@ -70,7 +70,6 @@ function mondayOf(d: Date): Date {
 export default function Dashboard() {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
   const [yesterdayTraining, setYesterdayTraining] = useState<TrainingDay | null>(null);
-  const [recentCheckIns, setRecentCheckIns] = useState<CheckIn[]>([]);
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -138,7 +137,6 @@ export default function Dashboard() {
     const yt = getTrainingForDayOffset(-1, plan, cycleStartDate);
     setTodayTraining(training);
     setYesterdayTraining(yt);
-    setRecentCheckIns(getRecentCheckIns(1));
     setGarmin(getGarminData());
     setPendingResultGoal(getPendingResultGoal());
 
@@ -519,13 +517,13 @@ export default function Dashboard() {
                 <div key={s.label} className="flex items-center gap-3">
                   <SportIcon sport={s.sport} size="sm" />
                   <div className="flex-1">
-                    <div className="flex justify-between items-baseline text-sm mb-1">
-                      <span className="text-gray-200">{s.label}</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-400">{s.value}</span>
+                    <div className="flex justify-between items-baseline mb-1.5">
+                      <span className="text-white text-base font-semibold">{s.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-100 text-base font-medium">{s.value}</span>
                         <span
-                          className={`text-xs font-semibold ${
-                            isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-400'
+                          className={`text-sm font-semibold ${
+                            isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-300'
                           }`}
                         >
                           {isUp ? '↑' : isDown ? '↓' : ''} {s.delta} vs vorige week
@@ -546,49 +544,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recente check-outs */}
-        {recentCheckIns.length > 0 && (
-          <div>
-            <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Laatste check-out</p>
-            <div className="space-y-2">
-              {recentCheckIns.map((ci) => (
-                <div
-                  key={ci.id}
-                  className="bg-[#0d0d0f] rounded-3xl border border-white/5 overflow-hidden"
-                >
-                  <div className="p-4 flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full ${FEELING_SCALE[ci.feeling]?.color} ${FEELING_SCALE[ci.feeling]?.textColor} flex items-center justify-center font-bold text-base flex-shrink-0`}>
-                      {ci.feeling}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-medium text-white truncate">
-                        {ci.trainingDay}
-                      </p>
-                      {ci.note && (
-                        <p className="text-sm text-gray-400 truncate">{ci.note}</p>
-                      )}
-                    </div>
-                    <span className="text-sm text-gray-400">{ci.date}</span>
-                  </div>
-                  {(() => {
-                    // Toon laatste assistant-bericht uit gesprek, of fallback naar feedback
-                    const lastMsg = ci.messages?.filter(m => m.role === 'assistant').slice(-1)[0];
-                    const displayText = lastMsg?.content || ci.feedback;
-                    if (!displayText) return null;
-                    return (
-                      <div className="px-4 pb-4 pt-0">
-                        <div className="bg-white/5 rounded-xl p-3 flex items-start gap-2">
-                          <IconChat className="w-3.5 h-3.5 text-gray-300 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-gray-300 leading-relaxed">{displayText}</p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
