@@ -132,29 +132,6 @@ export default function DesignVoorbeeld() {
           </div>
         </div>
 
-        {/* Snel naar — neon glow-stijl zoals SportIcon */}
-        <div>
-          <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Snel naar</p>
-          <div className="grid grid-cols-4 gap-2.5">
-            {[
-              { label: 'Coach', Icon: IconChat, color: '#3b82f6' },
-              { label: 'Schema', Icon: IconCalendar, color: '#a855f7' },
-              { label: 'Races', Icon: IconTrophy, color: '#eab308' },
-              { label: 'Data', Icon: IconData, color: '#22c55e' },
-            ].map((a) => (
-              <div key={a.label} className="bg-[#0d0d0f] rounded-2xl p-3 border border-white/5 flex flex-col items-center text-center gap-1.5">
-                <div className="w-9 h-9 rounded-xl bg-gray-900 flex items-center justify-center">
-                  <a.Icon
-                    className="w-4 h-4"
-                    style={{ color: a.color, filter: `drop-shadow(0 0 6px ${a.color})` }}
-                  />
-                </div>
-                <p className="text-gray-300 text-sm font-medium">{a.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Volume per sport — met bestaande SportIcon's, incl. vergelijking met vorige week */}
         <div>
           <p className="text-gray-500 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Volume deze week</p>
