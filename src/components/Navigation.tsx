@@ -35,28 +35,31 @@ export default function Navigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href
-            || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
-                isActive
-                  ? 'text-blue-600'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <item.Icon className="w-5 h-5" />
-              <span className={`text-[10px] mt-1 ${isActive ? 'font-semibold' : ''}`}>
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
+    <nav className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4 pointer-events-none">
+      <div className="max-w-lg mx-auto pointer-events-auto">
+        <div className="relative flex justify-around items-center rounded-full bg-white/70 backdrop-blur-2xl border border-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.18)] px-1.5 py-1.5 overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/60 via-white/0 to-white/0" />
+          {navItems.map((item) => {
+            const isActive = pathname === item.href
+              || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`relative flex flex-col items-center justify-center gap-0.5 flex-1 py-2 rounded-full transition-colors ${
+                  isActive
+                    ? 'bg-white/80 text-blue-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_2px_8px_rgba(0,0,0,0.12)]'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <item.Icon className="w-5 h-5" />
+                <span className={`text-[10px] ${isActive ? 'font-semibold' : ''}`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );
