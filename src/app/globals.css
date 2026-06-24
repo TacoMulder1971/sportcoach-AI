@@ -30,7 +30,7 @@ body {
 
 /* Safe area for bottom navigation */
 .pb-safe {
-  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* Hide Next.js dev tools button (overlaps navigation) */
