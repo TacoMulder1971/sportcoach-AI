@@ -295,6 +295,7 @@ export default function HomeContent() {
 
   return (
     <div className="bg-black min-h-screen">
+      <div className="fixed top-0 inset-x-0 bg-black z-50" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
       {/* Hero */}
       <div className="px-5 pt-6">
         <Countdown gradientClassName="bg-gradient-to-br from-teal-700 via-cyan-800 to-blue-900" />
