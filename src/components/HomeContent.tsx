@@ -289,8 +289,8 @@ export default function HomeContent() {
         ? (currentKm < 0.01 ? '0%' : 'Nieuw')
         : `${currentKm >= prevKm ? '+' : ''}${Math.round(((currentKm - prevKm) / prevKm) * 100)}%`;
 
-      return { sport, label, value: `${currentKm.toFixed(1)} km`, pct, prevPct, delta: deltaLabel };
-    });
+      return { sport, label, value: `${currentKm.toFixed(1)} km`, pct, prevPct, delta: deltaLabel, hasData: currentKm >= 0.01 || prevKm >= 0.01 };
+    }).filter((s) => s.hasData);
   }, [garmin]);
 
   return (
@@ -511,33 +511,33 @@ export default function HomeContent() {
         <div>
           <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Volume deze week</p>
           <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
-            {volumeComparison.map((s) => {
+            {volumeComparison.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center py-4">Nog geen activiteit deze week</p>
+            ) : volumeComparison.map((s) => {
               const isUp = s.delta.startsWith('+');
               const isDown = s.delta.startsWith('-');
               return (
                 <div key={s.label} className="flex items-center gap-3">
                   <SportIcon sport={s.sport} size="sm" />
-                  <div className="flex-1">
-                    <div className="flex justify-between items-baseline mb-1.5">
-                      <span className="text-white text-base font-semibold">{s.label}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-100 text-base font-medium">{s.value}</span>
-                        <span
-                          className={`text-sm font-semibold ${
-                            isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-300'
-                          }`}
-                        >
-                          {isUp ? '↑' : isDown ? '↓' : ''} {s.delta} vs vorige week
-                        </span>
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-white text-base font-semibold whitespace-nowrap">{s.label}</span>
+                      <span className="text-gray-100 text-base font-medium whitespace-nowrap">{s.value}</span>
                     </div>
-                    <div className="relative bg-white/5 rounded-full h-1.5">
+                    <div className="relative bg-white/5 rounded-full h-1.5 mt-1.5">
                       <div
                         className="absolute top-1/2 -translate-y-1/2 w-px h-3 bg-white/30"
                         style={{ left: `${s.prevPct}%` }}
                       />
                       <div className="rounded-full h-1.5 bg-gradient-to-r from-white/40 to-white/80" style={{ width: `${s.pct}%` }} />
                     </div>
+                    <p
+                      className={`text-xs font-semibold mt-1 text-right whitespace-nowrap ${
+                        isUp ? 'text-emerald-400' : isDown ? 'text-rose-400' : 'text-gray-300'
+                      }`}
+                    >
+                      {isUp ? '↑' : isDown ? '↓' : ''} {s.delta} vs vorige week
+                    </p>
                   </div>
                 </div>
               );
