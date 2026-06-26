@@ -35,7 +35,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className={`font-semibold ${isToday ? 'text-blue-400' : 'text-white'}`}>
+            <span className={`font-semibold ${isToday ? 'text-blue-400' : 'text-gray-100'}`}>
               {training.day}
             </span>
             {isToday && (
@@ -68,7 +68,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
                         Onderdeel {idx + 1} van {training.sessions.length}
                       </p>
                     )}
-                    <p className="text-white font-semibold leading-snug">{session.description}</p>
+                    <p className="text-base text-gray-100 leading-relaxed">{session.description}</p>
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       {session.type && (
                         <span className="text-xs font-medium text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">

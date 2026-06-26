@@ -81,7 +81,7 @@ export default function GoalsSection({ onGoalChange, autoOpenResult, dark = fals
                   {idx === 0 && (
                     <p className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${dark ? 'text-blue-400' : 'text-blue-700'}`}>Volgende wedstrijd</p>
                   )}
-                  <h3 className={`font-bold ${dark ? 'text-white' : 'text-gray-900'} ${idx === 0 ? 'text-lg' : 'text-base'}`}>{g.name}</h3>
+                  <h3 className={`font-semibold ${dark ? 'text-gray-100' : 'text-gray-900'} ${idx === 0 ? 'text-lg' : 'text-base'}`}>{g.name}</h3>
                   <p className={`text-xs ${dark ? 'text-gray-500' : 'text-gray-500'}`}>{typeLabel(g.type)}</p>
                 </div>
                 <button
