@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
@@ -50,15 +50,15 @@ function DetailedSession({ session, index, total }: { session: TrainingSession; 
       <div className="grid grid-cols-3 gap-px mt-3 rounded-xl overflow-hidden bg-white/5">
         <div className="bg-[#0d0d0f] p-2.5 text-center">
           <p className="text-gray-500 text-[10px] uppercase tracking-wide">Sport</p>
-          <p className="text-white text-sm font-semibold mt-0.5">{SPORT_LABEL[session.sport] || session.sport}</p>
+          <p className="text-gray-100 text-sm font-medium mt-0.5">{SPORT_LABEL[session.sport] || session.sport}</p>
         </div>
         <div className="bg-[#0d0d0f] p-2.5 text-center">
           <p className="text-gray-500 text-[10px] uppercase tracking-wide">Type</p>
-          <p className="text-white text-sm font-semibold mt-0.5">{session.type ? capitalize(session.type) : '—'}</p>
+          <p className="text-gray-100 text-sm font-medium mt-0.5">{session.type ? capitalize(session.type) : '—'}</p>
         </div>
         <div className="bg-[#0d0d0f] p-2.5 text-center">
           <p className="text-gray-500 text-[10px] uppercase tracking-wide">Duur</p>
-          <p className="text-white text-sm font-semibold mt-0.5">{session.durationMinutes ? formatDuration(session.durationMinutes) : '—'}</p>
+          <p className="text-gray-100 text-sm font-medium mt-0.5">{session.durationMinutes ? formatDuration(session.durationMinutes) : '—'}</p>
         </div>
       </div>
 
@@ -84,7 +84,7 @@ function DetailedDay({ label, weekday, training }: { label: string; weekday: str
   return (
     <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
       <div className="flex items-baseline justify-between mb-3">
-        <p className="text-white text-base font-bold">{label}</p>
+        <p className="text-gray-100 text-base font-semibold">{label}</p>
         <p className="text-gray-500 text-xs uppercase tracking-wide">{weekday}</p>
       </div>
       {!training || training.isRestDay ? (
@@ -113,10 +113,6 @@ export default function SchemaContent() {
   const [tomorrowTraining, setTomorrowTraining] = useState<TrainingDay | null>(null);
   const todayDayIndex = getTodayDayIndex();
 
-  // Auto-scroll naar vandaag
-  const todayRef = useRef<HTMLDivElement>(null);
-  const hasScrolled = useRef(false);
-
   // Ad-hoc aanpassing state
   const [adjustDay, setAdjustDay] = useState<{ weekNumber: 1 | 2; day: TrainingDay } | null>(null);
   const [adjustText, setAdjustText] = useState('');
@@ -140,15 +136,6 @@ export default function SchemaContent() {
     setTodayTraining(getTodayTraining(active.plan, active.cycleStartDate));
     setTomorrowTraining(getTrainingForDayOffset(1, active.plan, active.cycleStartDate));
   }, [tabParam]);
-
-  useEffect(() => {
-    if (plan && !hasScrolled.current && todayRef.current) {
-      setTimeout(() => {
-        todayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        hasScrolled.current = true;
-      }, 100);
-    }
-  }, [plan]);
 
   const currentWeek = cycleStartDate ? getCurrentWeekNumber(cycleStartDate) : 1;
   const selectedWeek = typeof selectedTab === 'number' ? selectedTab : null;
@@ -207,25 +194,14 @@ export default function SchemaContent() {
       <div className="fixed bottom-0 inset-x-0 bg-black z-40" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
 
       <div className="px-4 pt-6 pb-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Trainingsschema</h1>
-          <p className="text-gray-500 text-sm">
-            {planId === 'default' ? '2-weekse cyclus' : `Dag ${cycleDay}/14 van cyclus`}
-          </p>
-        </div>
+        <p className="text-gray-500 text-sm">
+          {planId === 'default' ? '2-weekse cyclus' : `Dag ${cycleDay}/14 van cyclus`}
+        </p>
 
         {/* Detail voor je Garmin — vandaag & morgen */}
-        <div>
-          <div className="flex items-center gap-2 mb-2 px-1">
-            <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 0 6px rgba(96,165,250,0.5))' }}>
-              <circle cx="12" cy="12" r="6" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-            </svg>
-            <p className="text-gray-300 text-sm font-semibold uppercase tracking-wide">Voor je Garmin — vandaag &amp; morgen</p>
-          </div>
-          <div className="space-y-3">
-            <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} />
-            <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} />
-          </div>
+        <div className="space-y-3">
+          <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} />
+          <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} />
         </div>
 
         {/* Backup herinnering */}
@@ -313,7 +289,7 @@ export default function SchemaContent() {
               {week.days.map((day) => {
                 const isToday = selectedWeek === currentWeek && day.dayIndex === todayDayIndex;
                 return (
-                  <div key={day.dayIndex} className="relative" ref={isToday ? todayRef : undefined}>
+                  <div key={day.dayIndex} className="relative">
                     <TrainingCard training={day} isToday={isToday} dark />
                     {planId !== 'default' && (
                       <button
@@ -341,7 +317,7 @@ export default function SchemaContent() {
               <div className="fixed inset-0 bg-black/70 z-50 flex items-end">
                 <div className="bg-[#0d0d0f] border-t border-white/10 w-full rounded-t-3xl p-5 space-y-4 animate-slide-up">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-white">{adjustDay.day.day} aanpassen</h3>
+                    <h3 className="text-lg font-semibold text-gray-100">{adjustDay.day.day} aanpassen</h3>
                     <button onClick={() => setAdjustDay(null)} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                       <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 6 6 18M6 6l12 12"/>
@@ -468,7 +444,7 @@ export default function SchemaContent() {
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <span className="w-3 h-3 rounded-full" style={{ backgroundColor: phase.color }} />
-                          <h3 className={`font-bold ${isCurrent ? 'text-blue-300' : 'text-white'}`}>{phase.label}</h3>
+                          <h3 className={`font-semibold ${isCurrent ? 'text-blue-300' : 'text-gray-100'}`}>{phase.label}</h3>
                         </div>
                         {isCurrent && (
                           <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">Nu</span>
