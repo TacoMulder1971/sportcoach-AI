@@ -49,9 +49,10 @@ export default function CoachContent() {
   }, []);
 
   useEffect(() => {
-    // Scroll het nieuwste bericht vanaf zijn bovenkant in beeld — zo lees je
-    // een lang antwoord vanaf het begin in plaats van het afgekapte einde.
-    lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // 'nearest' vult de chat van boven naar beneden: een kort bericht dokt
+    // onderaan (geen lege ruimte), een lang bericht (groter dan het scherm)
+    // toont vanaf zijn bovenkant in plaats van het afgekapte einde.
+    lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages]);
 
   const speakText = useCallback((text: string) => {
