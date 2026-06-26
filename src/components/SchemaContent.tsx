@@ -42,7 +42,7 @@ function DetailedSession({ session, index, total }: { session: TrainingSession; 
               Onderdeel {index + 1} van {total}
             </p>
           )}
-          <p className="text-white font-semibold leading-snug">{session.description}</p>
+          <p className="text-base text-gray-100 leading-relaxed">{session.description}</p>
         </div>
       </div>
 
