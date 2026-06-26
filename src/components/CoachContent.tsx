@@ -17,7 +17,7 @@ export default function CoachContent() {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -49,7 +49,9 @@ export default function CoachContent() {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll het nieuwste bericht vanaf zijn bovenkant in beeld — zo lees je
+    // een lang antwoord vanaf het begin in plaats van het afgekapte einde.
+    lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [messages]);
 
   const speakText = useCallback((text: string) => {
@@ -343,8 +345,10 @@ export default function CoachContent() {
         <>
           {/* Messages */}
           <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 hide-scrollbar">
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
+            {messages.map((msg, i) => (
+              <div key={msg.id} ref={i === messages.length - 1 ? lastMessageRef : undefined}>
+                <ChatMessage message={msg} />
+              </div>
             ))}
             {isLoading && (
               <div className="flex justify-start mb-3">
@@ -358,7 +362,6 @@ export default function CoachContent() {
                 </div>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Input */}
