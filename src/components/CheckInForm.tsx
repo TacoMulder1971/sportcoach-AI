@@ -313,11 +313,11 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-3">
             <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <p className="text-lg font-semibold text-gray-900">
+          <p className="text-lg font-semibold text-gray-100">
             {resumeCheckIn ? 'Je check-out van vandaag' : 'Check-out opgeslagen!'}
           </p>
           {resumeCheckIn && (
-            <p className="text-gray-500 text-sm mt-1">Je kunt het gesprek met de coach voortzetten.</p>
+            <p className="text-gray-400 text-sm mt-1">Je kunt het gesprek met de coach voortzetten.</p>
           )}
         </div>
 
@@ -328,10 +328,10 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
               <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-br-md'
-                  : 'bg-gray-100 text-gray-800 rounded-bl-md'
+                  : 'bg-white/5 border border-white/10 text-gray-100 rounded-bl-md'
               }`}>
                 {msg.role === 'assistant' && (
-                  <p className="text-xs font-semibold text-blue-600 mb-1">Coach</p>
+                  <p className="text-xs font-semibold text-blue-400 mb-1">Coach</p>
                 )}
                 <p className="text-sm leading-relaxed">{msg.content}</p>
               </div>
@@ -341,17 +341,17 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           {/* Loading */}
           {(loadingFeedback || sending) && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
-                <p className="text-xs font-semibold text-blue-600 mb-1">Coach</p>
+              <div className="bg-white/5 border border-white/10 rounded-2xl rounded-bl-md px-4 py-3">
+                <p className="text-xs font-semibold text-blue-400 mb-1">Coach</p>
                 {syncStatus === 'syncing' ? (
-                  <p className="text-sm text-gray-600">Garmin data ophalen...</p>
+                  <p className="text-sm text-gray-400">Garmin data ophalen...</p>
                 ) : syncStatus === 'analyzing' ? (
-                  <p className="text-sm text-gray-600">Activiteit analyseren...</p>
+                  <p className="text-sm text-gray-400">Activiteit analyseren...</p>
                 ) : (
                   <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.1s]" />
+                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
                   </div>
                 )}
               </div>
@@ -363,14 +363,14 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
 
         {/* Chat input */}
         {!loadingFeedback && (messages.length > 0 || !!resumeCheckIn) && (
-          <div className="flex items-end gap-2 bg-white rounded-2xl border border-gray-200 p-2">
+          <div className="flex items-end gap-2 bg-white/5 rounded-2xl border border-white/10 p-2">
             <textarea
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Stel een vraag aan de coach..."
               rows={1}
-              className="flex-1 resize-none text-sm p-2 outline-none max-h-24"
+              className="flex-1 resize-none text-sm p-2 outline-none max-h-24 bg-transparent text-white placeholder:text-gray-500"
               style={{ minHeight: '2.5rem' }}
             />
             <button
@@ -379,7 +379,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
               className={`p-2 rounded-xl transition-all ${
                 chatInput.trim() && !sending
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-100 text-gray-400'
+                  : 'bg-white/5 text-gray-500'
               }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -392,7 +392,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         {/* Back button */}
         <button
           onClick={onComplete}
-          className="w-full py-3 rounded-xl font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors"
+          className="w-full py-3 rounded-xl font-semibold text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 transition-colors"
         >
           Terug naar dashboard
         </button>
@@ -403,7 +403,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-medium text-gray-700 mb-3">
+        <h3 className="text-sm font-medium text-gray-300 mb-3">
           Hoe voelde de training van {dayLabel}?
         </h3>
         <div className="flex justify-between gap-2">
@@ -413,14 +413,14 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
               onClick={() => setFeeling(level)}
               className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all ${
                 feeling === level
-                  ? 'bg-blue-50 border-2 border-blue-500 scale-105'
-                  : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                  ? 'bg-blue-500/15 border-2 border-blue-500 scale-105'
+                  : 'bg-white/5 border-2 border-transparent hover:bg-white/10'
               }`}
             >
               <div className={`w-10 h-10 rounded-full ${FEELING_SCALE[level].color} ${FEELING_SCALE[level].textColor} flex items-center justify-center font-bold text-lg`}>
                 {level}
               </div>
-              <span className="text-xs text-gray-600">{FEELING_SCALE[level].label}</span>
+              <span className="text-xs text-gray-400">{FEELING_SCALE[level].label}</span>
             </button>
           ))}
         </div>
@@ -433,16 +433,16 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         const sportLabel = sport === 'fietsen' ? 'fiets' : sport === 'hardlopen' ? 'schoenen' : sport === 'mountainbike' ? 'mountainbike' : sport;
         return (
           <div key={sport}>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium text-gray-300 mb-2 block">
               Welke {sportLabel} gebruikt?
             </label>
             <select
               value={equipmentChoices[sport] || ''}
               onChange={(e) => setEquipmentChoices(prev => ({ ...prev, [sport]: e.target.value }))}
-              className="w-full border border-gray-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-white/5 border border-white/10 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {options.map(eq => (
-                <option key={eq.id} value={eq.id}>
+                <option key={eq.id} value={eq.id} className="bg-[#0d0d0f]">
                   {TYPE_ICON[eq.type]} {eq.name}{eq.isDefault ? ' · default' : ''}
                 </option>
               ))}
@@ -454,16 +454,16 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       {/* Zwem-variant keuze (default = laatste keuze) */}
       {hasSwimSession && (
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
+          <label className="text-sm font-medium text-gray-300 mb-2 block">
             Waar gezwommen?
           </label>
           <select
             value={swimChoice}
             onChange={(e) => setSwimChoice(e.target.value as SwimVariant)}
-            className="w-full border border-gray-300 rounded-xl p-3 text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full bg-white/5 border border-white/10 text-white rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             {SWIM_VARIANTS.map(v => (
-              <option key={v} value={v}>
+              <option key={v} value={v} className="bg-[#0d0d0f]">
                 🌊 {SWIM_VARIANT_LABEL[v]}
               </option>
             ))}
@@ -472,14 +472,14 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       )}
 
       <div>
-        <label className="text-sm font-medium text-gray-700 mb-2 block">
+        <label className="text-sm font-medium text-gray-300 mb-2 block">
           Opmerkingen (optioneel)
         </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Hoe voelde je je? Iets bijzonders opgemerkt?"
-          className="w-full border border-gray-300 rounded-xl p-3 text-sm resize-none h-24 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl p-3 text-sm resize-none h-24 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>
 
@@ -489,7 +489,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         className={`w-full py-3 rounded-xl font-semibold text-white transition-all ${
           feeling !== null
             ? 'bg-blue-600 hover:bg-blue-700 active:scale-98'
-            : 'bg-gray-300 cursor-not-allowed'
+            : 'bg-white/10 text-gray-500 cursor-not-allowed'
         }`}
       >
         Opslaan

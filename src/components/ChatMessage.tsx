@@ -13,18 +13,18 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         className={`max-w-[85%] rounded-2xl px-4 py-3 ${
           isUser
             ? 'bg-blue-600 text-white rounded-br-md'
-            : 'bg-gray-100 text-gray-900 rounded-bl-md'
+            : 'bg-white/5 border border-white/10 text-gray-100 rounded-bl-md'
         }`}
       >
         {!isUser && (
-          <p className="text-xs font-semibold text-blue-600 mb-1">Coach AI</p>
+          <p className="text-xs font-semibold text-blue-400 mb-1">Coach AI</p>
         )}
         <div className="text-sm whitespace-pre-wrap leading-relaxed">
           {message.content}
         </div>
         <p
           className={`text-xs mt-1 ${
-            isUser ? 'text-blue-200' : 'text-gray-400'
+            isUser ? 'text-blue-200' : 'text-gray-500'
           }`}
         >
           {new Date(message.createdAt).toLocaleTimeString('nl-NL', {

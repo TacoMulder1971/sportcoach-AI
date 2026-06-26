@@ -20,23 +20,23 @@ function TodayActivities({ activities }: { activities: GarminActivity[] }) {
   return (
     <div className="space-y-2">
       {activities.map((a) => (
-        <div key={a.id} className="bg-gray-50 rounded-lg p-3">
+        <div key={a.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-3">
           <div className="flex items-center gap-2 mb-1">
             <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="sm" />
-            <p className="text-sm font-medium">{a.activityName}</p>
+            <p className="text-sm font-medium text-gray-100">{a.activityName}</p>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-sm font-bold text-gray-800">{a.durationMinutes}m</p>
-              <p className="text-[10px] text-gray-400">Duur</p>
+              <p className="text-sm font-bold text-gray-100">{a.durationMinutes}m</p>
+              <p className="text-[10px] text-gray-500">Duur</p>
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-800">{a.distanceKm > 0 ? `${a.distanceKm}km` : '–'}</p>
-              <p className="text-[10px] text-gray-400">Afstand</p>
+              <p className="text-sm font-bold text-gray-100">{a.distanceKm > 0 ? `${a.distanceKm}km` : '–'}</p>
+              <p className="text-[10px] text-gray-500">Afstand</p>
             </div>
             <div>
-              <p className="text-sm font-bold text-red-500">{a.avgHR || '–'}</p>
-              <p className="text-[10px] text-gray-400">{a.avgHR > 0 ? getHRZoneLabel(a.avgHR) : 'Gem HR'}</p>
+              <p className="text-sm font-bold text-red-400">{a.avgHR || '–'}</p>
+              <p className="text-[10px] text-gray-500">{a.avgHR > 0 ? getHRZoneLabel(a.avgHR) : 'Gem HR'}</p>
             </div>
           </div>
         </div>
@@ -98,29 +98,24 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
   }, []);
 
   return (
-    <div className="px-4 pt-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Check-out</h1>
-        <p className="text-gray-500 text-sm">Hoe ging je training?</p>
-      </div>
-
+    <div className="px-5 pt-2 pb-8 space-y-6">
       {syncing && (
-        <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 text-sm text-gray-400 bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2">
           <span className="flex gap-1">
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]" />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" />
+            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0.1s]" />
+            <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
           </span>
           Garmin synchroniseren — activiteiten van vandaag ophalen…
         </div>
       )}
 
       {alreadyCheckedOut && existingCheckIn ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4">
           {/* Garmin activiteiten van vandaag (vers na sync) */}
           {todayActivities.length > 0 && (
-            <div className="mb-4 pb-4 border-b border-gray-100">
-              <p className="text-xs text-gray-400 mb-2">Garmin activiteiten vandaag</p>
+            <div className="mb-4 pb-4 border-b border-white/5">
+              <p className="text-xs text-gray-500 mb-2">Garmin activiteiten vandaag</p>
               <TodayActivities activities={todayActivities} />
             </div>
           )}
@@ -134,13 +129,13 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
           />
         </div>
       ) : todayTraining && !todayTraining.isRestDay ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4">
           {/* Gepland vs Gedaan */}
-          <div className="mb-4 pb-4 border-b border-gray-100">
+          <div className="mb-4 pb-4 border-b border-white/5">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700">Gepland</p>
+              <p className="text-sm font-medium text-gray-300">Gepland</p>
               {todayActivities.length > 0 && (
-                <p className="text-sm font-medium text-gray-700">Gedaan</p>
+                <p className="text-sm font-medium text-gray-300">Gedaan</p>
               )}
             </div>
 
@@ -150,7 +145,7 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
                 <div key={i} className="flex items-center gap-2">
                   <SportIcon sport={s.sport} size="sm" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-600 truncate">{s.type} · {s.durationMinutes}min · {s.zone}</p>
+                    <p className="text-xs text-gray-400 truncate">{s.type} · {s.durationMinutes}min · {s.zone}</p>
                   </div>
                 </div>
               ))}
@@ -158,8 +153,8 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
 
             {/* Garmin activiteiten van vandaag */}
             {todayActivities.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-gray-50">
-                <p className="text-xs text-gray-400 mb-2">Garmin activiteiten vandaag</p>
+              <div className="mt-3 pt-3 border-t border-white/5">
+                <p className="text-xs text-gray-500 mb-2">Garmin activiteiten vandaag</p>
                 <TodayActivities activities={todayActivities} />
               </div>
             )}
@@ -174,11 +169,11 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
         </div>
       ) : todayActivities.length > 0 ? (
         // Rustdag, maar er is toch getraind — bied alsnog een check-out + gesprek aan
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="mb-4 pb-4 border-b border-gray-100">
+        <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4">
+          <div className="mb-4 pb-4 border-b border-white/5">
             <div className="flex items-center gap-2 mb-2">
               <SportIcon sport="rust" size="sm" />
-              <p className="text-sm font-medium text-gray-700">Rustdag — maar je hebt toch getraind</p>
+              <p className="text-sm font-medium text-gray-300">Rustdag — maar je hebt toch getraind</p>
             </div>
             <TodayActivities activities={todayActivities} />
           </div>
@@ -191,12 +186,12 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
           />
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-8 text-center">
           <div className="flex justify-center mb-4">
             <SportIcon sport="rust" size="lg" />
           </div>
-          <p className="text-gray-900 font-medium">Rustdag vandaag</p>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-100 font-medium">Rustdag vandaag</p>
+          <p className="text-gray-400 text-sm mt-1">
             Geniet van je herstel! Morgen weer aan de slag.
           </p>
         </div>
@@ -205,28 +200,28 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
       {/* Recente check-outs */}
       {recentCheckIns.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">
             Recente check-outs
-          </h2>
+          </p>
           <div className="space-y-2">
             {recentCheckIns.map((ci) => (
               <div
                 key={ci.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+                className="bg-[#0d0d0f] rounded-2xl border border-white/5 overflow-hidden"
               >
                 <div className="p-3 flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full ${FEELING_SCALE[ci.feeling]?.color} ${FEELING_SCALE[ci.feeling]?.textColor} flex items-center justify-center font-bold text-base flex-shrink-0`}>
                     {ci.feeling}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-medium truncate">
+                    <p className="text-base font-medium text-gray-100 truncate">
                       {ci.trainingDay}
                     </p>
                     {ci.note && (
-                      <p className="text-sm text-gray-500 truncate">{ci.note}</p>
+                      <p className="text-sm text-gray-400 truncate">{ci.note}</p>
                     )}
                   </div>
-                  <span className="text-sm text-gray-400">{ci.date}</span>
+                  <span className="text-sm text-gray-500">{ci.date}</span>
                 </div>
                 {(() => {
                   const lastMsg = ci.messages?.filter(m => m.role === 'assistant').slice(-1)[0];
@@ -234,9 +229,9 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
                   if (!displayText) return null;
                   return (
                     <div className="px-3 pb-3 pt-0">
-                      <div className="bg-blue-50 rounded-lg p-2.5 flex items-start gap-2">
-                        <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        <p className="text-sm text-gray-600 leading-relaxed">{displayText}</p>
+                      <div className="bg-blue-500/10 rounded-lg p-2.5 flex items-start gap-2">
+                        <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <p className="text-sm text-gray-300 leading-relaxed">{displayText}</p>
                       </div>
                     </div>
                   );
@@ -250,30 +245,30 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
       {/* Voeding van vandaag (MyFitnessPal) */}
       {nutritionLog && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Voeding vandaag</h2>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+          <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Voeding vandaag</p>
+          <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4 space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-orange-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-orange-600">{nutritionLog.calories}</p>
-                <p className="text-xs text-gray-500">kcal</p>
+              <div className="bg-orange-500/10 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-orange-400">{nutritionLog.calories}</p>
+                <p className="text-xs text-gray-400">kcal</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{nutritionLog.carbsG}g</p>
-                <p className="text-xs text-gray-500">koolhydraten</p>
+              <div className="bg-blue-500/10 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-blue-400">{nutritionLog.carbsG}g</p>
+                <p className="text-xs text-gray-400">koolhydraten</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-green-600">{nutritionLog.proteinG}g</p>
-                <p className="text-xs text-gray-500">eiwit</p>
+              <div className="bg-green-500/10 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-green-400">{nutritionLog.proteinG}g</p>
+                <p className="text-xs text-gray-400">eiwit</p>
               </div>
-              <div className="bg-yellow-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-yellow-600">{nutritionLog.fatG}g</p>
-                <p className="text-xs text-gray-500">vet</p>
+              <div className="bg-yellow-500/10 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-yellow-400">{nutritionLog.fatG}g</p>
+                <p className="text-xs text-gray-400">vet</p>
               </div>
             </div>
 
             {nutritionFeedback ? (
-              <div className="bg-blue-50 rounded-lg p-3">
-                <p className="text-sm text-gray-700 leading-relaxed">{nutritionFeedback}</p>
+              <div className="bg-blue-500/10 rounded-xl p-3">
+                <p className="text-sm text-gray-300 leading-relaxed">{nutritionFeedback}</p>
               </div>
             ) : (
               <button
