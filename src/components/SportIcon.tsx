@@ -4,7 +4,7 @@ import { Sport } from '@/lib/types';
 
 interface SportIconProps {
   sport: Sport | 'overig';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
 const NEON_COLORS: Record<string, { stroke: string; glow: string }> = {
@@ -24,6 +24,7 @@ const SIZE_MAP = {
   md: { box: 'w-10 h-10', icon: 'w-6 h-6',    radius: 'rounded-xl' },
   lg: { box: 'w-11 h-11', icon: 'w-[26px] h-[26px]', radius: 'rounded-xl' },
   xl: { box: 'w-14 h-14', icon: 'w-8 h-8', radius: 'rounded-xl' },
+  '2xl': { box: 'w-20 h-20', icon: 'w-12 h-12', radius: 'rounded-2xl' },
 };
 
 function SwimIcon({ color }: { color: string }) {

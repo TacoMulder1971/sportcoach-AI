@@ -18,9 +18,10 @@ import {
 interface GoalsSectionProps {
   onGoalChange?: () => void;
   autoOpenResult?: string; // goal id voor auto-open resultaat-modal
+  dark?: boolean;
 }
 
-export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSectionProps) {
+export default function GoalsSection({ onGoalChange, autoOpenResult, dark = false }: GoalsSectionProps) {
   const [upcoming, setUpcoming] = useState<Goal[]>([]);
   const [archived, setArchived] = useState<Goal[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -71,27 +72,27 @@ export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSect
           {upcoming.map((g, idx) => (
             <div
               key={g.id}
-              className={`rounded-xl p-4 border ${idx === 0
-                ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200'
-                : 'bg-white border-gray-200'}`}
+              className={dark
+                ? `rounded-3xl p-4 border ${idx === 0 ? 'bg-blue-500/10 border-blue-500/40' : 'bg-[#0d0d0f] border-white/5'}`
+                : `rounded-xl p-4 border ${idx === 0 ? 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200' : 'bg-white border-gray-200'}`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
                   {idx === 0 && (
-                    <p className="text-xs text-blue-700 font-semibold uppercase tracking-wide mb-0.5">Volgende wedstrijd</p>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${dark ? 'text-blue-400' : 'text-blue-700'}`}>Volgende wedstrijd</p>
                   )}
-                  <h3 className={`font-bold text-gray-900 ${idx === 0 ? 'text-lg' : 'text-base'}`}>{g.name}</h3>
-                  <p className="text-xs text-gray-500">{typeLabel(g.type)}</p>
+                  <h3 className={`font-bold ${dark ? 'text-white' : 'text-gray-900'} ${idx === 0 ? 'text-lg' : 'text-base'}`}>{g.name}</h3>
+                  <p className={`text-xs ${dark ? 'text-gray-500' : 'text-gray-500'}`}>{typeLabel(g.type)}</p>
                 </div>
                 <button
                   onClick={() => setEditGoal(g)}
-                  className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded"
+                  className={`text-xs font-medium px-2 py-1 rounded ${dark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
                 >
                   Wijzig
                 </button>
               </div>
 
-              <div className="flex items-center gap-4 text-sm mt-2">
+              <div className={`flex items-center gap-4 text-sm mt-2 ${dark ? 'text-gray-200' : ''}`}>
                 <div>
                   <p className="text-xs text-gray-500">Datum</p>
                   <p className="font-semibold">{formatDate(g.date)}</p>
@@ -115,21 +116,21 @@ export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSect
           ))}
         </div>
       ) : (
-        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center">
+        <div className={dark ? 'bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 text-center' : 'bg-gray-50 rounded-xl p-4 border border-gray-200 text-center'}>
           <p className="text-sm text-gray-500">Nog geen wedstrijden gepland</p>
         </div>
       )}
 
       {/* Archief */}
       {archived.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className={dark ? 'bg-[#0d0d0f] rounded-3xl border border-white/5 overflow-hidden' : 'bg-white rounded-xl border border-gray-200 overflow-hidden'}>
           <button
             onClick={() => setArchiveOpen(v => !v)}
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-50"
+            className={`w-full flex items-center justify-between p-4 ${dark ? 'hover:bg-white/[0.03]' : 'hover:bg-gray-50'}`}
           >
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-700">Eerdere doelen</span>
-              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+              <span className={`text-sm font-semibold ${dark ? 'text-gray-200' : 'text-gray-700'}`}>Eerdere doelen</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${dark ? 'bg-white/10 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>
                 {archived.length}
               </span>
             </div>
@@ -142,7 +143,7 @@ export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSect
           </button>
 
           {archiveOpen && (
-            <div className="border-t border-gray-100 divide-y divide-gray-100">
+            <div className={dark ? 'border-t border-white/5 divide-y divide-white/5' : 'border-t border-gray-100 divide-y divide-gray-100'}>
               {archived.map(g => (
                 <ArchiveRow
                   key={g.id}
@@ -150,6 +151,7 @@ export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSect
                   onEdit={() => setEditGoal(g)}
                   formatDate={formatDate}
                   typeLabel={typeLabel}
+                  dark={dark}
                 />
               ))}
             </div>
@@ -160,7 +162,11 @@ export default function GoalsSection({ onGoalChange, autoOpenResult }: GoalsSect
       {/* Nieuw doel knop */}
       <button
         onClick={() => setShowNew(true)}
-        className="w-full py-3 rounded-xl border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 transition-colors font-semibold text-sm"
+        className={`w-full py-3 rounded-xl border-2 border-dashed transition-colors font-semibold text-sm ${
+          dark
+            ? 'border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/60'
+            : 'border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400'
+        }`}
       >
         + Nieuw doel
       </button>
@@ -226,11 +232,13 @@ function ArchiveRow({
   onEdit,
   formatDate,
   typeLabel,
+  dark = false,
 }: {
   goal: Goal;
   onEdit: () => void;
   formatDate: (d: string) => string;
   typeLabel: (t: GoalType) => string;
+  dark?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const r = goal.result;
@@ -246,7 +254,7 @@ function ArchiveRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span>{icon}</span>
-            <p className="text-sm font-semibold truncate">{goal.name}</p>
+            <p className={`text-sm font-semibold truncate ${dark ? 'text-gray-100' : ''}`}>{goal.name}</p>
           </div>
           <p className="text-xs text-gray-500">
             {typeLabel(goal.type)} · {formatDate(goal.date)}
@@ -269,7 +277,7 @@ function ArchiveRow({
       </button>
 
       {expanded && (
-        <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-sm">
+        <div className={`mt-3 pt-3 border-t space-y-2 text-sm ${dark ? 'border-white/5' : 'border-gray-100'}`}>
           {r ? (
             <>
               {goal.targetTimeSeconds && (
