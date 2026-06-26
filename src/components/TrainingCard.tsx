@@ -61,7 +61,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
                 : null;
               return (
                 <div key={idx} className="flex items-start gap-3">
-                  <SportIcon sport={session.sport} size="lg" />
+                  <SportIcon sport={session.sport} size="xl" />
                   <div className="flex-1 min-w-0">
                     {training.sessions.length > 1 && (
                       <p className="text-gray-500 text-[11px] font-semibold uppercase tracking-wide mb-0.5">
