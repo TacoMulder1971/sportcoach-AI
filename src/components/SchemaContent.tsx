@@ -224,7 +224,7 @@ export default function SchemaContent() {
           </div>
           <div className="space-y-3">
             <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} />
-            <DetailedDay label="Morgen" weekday={tomorrowWeekday} training={tomorrowTraining} />
+            <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} />
           </div>
         </div>
 
