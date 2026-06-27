@@ -19,7 +19,7 @@ import HeartRateZonesCard from '@/components/HeartRateZonesCard';
 import DataManagementCard from '@/components/DataManagementCard';
 import WeeklyVolumeChart, { WeeklyVolumeData } from '@/components/WeeklyVolumeChart';
 
-type Section = 'overzicht' | 'trends' | 'activiteiten' | 'instellingen';
+type Section = 'overzicht' | 'trends' | 'activiteiten' | 'materiaal' | 'instellingen';
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -363,6 +363,7 @@ export default function DataPage() {
     { id: 'overzicht', label: 'Overzicht' },
     { id: 'trends', label: 'Trends' },
     { id: 'activiteiten', label: 'Activiteiten' },
+    { id: 'materiaal', label: 'Materiaal' },
     { id: 'instellingen', label: 'Instellingen' },
   ];
 
@@ -394,7 +395,7 @@ export default function DataPage() {
           <button
             key={s.id}
             onClick={() => setSection(s.id)}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`flex-1 py-2 px-0.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               section === s.id ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500'
             }`}
           >
@@ -685,11 +686,12 @@ export default function DataPage() {
         </>
       )}
 
+      {section === 'materiaal' && (
+        <MaterialSection />
+      )}
+
       {section === 'activiteiten' && (
         <>
-          {/* Materiaal */}
-          <MaterialSection />
-
           {/* Alle activiteiten */}
           {garmin.activities.length > 0 && (
             <section>
