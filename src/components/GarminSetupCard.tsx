@@ -36,7 +36,7 @@ export default function GarminSetupCard({ onConnect }: Props) {
 
   if (!editing && existing) {
     return (
-      <div className="bg-gray-800 rounded-xl p-4 mb-4 flex items-center justify-between gap-3">
+      <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
             <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -44,21 +44,21 @@ export default function GarminSetupCard({ onConnect }: Props) {
             </svg>
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-white">Garmin gekoppeld</p>
-            <p className="text-xs text-gray-400 truncate">{existing.email}</p>
+            <p className="text-sm font-medium text-gray-900">Garmin gekoppeld</p>
+            <p className="text-xs text-gray-500 truncate">{existing.email}</p>
           </div>
         </div>
         <div className="flex gap-2 shrink-0">
           <button
             onClick={() => { setPassword(''); setEditing(true); }}
-            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
           >
             Wijzigen
           </button>
-          <span className="text-gray-600">|</span>
+          <span className="text-gray-300">|</span>
           <button
             onClick={handleDisconnect}
-            className="text-xs text-red-400 hover:text-red-300 transition-colors"
+            className="text-xs text-red-500 hover:text-red-600 transition-colors"
           >
             Loskoppelen
           </button>
@@ -68,27 +68,27 @@ export default function GarminSetupCard({ onConnect }: Props) {
   }
 
   return (
-    <div className="bg-gray-800 rounded-xl p-4 mb-4">
+    <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
       <div className="flex items-center gap-2 mb-3">
-        <svg className="w-5 h-5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-5 h-5 text-blue-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
         </svg>
-        <h3 className="text-sm font-semibold text-white">Koppel je Garmin-account</h3>
+        <h3 className="text-sm font-semibold text-gray-900">Koppel je Garmin-account</h3>
       </div>
 
       <div className="space-y-3">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">E-mailadres</label>
+          <label className="block text-xs text-gray-500 mb-1">E-mailadres</label>
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
             placeholder="jouw@email.com"
-            className="w-full bg-gray-700 text-white text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
+            className="w-full bg-gray-50 text-gray-900 text-sm rounded-lg px-3 py-2 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Wachtwoord</label>
+          <label className="block text-xs text-gray-500 mb-1">Wachtwoord</label>
           <div className="relative">
             <input
               type={showPw ? 'text' : 'password'}
@@ -96,12 +96,12 @@ export default function GarminSetupCard({ onConnect }: Props) {
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSave()}
               placeholder="••••••••"
-              className="w-full bg-gray-700 text-white text-sm rounded-lg px-3 py-2 pr-10 outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500"
+              className="w-full bg-gray-50 text-gray-900 text-sm rounded-lg px-3 py-2 pr-10 border border-gray-300 outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
             />
             <button
               type="button"
               onClick={() => setShowPw(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
             >
               {showPw ? (
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -117,7 +117,7 @@ export default function GarminSetupCard({ onConnect }: Props) {
           </div>
         </div>
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-red-500">{error}</p>}
 
         <p className="text-xs text-gray-500">
           Je inloggegevens worden alleen lokaal in je browser opgeslagen en direct naar Garmin Connect gestuurd.
@@ -133,7 +133,7 @@ export default function GarminSetupCard({ onConnect }: Props) {
           {existing && (
             <button
               onClick={() => setEditing(false)}
-              className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
+              className="px-4 py-2 rounded-lg text-sm text-gray-500 hover:text-gray-900 transition-colors"
             >
               Annuleren
             </button>
