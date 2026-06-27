@@ -4,21 +4,12 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import SportIcon from '@/components/SportIcon';
-import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset, formatDuration } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getRunZones, getCyclingZones } from '@/lib/storage';
+import TodayTrainingDetail from '@/components/TodayTrainingDetail';
+import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials } from '@/lib/storage';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP } from '@/lib/training-load';
-import { TrainingDay, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal, Sport, HEART_RATE_ZONES } from '@/lib/types';
-
-function zonesForSport(sport: Sport) {
-  if (sport === 'hardlopen') return getRunZones();
-  if (sport === 'fietsen' || sport === 'mountainbike') return getCyclingZones();
-  return HEART_RATE_ZONES;
-}
-
-function capitalize(s: string): string {
-  return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
+import { TrainingDay, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
 
 type IconProps = { className?: string; style?: React.CSSProperties };
 function IconChat({ className, style }: IconProps) {
@@ -489,59 +480,7 @@ export default function HomeContent() {
               </div>
             </div>
           )}
-          {todayTraining ? (
-            todayTraining.isRestDay ? (
-              <div className="bg-[#0d0d0f] rounded-3xl p-6 border border-white/5 text-center">
-                <p className="text-gray-200 font-medium">Rustdag</p>
-                <p className="text-gray-400 text-sm mt-1">Geen training gepland — focus op herstel.</p>
-              </div>
-            ) : (
-              <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 divide-y divide-white/5">
-                {todayTraining.sessions.map((session, idx) => {
-                  const zoneInfo = session.zone
-                    ? zonesForSport(session.sport).find((z) => z.zone === session.zone)
-                    : null;
-                  return (
-                    <div key={idx} className="p-4 flex items-start gap-3">
-                      <SportIcon sport={session.sport} size="lg" />
-                      <div className="flex-1 min-w-0">
-                        {todayTraining.sessions.length > 1 && (
-                          <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-0.5">
-                            Onderdeel {idx + 1} van {todayTraining.sessions.length}
-                          </p>
-                        )}
-                        <p className="text-white font-semibold text-lg leading-snug">{session.description}</p>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                          {session.type && (
-                            <span className="text-xs font-medium text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                              {capitalize(session.type)}
-                            </span>
-                          )}
-                          {session.durationMinutes && (
-                            <span className="text-xs font-medium text-gray-300 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full">
-                              {formatDuration(session.durationMinutes)}
-                            </span>
-                          )}
-                          {zoneInfo && (
-                            <span
-                              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                              style={{ backgroundColor: `${zoneInfo.color}26`, color: zoneInfo.color }}
-                            >
-                              {zoneInfo.zone} · {zoneInfo.label} · {zoneInfo.min}–{zoneInfo.max} bpm
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )
-          ) : (
-            <div className="bg-[#0d0d0f] rounded-3xl p-6 border border-white/5 text-center">
-              <p className="text-gray-400">Geen training gepland vandaag</p>
-            </div>
-          )}
+          <TodayTrainingDetail training={todayTraining} />
         </div>
 
         {/* Volume per sport — vergeleken met vorige week */}

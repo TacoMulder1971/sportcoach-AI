@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
 import SportIcon from '@/components/SportIcon';
+import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace, getTodayTraining, getTrainingForDayOffset, formatDuration } from '@/lib/schedule';
 import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones } from '@/lib/storage';
 import { TrainingWeek, TrainingDay, TrainingSession, GarminHealthStats, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
@@ -198,9 +199,15 @@ export default function SchemaContent() {
           {planId === 'default' ? '2-weekse cyclus' : `Dag ${cycleDay}/14 van cyclus`}
         </p>
 
-        {/* Detail voor je Garmin — vandaag & morgen */}
+        {/* Detail voor je Garmin — vandaag (uitgesplitst) & morgen */}
         <div className="space-y-3">
-          <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} />
+          <div>
+            <div className="flex items-baseline justify-between mb-2 px-1">
+              <p className="text-gray-100 text-base font-semibold">Vandaag</p>
+              <p className="text-gray-500 text-xs uppercase tracking-wide">{todayWeekday}</p>
+            </div>
+            <TodayTrainingDetail training={todayTraining} />
+          </div>
           <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} />
         </div>
 

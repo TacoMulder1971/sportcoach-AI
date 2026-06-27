@@ -48,6 +48,23 @@ export interface TrainingWeek {
   days: TrainingDay[];
 }
 
+// Gedetailleerde uitsplitsing van één trainingssessie (warming-up, blokken, cooldown).
+// AI-gegenereerd on-demand en per dag gecached — zie /api/session-breakdown.
+export type SegmentKind = 'warmup' | 'block' | 'cooldown';
+
+export interface SessionSegment {
+  kind: SegmentKind;
+  label: string;        // bijv. "Warming-up", "Blok 1 — intervallen", "Cooldown"
+  minutes: number;
+  zone?: HeartRateZone; // Z1–Z5
+  detail: string;       // wat te doen (Nederlands)
+  technique?: string;   // korte techniekfocus (Nederlands, optioneel)
+}
+
+export interface SessionBreakdown {
+  segments: SessionSegment[];
+}
+
 export interface CheckInMessage {
   role: 'user' | 'assistant';
   content: string;

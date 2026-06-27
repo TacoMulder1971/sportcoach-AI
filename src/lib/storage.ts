@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown } from './types';
 import { trainingPlan } from '@/data/training-plan';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
@@ -28,6 +28,7 @@ const KEYS = {
   HEALTH_ARCHIVE: 'tricoach_health_archive',
   RACE_WEATHER: 'tricoach_race_weather',
   GARMIN_CREDENTIALS: 'tricoach_garmin_credentials',
+  SESSION_BREAKDOWN: 'tricoach_session_breakdown',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -103,6 +104,33 @@ export function saveDailyMessage(message: string): void {
 
 export function clearDailyMessage(): void {
   setItem(KEYS.DAILY_MESSAGE, null);
+}
+
+// Gedetailleerde sessie-uitsplitsing — cache 1x per dag, opnieuw bij schemawijziging
+interface SessionBreakdownCache {
+  key: string;          // Amsterdam-datum
+  signature: string;    // handtekening van de sessies van vandaag
+  breakdowns: SessionBreakdown[]; // per sessie-index, uitgelijnd op de sessies
+}
+
+/** Handtekening van de sessies — wijzigt zodra het schema voor vandaag verandert. */
+export function sessionsSignature(
+  sessions: { sport: string; type: string; durationMinutes?: number; zone?: string; description: string }[]
+): string {
+  return sessions
+    .map((s) => `${s.sport}|${s.type}|${s.durationMinutes ?? ''}|${s.zone ?? ''}|${s.description}`)
+    .join('::');
+}
+
+export function getSessionBreakdowns(signature: string): SessionBreakdown[] | null {
+  const stored = getItem<SessionBreakdownCache | null>(KEYS.SESSION_BREAKDOWN, null);
+  if (!stored) return null;
+  if (stored.key !== getTodayAmsterdam() || stored.signature !== signature) return null;
+  return stored.breakdowns;
+}
+
+export function saveSessionBreakdowns(signature: string, breakdowns: SessionBreakdown[]): void {
+  setItem(KEYS.SESSION_BREAKDOWN, { key: getTodayAmsterdam(), signature, breakdowns });
 }
 
 // Auto-sync throttle (1x per dag)
