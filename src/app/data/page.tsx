@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getWeeklyReport, saveWeeklyReport, getRecentNutritionLogs, getActiveRaceDate, buildRaceContextText, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, saveProfile, getRunZones, getCyclingZones } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, getWeeklyTRIMPTotals } from '@/lib/training-load';
+import { getGarminData, saveGarminData, downloadExport, importAllData, markBackupDone, markAutoSyncDone, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, saveProfile, getRunZones, getCyclingZones } from '@/lib/storage';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
-import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
 import BuildupBarChart from '@/components/BuildupBarChart';
@@ -23,8 +22,6 @@ export default function DataPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-  const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
-  const [reportLoading, setReportLoading] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [pulling, setPulling] = useState(false);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
@@ -47,8 +44,6 @@ export default function DataPage() {
 
   useEffect(() => {
     setGarmin(getGarminData());
-    const cached = getWeeklyReport();
-    if (cached) setWeeklyReport(cached.summary);
     refreshEquipment();
     const runZ = getRunZones();
     const bikeZ = getCyclingZones();
@@ -156,14 +151,6 @@ export default function DataPage() {
     const restingHR = garmin.health?.restingHR || 55;
     return getDailyTRIMPHistory(statsActivities, restingHR, 42);
   }, [garmin, statsActivities]);
-
-  const weeklyTRIMP = useMemo(() => {
-    if (!garmin) return [];
-    const restingHR = garmin.health?.restingHR || 55;
-    return getWeeklyTRIMPTotals(statsActivities, restingHR, 6);
-  }, [garmin, statsActivities]);
-
-  const isMonday = new Date().getDay() === 1;
 
   // Wekelijkse trenddata voor grafieken (8 weken) — stadsfiets-rides uitgesloten
   const weeklyTrends = useMemo(() => {
@@ -283,47 +270,6 @@ export default function DataPage() {
     if (!hasHR && !hasHRV) return null;
     return { restingHRData, hrvData, hasHR, hasHRV };
   }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function handleGenerateReport() {
-    if (!garmin) return;
-    setReportLoading(true);
-    try {
-      const raceDate = getActiveRaceDate();
-      const currentPhase = getCurrentPhase(raceDate);
-      const daysUntilRace = getDaysUntilRace(raceDate);
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const cutoff = sevenDaysAgo.toISOString().split('T')[0];
-      const recentCheckIns = JSON.parse(localStorage.getItem('tricoach_checkins') || '[]')
-        .filter((c: { date: string }) => c.date >= cutoff);
-      const recent = statsActivities.filter((a) => a.date >= cutoff);
-      const totalVolumeMinutes = recent.reduce((s, a) => s + a.durationMinutes, 0);
-      const totalVolumeKm = recent.reduce((s, a) => s + a.distanceKm, 0);
-
-      const res = await fetch('/api/weekly-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          weeklyTRIMP,
-          checkIns: recentCheckIns,
-          currentPhase: currentPhase.label,
-          daysUntilRace,
-          totalVolumeMinutes,
-          totalVolumeKm,
-          weeklyNutrition: getRecentNutritionLogs(7),
-          raceContext: buildRaceContextText(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setWeeklyReport(data.report);
-      saveWeeklyReport({ generatedAt: new Date().toISOString(), summary: data.report });
-    } catch (e) {
-      console.error('Weekrapport fout:', e);
-    } finally {
-      setReportLoading(false);
-    }
-  }
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (window.scrollY === 0) {
@@ -553,30 +499,6 @@ export default function DataPage() {
           {syncError}
         </div>
       )}
-
-      {/* Weekrapport */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-900">Weekrapport</h2>
-          {isMonday && !weeklyReport && (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Nieuw</span>
-          )}
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          {weeklyReport ? (
-            <p className="text-sm text-gray-700 leading-relaxed">{weeklyReport}</p>
-          ) : (
-            <p className="text-sm text-gray-400">Nog geen rapport gegenereerd voor deze week.</p>
-          )}
-          <button
-            onClick={handleGenerateReport}
-            disabled={reportLoading}
-            className="mt-3 w-full py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all"
-          >
-            {reportLoading ? 'Rapport genereren...' : weeklyReport ? 'Rapport vernieuwen' : 'Genereer rapport'}
-          </button>
-        </div>
-      </section>
 
       {/* Trainingsgereedheid detail */}
       {readiness && (

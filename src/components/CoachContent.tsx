@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from '@/app/coach/CheckInContent';
+import WeeklyReportSection from '@/components/WeeklyReportSection';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
 import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getEquipment, getActivityAssignments, buildHRZoneText } from '@/lib/storage';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
@@ -10,7 +11,7 @@ import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load
 import { getCurrentPhase } from '@/lib/periodization';
 
 export default function CoachContent() {
-  const [activeTab, setActiveTab] = useState<'checkin' | 'chat'>('chat');
+  const [activeTab, setActiveTab] = useState<'checkin' | 'chat' | 'report'>('chat');
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -335,12 +336,22 @@ export default function CoachContent() {
           >
             Chat met coach
           </button>
+          <button
+            onClick={() => setActiveTab('report')}
+            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'report' ? 'bg-blue-600 text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)]' : 'text-gray-400'}`}
+          >
+            Weekrapport
+          </button>
         </div>
       </div>
 
       {activeTab === 'checkin' ? (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <CheckInContent onComplete={() => setActiveTab('chat')} />
+        </div>
+      ) : activeTab === 'report' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <WeeklyReportSection />
         </div>
       ) : (
         <>
