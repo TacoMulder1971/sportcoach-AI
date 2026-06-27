@@ -1,4 +1,4 @@
-import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HEART_RATE_ZONES } from './types';
+import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HeartRateZone, HeartRateZoneInfo, HEART_RATE_ZONES } from './types';
 
 const DEFAULT_MAX_HR = 172;
 const REST_HR = 55; // geschatte rustHR, wordt overschreven door Garmin data
@@ -372,6 +372,59 @@ export function getDailyTRIMPHistory(
     result.push({ date: dateStr, trimp, zone });
   }
   return result;
+}
+
+const ZONE_ORDER: HeartRateZone[] = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
+
+/**
+ * Bepaal in welke hartslagzone een gemiddelde HR valt.
+ */
+export function getHRZone(avgHR: number, zones: HeartRateZoneInfo[]): HeartRateZone | null {
+  if (!avgHR) return null;
+  for (const z of [...zones].reverse()) {
+    if (avgHR >= z.min) return z.zone;
+  }
+  return null;
+}
+
+export interface ActivityMatchScore {
+  score: number; // 0-100
+  label: string;
+  durationScore: number; // 0-100
+  zoneScore: number; // 0-100
+  plannedZone?: HeartRateZone;
+  actualZone: HeartRateZone | null;
+  plannedMinutes?: number;
+}
+
+/**
+ * Vergelijk een uitgevoerde activiteit met de geplande sessie van die dag.
+ * Duur en hartslagzone wegen elk 50% mee in de match-score.
+ */
+export function computeActivityMatchScore(
+  activity: GarminActivity,
+  session: TrainingSession,
+  zones: HeartRateZoneInfo[]
+): ActivityMatchScore {
+  const actualZone = getHRZone(activity.avgHR, zones);
+
+  // Neutrale score (70) als er geen geplande duur/zone is om tegen af te zetten.
+  let durationScore = 70;
+  if (session.durationMinutes) {
+    const ratio = activity.durationMinutes / session.durationMinutes;
+    durationScore = Math.max(0, Math.round(100 - Math.abs(1 - ratio) * 150));
+  }
+
+  let zoneScore = 70;
+  if (session.zone && actualZone) {
+    const diff = Math.abs(ZONE_ORDER.indexOf(session.zone) - ZONE_ORDER.indexOf(actualZone));
+    zoneScore = diff === 0 ? 100 : diff === 1 ? 65 : 25;
+  }
+
+  const score = Math.round(durationScore * 0.5 + zoneScore * 0.5);
+  const label = score >= 85 ? 'Precies volgens plan' : score >= 60 ? 'Redelijk uitgevoerd' : 'Flink afgeweken';
+
+  return { score, label, durationScore, zoneScore, plannedZone: session.zone, actualZone, plannedMinutes: session.durationMinutes };
 }
 
 /**

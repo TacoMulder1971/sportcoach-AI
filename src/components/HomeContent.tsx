@@ -5,11 +5,13 @@ import Link from 'next/link';
 import Countdown from '@/components/Countdown';
 import SportIcon from '@/components/SportIcon';
 import TodayTrainingDetail from '@/components/TodayTrainingDetail';
+import LatestActivityCard from '@/components/LatestActivityCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials } from '@/lib/storage';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP } from '@/lib/training-load';
-import { TrainingDay, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
+import { daysBetween } from '@/lib/coach-dates';
+import { TrainingDay, TrainingSession, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal } from '@/lib/types';
 
 type IconProps = { className?: string; style?: React.CSSProperties };
 function IconChat({ className, style }: IconProps) {
@@ -210,6 +212,18 @@ export default function HomeContent() {
     if (!garmin) return [];
     return filterStatsActivities(garmin.activities, getEquipment(), getActivityAssignments());
   }, [garmin]);
+
+  // Meest recente activiteit + de geplande sessie van die dag (voor de match-score)
+  const latestActivity = statsActivities[0] || null;
+
+  const latestActivityPlannedSession: TrainingSession | null = useMemo(() => {
+    if (!latestActivity) return null;
+    const { plan, cycleStartDate } = getActivePlan();
+    const daysSince = daysBetween(latestActivity.date, isoDate(new Date()));
+    const training = getTrainingForDayOffset(-daysSince, plan, cycleStartDate);
+    if (!training || training.isRestDay) return null;
+    return training.sessions.find((s) => s.sport === latestActivity.sport) || null;
+  }, [latestActivity]);
 
   const trainingLoad: TrainingLoadData | null = useMemo(() => {
     if (!garmin) return null;
@@ -520,6 +534,14 @@ export default function HomeContent() {
             })}
           </div>
         </div>
+
+        {/* Laatste activiteit vs. geplande training */}
+        {latestActivity && (
+          <div>
+            <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Laatste activiteit</p>
+            <LatestActivityCard activity={latestActivity} plannedSession={latestActivityPlannedSession} />
+          </div>
+        )}
 
       </div>
     </div>
