@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek } from '@/lib/types';
 
-const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'rust'];
+const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'kracht', 'rust'];
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
 const DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
@@ -119,20 +119,21 @@ Behoud de rest van het schema zoveel mogelijk intact.
 REGELS:
 - Balanceer zwemmen/fietsen/hardlopen over de week
 - Maximaal 2 sessies per dag
+- Behoud bestaande krachtsessies (sport:"kracht") zoveel mogelijk; kracht heeft GEEN zone
 - Descriptions in het Nederlands
 
 STRICT OUTPUT FORMAT:
 Antwoord ALLEEN met een JSON code block. Geen andere tekst ervoor of erna.
 Het JSON moet exact dit TypeScript type volgen:
 
-type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'rust'
+type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'kracht' | 'rust'
 type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5'
 
 interface TrainingSession {
   sport: Sport
-  type: string
-  durationMinutes?: number
-  zone?: HeartRateZone
+  type: string              // kracht: "core" (7min) of "kracht" (~40min)
+  durationMinutes?: number  // verplicht behalve bij rust
+  zone?: HeartRateZone      // verplicht behalve bij rust EN kracht (kracht heeft GEEN zone)
   description: string
 }
 

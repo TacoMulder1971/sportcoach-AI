@@ -15,6 +15,7 @@ const NEON_COLORS: Record<string, { stroke: string; glow: string }> = {
   wandelen:     { stroke: '#14b8a6', glow: 'drop-shadow(0 0 6px #14b8a6) drop-shadow(0 0 14px rgba(20,184,166,0.4))' },
   voetballen:   { stroke: '#eab308', glow: 'drop-shadow(0 0 6px #eab308) drop-shadow(0 0 14px rgba(234,179,8,0.4))' },
   multisport:   { stroke: '#a855f7', glow: 'drop-shadow(0 0 6px #a855f7) drop-shadow(0 0 14px rgba(168,85,247,0.4))' },
+  kracht:       { stroke: '#f43f5e', glow: 'drop-shadow(0 0 6px #f43f5e) drop-shadow(0 0 14px rgba(244,63,94,0.4))' },
   rust:         { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
   overig:       { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
 };
@@ -108,6 +109,17 @@ function SoccerIcon({ color }: { color: string }) {
   );
 }
 
+function StrengthIcon({ color }: { color: string }) {
+  // Halter (dumbbell): twee gewichtsschijven met een staaf ertussen
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 12h6" />
+      <path d="M6.5 8.5v7M3.5 10v4" />
+      <path d="M17.5 8.5v7M20.5 10v4" />
+    </svg>
+  );
+}
+
 function UnknownIcon({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -146,6 +158,7 @@ const ICON_MAP: Record<string, React.FC<{ color: string }>> = {
   wandelen: WalkIcon,
   voetballen: SoccerIcon,
   multisport: MultisportIcon,
+  kracht: StrengthIcon,
   rust: RestIcon,
   overig: UnknownIcon,
 };

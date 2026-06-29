@@ -1,5 +1,6 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
 import { trainingPlan } from '@/data/training-plan';
+import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
 export function generateId(): string {
@@ -29,6 +30,7 @@ const KEYS = {
   RACE_WEATHER: 'tricoach_race_weather',
   GARMIN_CREDENTIALS: 'tricoach_garmin_credentials',
   SESSION_BREAKDOWN: 'tricoach_session_breakdown',
+  STRENGTH_WORKOUTS: 'tricoach_strength_workouts',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -131,6 +133,34 @@ export function getSessionBreakdowns(signature: string): SessionBreakdown[] | nu
 
 export function saveSessionBreakdowns(signature: string, breakdowns: SessionBreakdown[]): void {
   setItem(KEYS.SESSION_BREAKDOWN, { key: getTodayAmsterdam(), signature, breakdowns });
+}
+
+// ── Krachtworkouts (aanpasbare oefenlijsten) ────────────────────────
+// De gebruiker kan de core- en kracht-workout aanpassen. Aangepaste versies
+// worden hier opgeslagen; niet-aangepaste vallen terug op DEFAULT_STRENGTH_WORKOUTS.
+export function getStrengthWorkouts(): Record<StrengthWorkoutId, StrengthWorkout> {
+  const stored = getItem<Partial<Record<StrengthWorkoutId, StrengthWorkout>>>(KEYS.STRENGTH_WORKOUTS, {});
+  return {
+    core7: stored.core7 ?? DEFAULT_STRENGTH_WORKOUTS.core7,
+    'tri-strength': stored['tri-strength'] ?? DEFAULT_STRENGTH_WORKOUTS['tri-strength'],
+  };
+}
+
+export function saveStrengthWorkout(workout: StrengthWorkout): void {
+  const stored = getItem<Partial<Record<StrengthWorkoutId, StrengthWorkout>>>(KEYS.STRENGTH_WORKOUTS, {});
+  setItem(KEYS.STRENGTH_WORKOUTS, { ...stored, [workout.id]: workout });
+}
+
+/** Zet één workout terug naar de standaard (verwijdert de aangepaste versie). */
+export function resetStrengthWorkout(id: StrengthWorkoutId): void {
+  const stored = getItem<Partial<Record<StrengthWorkoutId, StrengthWorkout>>>(KEYS.STRENGTH_WORKOUTS, {});
+  delete stored[id];
+  setItem(KEYS.STRENGTH_WORKOUTS, stored);
+}
+
+/** De (mogelijk aangepaste) workout die bij een geplande krachtsessie hoort. */
+export function getStrengthWorkoutForSession(session: TrainingSession): StrengthWorkout {
+  return getStrengthWorkouts()[pickStrengthWorkoutId(session)];
 }
 
 // Auto-sync throttle (1x per dag)

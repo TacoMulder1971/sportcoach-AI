@@ -10,8 +10,10 @@ import {
   getSessionBreakdowns,
   saveSessionBreakdowns,
   sessionsSignature,
+  getStrengthWorkoutForSession,
 } from '@/lib/storage';
 import { formatDuration } from '@/lib/schedule';
+import StrengthWorkoutDetail from '@/components/StrengthWorkoutDetail';
 
 function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
   if (sport === 'hardlopen') return getRunZones();
@@ -26,7 +28,7 @@ function capitalize(s: string): string {
 const SPORT_LABEL: Record<string, string> = {
   zwemmen: 'Zwemmen', fietsen: 'Fietsen', hardlopen: 'Hardlopen',
   mountainbike: 'Mountainbike', wandelen: 'Wandelen', voetballen: 'Voetballen',
-  multisport: 'Multisport', rust: 'Rust',
+  multisport: 'Multisport', kracht: 'Kracht', rust: 'Rust',
 };
 
 function SegmentRow({ segment, sport }: { segment: SessionSegment; sport: Sport }) {
@@ -65,7 +67,9 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
   const [error, setError] = useState<string | null>(null);
 
   const sessions = training && !training.isRestDay ? training.sessions : [];
-  const signature = sessions.length > 0 ? sessionsSignature(sessions) : '';
+  // Krachtsessies krijgen een vaste oefenlijst (geen AI-breakdown met zones).
+  const breakdownSessions = sessions.filter((s) => s.sport !== 'kracht');
+  const signature = breakdownSessions.length > 0 ? sessionsSignature(breakdownSessions) : '';
 
   useEffect(() => {
     if (!signature) {
@@ -86,7 +90,7 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
         const res = await fetch('/api/session-breakdown', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions, hrZoneText: buildHRZoneText() }),
+          body: JSON.stringify({ sessions: breakdownSessions, hrZoneText: buildHRZoneText() }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Mislukt');
@@ -122,11 +126,19 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
     );
   }
 
+  // breakdowns is uitgelijnd op breakdownSessions (zonder kracht) — map terug op sessievolgorde.
+  let breakdownCursor = 0;
+  const breakdownForIdx = training.sessions.map((s) =>
+    s.sport === 'kracht' ? undefined : breakdowns?.[breakdownCursor++]
+  );
+
   return (
     <div className="space-y-3">
       {training.sessions.map((session, idx) => {
         const zoneInfo = session.zone ? zonesForSport(session.sport).find((z) => z.zone === session.zone) : null;
-        const breakdown = breakdowns?.[idx];
+        const isStrength = session.sport === 'kracht';
+        const breakdown = breakdownForIdx[idx];
+        const workout = isStrength ? getStrengthWorkoutForSession(session) : null;
         return (
           <div key={idx} className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4">
             {/* Kop: sport + samenvatting */}
@@ -167,7 +179,9 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
 
             {/* Gedetailleerde uitvoering */}
             <div className="mt-4 pt-4 border-t border-white/5">
-              {breakdown ? (
+              {isStrength && workout ? (
+                <StrengthWorkoutDetail workout={workout} />
+              ) : breakdown ? (
                 <div className="space-y-3">
                   {breakdown.segments.map((seg, si) => (
                     <SegmentRow key={si} segment={seg} sport={session.sport} />

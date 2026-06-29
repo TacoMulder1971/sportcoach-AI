@@ -268,6 +268,8 @@ export function estimatePlannedTRIMP(sessions: TrainingSession[]): number {
 
   let total = 0;
   for (const s of sessions) {
+    // Kracht en rust leveren geen aerobe TRIMP-belasting op.
+    if (s.sport === 'kracht' || s.sport === 'rust') continue;
     const avgHR = zoneAvgHR[s.zone || 'Z2'] || 112;
     const duration = s.durationMinutes || 30;
     const intensity = (avgHR - REST_HR) / (DEFAULT_MAX_HR - REST_HR);

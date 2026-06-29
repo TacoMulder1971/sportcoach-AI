@@ -16,6 +16,7 @@ import { filterStatsActivities, equipmentForActivity } from '@/lib/equipment';
 import { swimVariantForActivity } from '@/lib/swim';
 import GarminSetupCard from '@/components/GarminSetupCard';
 import HeartRateZonesCard from '@/components/HeartRateZonesCard';
+import StrengthWorkoutsCard from '@/components/StrengthWorkoutsCard';
 import DataManagementCard from '@/components/DataManagementCard';
 import WeeklyVolumeChart, { WeeklyVolumeData } from '@/components/WeeklyVolumeChart';
 
@@ -44,6 +45,10 @@ export default function DataPage() {
   useEffect(() => {
     setGarmin(getGarminData());
     refreshEquipment();
+    // Deep-link: /data?section=instellingen opent direct de juiste subtab
+    const q = new URLSearchParams(window.location.search).get('section');
+    const valid: Section[] = ['overzicht', 'trends', 'activiteiten', 'materiaal', 'instellingen'];
+    if (q && (valid as string[]).includes(q)) setSection(q as Section);
   }, [refreshEquipment]);
 
   async function handleGarminSync() {
@@ -352,6 +357,7 @@ export default function DataPage() {
         </div>
 
         <HeartRateZonesCard />
+        <StrengthWorkoutsCard />
         <DataManagementCard />
 
         <div className="h-4" />
@@ -842,6 +848,7 @@ export default function DataPage() {
           <GarminSetupCard onConnect={handleGarminSync} />
 
           <HeartRateZonesCard />
+          <StrengthWorkoutsCard />
           <DataManagementCard />
         </>
       )}

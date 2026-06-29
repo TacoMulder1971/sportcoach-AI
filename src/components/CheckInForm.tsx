@@ -181,7 +181,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       } else {
         feedbackPrompt += '\nGEEN Garmin-activiteit beschikbaar voor vandaag.\n\nGeplande sessies:\n';
         for (const s of sessions) {
-          feedbackPrompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min in ${s.zone}\n`;
+          feedbackPrompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min${s.zone ? ` in ${s.zone}` : ''}\n`;
         }
         feedbackPrompt += '\nOPDRACHT: Geef korte feedback (2-3 zinnen) op basis van het gevoel en de geplande training. Vraag of de training is uitgevoerd en op welke intensiteit, omdat er geen Garmin-data is.';
       }

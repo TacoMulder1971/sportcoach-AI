@@ -26,7 +26,7 @@ function capitalize(s: string): string {
 const SPORT_LABEL: Record<string, string> = {
   zwemmen: 'Zwemmen', fietsen: 'Fietsen', hardlopen: 'Hardlopen',
   mountainbike: 'Mountainbike', wandelen: 'Wandelen', voetballen: 'Voetballen',
-  multisport: 'Multisport', rust: 'Rust',
+  multisport: 'Multisport', kracht: 'Kracht', rust: 'Rust',
 };
 
 // Gedetailleerde sessie-kaart: alle info om in een Garmin-horloge over te nemen.

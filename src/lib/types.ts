@@ -1,4 +1,4 @@
-export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'wandelen' | 'voetballen' | 'multisport' | 'rust';
+export type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'wandelen' | 'voetballen' | 'multisport' | 'kracht' | 'rust';
 
 export interface GarminCredentials {
   email: string;
@@ -134,6 +134,7 @@ export const SPORT_ICONS: Record<Sport, string> = {
   wandelen: 'W',
   voetballen: 'V',
   multisport: 'MS',
+  kracht: 'K',
   rust: 'R',
 };
 
@@ -145,6 +146,7 @@ export const SPORT_COLORS: Record<Sport, string> = {
   wandelen: 'bg-teal-500',
   voetballen: 'bg-yellow-500',
   multisport: 'bg-purple-500',
+  kracht: 'bg-rose-500',
   rust: 'bg-gray-400',
 };
 

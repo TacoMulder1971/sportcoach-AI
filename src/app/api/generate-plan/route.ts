@@ -4,7 +4,7 @@ import { TrainingWeek, DayPreference } from '@/lib/types';
 
 export const maxDuration = 60; // Vercel timeout: twee-traps (Opus-redenering + snelle JSON) past hierin
 
-const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'rust'];
+const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'kracht', 'rust'];
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
 const DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
@@ -101,14 +101,14 @@ const JSON_FORMAT_SPEC = `STRICT OUTPUT FORMAT:
 Antwoord ALLEEN met een JSON code block. Geen andere tekst ervoor of erna.
 Het JSON moet exact dit TypeScript type volgen:
 
-type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'rust'
+type Sport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike' | 'kracht' | 'rust'
 type HeartRateZone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5'
 
 interface TrainingSession {
   sport: Sport
-  type: string      // bv "interval", "duur", "tempo", "herstel", "brick", "techniek", "rust"
-  durationMinutes?: number  // verplicht behalve bij rust
-  zone?: HeartRateZone      // verplicht behalve bij rust
+  type: string      // bv "interval", "duur", "tempo", "herstel", "brick", "techniek", "core", "kracht", "rust"
+  durationMinutes?: number  // verplicht behalve bij rust (kracht: 7 voor core, ~40 voor krachttraining)
+  zone?: HeartRateZone      // verplicht behalve bij rust EN kracht (kracht heeft GEEN zone)
   description: string       // max 10 woorden in het Nederlands
 }
 
@@ -317,7 +317,12 @@ Geef je antwoord als beknopte coachnotitie in het Nederlands:
 1. KORTE ANALYSE (2-4 zinnen): hoe staat de atleet ervoor op basis van de recente prestaties en herstel.
 2. STRATEGIE WEEK 1 en WEEK 2: belasting-progressie, accenten per discipline, intensiteitsverdeling, herstel.
 3. CONCRETE SESSIE-RICHTLIJNEN per week: welke type sessies, ongeveer hoeveel en welke duur/zone, plus minimaal 1 brick-sessie per 2 weken.
-Wees specifiek met getallen (duur, zones) zodat een schema hier 1-op-1 op gebouwd kan worden.`;
+Wees specifiek met getallen (duur, zones) zodat een schema hier 1-op-1 op gebouwd kan worden.
+
+KRACHT (verplicht inplannen, elke week):
+- 3× per week een korte CORE-workout van 7 minuten (sport "kracht", type "core") — plan deze op lichtere dagen of als tweede sessie naast een rustige duurtraining; nooit op een volledige rustdag.
+- 2× per week een triatlon-ondersteunende KRACHTtraining van ~40 minuten (sport "kracht", type "kracht") — combineer met een triatlontrainingsdag, bij voorkeur niet vlak vóór een zware sleutelsessie.
+- Krachtsessies hebben GEEN hartslagzone. Verzwaar de week niet onnodig: kracht komt bovenop, niet in plaats van de duurtraining.`;
 
     const strategyResponse = await client.messages.create({
       model: 'claude-opus-4-8',
@@ -347,6 +352,7 @@ REGELS:
 - Geblokkeerde dagen MOETEN rustdagen zijn (sport:"rust", type:"rust", isRestDay:true)
 - Respecteer de dagvoorkeuren van de atleet (tijdstippen, specifieke sporten)
 - Maximaal 2 sessies per dag
+- KRACHT: plan per week 3× core (sport:"kracht", type:"core", durationMinutes:7, GEEN zone) op lichtere dagen + 2× krachttraining (sport:"kracht", type:"kracht", durationMinutes:40, GEEN zone) op triatlontrainingsdagen. Kracht mag de tweede sessie van een dag zijn, maar nooit op een rustdag.
 - Descriptions max 10 woorden, Nederlands
 
 ${JSON_FORMAT_SPEC}`;
