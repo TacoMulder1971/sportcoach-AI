@@ -211,7 +211,7 @@ ${JSON_FORMAT_SPEC}`;
 
       const response = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2000,
+        max_tokens: 8000,
         system: refinePrompt,
         messages: [{ role: 'user', content: 'Pas het trainingsschema aan volgens de feedback.' }],
       });
@@ -359,7 +359,9 @@ ${JSON_FORMAT_SPEC}`;
 
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      // Ruim budget: met kracht hebben de meeste dagen 2 sessies, dus de JSON is
+      // groter. Te krap → afgekapte JSON → "Kon geen geldig JSON vinden".
+      max_tokens: 8000,
       system: formatPrompt,
       messages: [{ role: 'user', content: 'Genereer het trainingsschema als JSON volgens de strategie.' }],
     });
