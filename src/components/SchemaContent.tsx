@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
 import SportIcon from '@/components/SportIcon';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace, getTodayTraining, getTrainingForDayOffset, formatDuration } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones } from '@/lib/storage';
+import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets } from '@/lib/storage';
+import { SwimPaceTargets, formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
 import { TrainingWeek, TrainingDay, TrainingSession, GarminHealthStats, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import { TRAINING_PHASES, getPhaseProgress, getPhaseStatus, getPhaseDateRange } from '@/lib/periodization';
 
@@ -30,8 +31,10 @@ const SPORT_LABEL: Record<string, string> = {
 };
 
 // Gedetailleerde sessie-kaart: alle info om in een Garmin-horloge over te nemen.
-function DetailedSession({ session, index, total }: { session: TrainingSession; index: number; total: number }) {
+function DetailedSession({ session, index, total, swimPaces }: { session: TrainingSession; index: number; total: number; swimPaces: SwimPaceTargets | null }) {
   const zoneInfo = session.zone ? zonesForSport(session.sport).find((z) => z.zone === session.zone) : null;
+  const isSwim = session.sport === 'zwemmen';
+  const swimTarget = isSwim && zoneInfo ? swimPaces?.zones.find((z) => z.zone === zoneInfo.zone) : null;
   return (
     <div className="rounded-2xl bg-white/[0.03] border border-white/5 p-4">
       <div className="flex items-center gap-3">
@@ -62,7 +65,7 @@ function DetailedSession({ session, index, total }: { session: TrainingSession; 
         </div>
       </div>
 
-      {/* Hartslag-doel — exact bereik voor een Garmin HR-alert */}
+      {/* Intensiteits-doel — zwemmen: tempo per 100m; anders exact HR-bereik voor een Garmin-alert */}
       {zoneInfo && (
         <div className="flex items-center justify-between mt-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: `${zoneInfo.color}1a` }}>
           <div className="flex items-center gap-2">
@@ -72,7 +75,9 @@ function DetailedSession({ session, index, total }: { session: TrainingSession; 
             <span className="text-sm font-medium" style={{ color: zoneInfo.color }}>{zoneInfo.label}</span>
           </div>
           <span className="text-sm font-bold tabular-nums" style={{ color: zoneInfo.color }}>
-            {zoneInfo.min}–{zoneInfo.max} bpm
+            {isSwim
+              ? swimTarget ? `${formatSwimPaceRange(swimTarget)} /100m` : 'tempo op gevoel'
+              : `${zoneInfo.min}–${zoneInfo.max} bpm`}
           </span>
         </div>
       )}
@@ -80,7 +85,7 @@ function DetailedSession({ session, index, total }: { session: TrainingSession; 
   );
 }
 
-function DetailedDay({ label, weekday, training }: { label: string; weekday: string; training: TrainingDay | null }) {
+function DetailedDay({ label, weekday, training, swimPaces }: { label: string; weekday: string; training: TrainingDay | null; swimPaces: SwimPaceTargets | null }) {
   return (
     <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
       <div className="flex items-baseline justify-between mb-3">
@@ -92,7 +97,7 @@ function DetailedDay({ label, weekday, training }: { label: string; weekday: str
       ) : (
         <div className="space-y-2">
           {training.sessions.map((s, i) => (
-            <DetailedSession key={i} session={s} index={i} total={training.sessions.length} />
+            <DetailedSession key={i} session={s} index={i} total={training.sessions.length} swimPaces={swimPaces} />
           ))}
         </div>
       )}
@@ -121,6 +126,10 @@ export default function SchemaContent() {
   const [showBackupReminder, setShowBackupReminder] = useState(false);
   const [health, setHealth] = useState<GarminHealthStats | null>(null);
   const [raceDate, setRaceDate] = useState<string>('2026-06-13');
+  const [mounted, setMounted] = useState(false);
+
+  // Zwemtempo-targets uit het archief (client-only; 1× per render van de tab)
+  const swimPaces = useMemo(() => (mounted ? getSwimPaceTargets() : null), [mounted]);
 
   useEffect(() => {
     const active = getActivePlan();
@@ -135,6 +144,7 @@ export default function SchemaContent() {
     setRaceDate(getActiveRaceDate());
     setTodayTraining(getTodayTraining(active.plan, active.cycleStartDate));
     setTomorrowTraining(getTrainingForDayOffset(1, active.plan, active.cycleStartDate));
+    setMounted(true);
   }, [tabParam]);
 
   const currentWeek = cycleStartDate ? getCurrentWeekNumber(cycleStartDate) : 1;
@@ -200,8 +210,8 @@ export default function SchemaContent() {
 
         {/* Detail voor je Garmin — vandaag & morgen */}
         <div className="space-y-3">
-          <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} />
-          <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} />
+          <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} swimPaces={swimPaces} />
+          <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} swimPaces={swimPaces} />
         </div>
 
         {/* Backup herinnering */}
@@ -401,6 +411,37 @@ export default function SchemaContent() {
                   </div>
                 </div>
               ))}
+
+              {/* Zwemtempo's — in het water stuur je op tempo per 100m, niet op hartslag */}
+              {swimPaces && (
+                <div>
+                  <h2 className="text-base font-semibold text-gray-300 mb-3">
+                    Zwemtempo&apos;s (per 100m)
+                  </h2>
+                  <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 overflow-hidden">
+                    {swimPaces.zones.map((t, idx) => {
+                      const zoneInfo = HEART_RATE_ZONES.find((z) => z.zone === t.zone)!;
+                      return (
+                        <div key={t.zone} className={`flex items-center justify-between p-3 ${idx < swimPaces.zones.length - 1 ? 'border-b border-white/5' : ''}`}>
+                          <div className="flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: zoneInfo.color }}>
+                              {t.zone}
+                            </span>
+                            <span className="text-sm font-medium text-gray-200">{t.label}</span>
+                          </div>
+                          <span className="text-sm text-gray-400 tabular-nums">{formatSwimPaceRange(t)} /100m</span>
+                        </div>
+                      );
+                    })}
+                    <div className="p-3 border-t border-white/5 bg-white/[0.02]">
+                      <p className="text-xs text-gray-500">
+                        Richttempo&apos;s o.b.v. je laatste {swimPaces.basedOnCount} zwemtrainingen
+                        (gemiddeld {formatSwimPace(swimPaces.baseSecPer100)} /100m).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
           </>
         )}

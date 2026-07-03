@@ -164,6 +164,28 @@ export default function WedstrijdDetailPage() {
         </section>
       )}
 
+      {/* AI-coach-evaluatie */}
+      {result?.aiEvaluation && (
+        <section>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Coach-evaluatie</h2>
+          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            {result.aiEvaluation.split('\n').map((line, i) => {
+              if (!line.trim()) return <div key={i} className="h-2" />;
+              const parts = line.split(/(\*\*[^*]+\*\*)/g);
+              return (
+                <p key={i} className="text-sm text-gray-700 leading-relaxed">
+                  {parts.map((p, j) =>
+                    p.startsWith('**') && p.endsWith('**')
+                      ? <strong key={j}>{p.slice(2, -2)}</strong>
+                      : <span key={j}>{p}</span>
+                  )}
+                </p>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Aanloop naar de wedstrijd */}
       <section>
         {buildup && buildup.totalSessions > 0 ? (

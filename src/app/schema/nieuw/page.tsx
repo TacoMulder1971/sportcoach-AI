@@ -112,8 +112,8 @@ export default function NieuwSchemaPage() {
     const performanceSummary = buildPerformanceSummary(statsActivities, getHealthArchive(), getArchivedGoals());
 
     try {
-      const currentPhase = getCurrentPhase();
-      const phaseProgress = getPhaseProgress();
+      const currentPhase = getCurrentPhase(getActiveRaceDate());
+      const phaseProgress = getPhaseProgress(getActiveRaceDate());
       const nextPhase = TRAINING_PHASES.find(p => p.minDays < currentPhase.minDays) || null;
 
       const res = await fetch('/api/generate-plan', {

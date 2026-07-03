@@ -1,4 +1,5 @@
-import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HeartRateZone, HeartRateZoneInfo, HEART_RATE_ZONES } from './types';
+import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HeartRateZone, HeartRateZoneInfo, HEART_RATE_ZONES, Sport, TrainingWeek } from './types';
+import { getTrainingForDayOffset } from './schedule';
 
 const DEFAULT_MAX_HR = 172;
 const REST_HR = 55; // geschatte rustHR, wordt overschreven door Garmin data
@@ -427,6 +428,99 @@ export function computeActivityMatchScore(
   const label = score >= 85 ? 'Precies volgens plan' : score >= 60 ? 'Redelijk uitgevoerd' : 'Flink afgeweken';
 
   return { score, label, durationScore, zoneScore, plannedZone: session.zone, actualZone, plannedMinutes: session.durationMinutes };
+}
+
+// ─── Plan-adherentie: gepland vs. gedaan over de afgelopen week ──────
+
+export interface AdherencePlannedSession {
+  session: TrainingSession;
+  done: boolean;
+  matchScore?: number; // uitvoeringsscore (0-100) als er een activiteit gematcht is
+}
+
+export interface AdherenceDay {
+  date: string;      // ISO
+  dayLabel: string;  // bv. "ma 29 jun"
+  restDay: boolean;
+  planned: AdherencePlannedSession[];
+}
+
+export interface WeekAdherence {
+  plannedCount: number;
+  completedCount: number;
+  completionPct: number;        // gedane sessies / geplande sessies
+  avgMatchScore: number | null; // gemiddelde uitvoeringsscore van de gedane sessies
+  label: string;
+  days: AdherenceDay[];
+}
+
+/** Sport-match voor adherentie: fietsen en mountainbike zijn uitwisselbaar. */
+function sportsMatch(planned: Sport, actual: string): boolean {
+  if (planned === actual) return true;
+  const bike = (s: string) => s === 'fietsen' || s === 'mountainbike';
+  return bike(planned) && bike(actual);
+}
+
+/**
+ * Plan-adherentie over de laatste 7 volledige dagen (gisteren t/m 7 dagen terug):
+ * hoeveel van de geplande sessies zijn uitgevoerd, en hoe goed (match-score).
+ * Kracht telt niet mee (geen betrouwbare Garmin-registratie); vandaag telt niet
+ * mee omdat de training van vandaag nog kan komen. null als er in het venster
+ * niets gepland stond.
+ */
+export function computeWeekAdherence(
+  plan: TrainingWeek[],
+  cycleStartDate: string,
+  activities: GarminActivity[],
+  zonesForSport: (sport: Sport) => HeartRateZoneInfo[],
+): WeekAdherence | null {
+  const days: AdherenceDay[] = [];
+  let plannedCount = 0;
+  let completedCount = 0;
+  const matchScores: number[] = [];
+
+  for (let offset = -7; offset <= -1; offset++) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const dateStr = d.toISOString().split('T')[0];
+    const dayLabel = d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+
+    const training = getTrainingForDayOffset(offset, plan, cycleStartDate);
+    const sessions = training && !training.isRestDay
+      ? training.sessions.filter((s) => s.sport !== 'kracht' && s.sport !== 'rust')
+      : [];
+
+    const dayActivities = activities.filter((a) => a.date === dateStr);
+    const used = new Set<number>();
+
+    const planned: AdherencePlannedSession[] = sessions.map((session) => {
+      const idx = dayActivities.findIndex((a, i) => !used.has(i) && sportsMatch(session.sport, a.sport));
+      if (idx === -1) return { session, done: false };
+      used.add(idx);
+      const activity = dayActivities[idx];
+      const match = computeActivityMatchScore(activity, session, zonesForSport(session.sport));
+      matchScores.push(match.score);
+      return { session, done: true, matchScore: match.score };
+    });
+
+    plannedCount += planned.length;
+    completedCount += planned.filter((p) => p.done).length;
+    days.push({ date: dateStr, dayLabel, restDay: !training || training.isRestDay, planned });
+  }
+
+  if (plannedCount === 0) return null;
+
+  const completionPct = Math.round((completedCount / plannedCount) * 100);
+  const avgMatchScore = matchScores.length > 0
+    ? Math.round(matchScores.reduce((s, v) => s + v, 0) / matchScores.length)
+    : null;
+  const label = completionPct >= 85
+    ? 'Sterk volgens plan'
+    : completionPct >= 60
+    ? 'Redelijk volgens plan'
+    : 'Veel sessies gemist';
+
+  return { plannedCount, completedCount, completionPct, avgMatchScore, label, days };
 }
 
 /**

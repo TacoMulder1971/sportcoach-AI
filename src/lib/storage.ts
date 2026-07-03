@@ -1,6 +1,7 @@
 import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
 import { trainingPlan } from '@/data/training-plan';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
+import { SwimPaceTargets, estimateSwimPaceTargets } from './swim';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
 export function generateId(): string {
@@ -603,6 +604,7 @@ export function getRecentNutritionLogs(days: number = 7): NutritionLog[] {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
+
 // Parse MyFitnessPal Dutch Voedingsoverzicht CSV
 export function parseMFPCsv(csvText: string): NutritionLog[] {
   const lines = csvText.split('\n').map(l => l.trim()).filter(Boolean);
@@ -768,6 +770,16 @@ export function archiveGoal(id: string, result: GoalResult): void {
   }
 }
 
+/** Sla de AI-coach-evaluatie op bij een (gearchiveerd) doel met resultaat. */
+export function saveGoalEvaluation(goalId: string, evaluation: string): void {
+  const goals = getGoals();
+  const idx = goals.findIndex(g => g.id === goalId);
+  if (idx >= 0 && goals[idx].result) {
+    goals[idx] = { ...goals[idx], result: { ...goals[idx].result!, aiEvaluation: evaluation } };
+    setItem(KEYS.GOALS, goals);
+  }
+}
+
 /**
  * Check of er een actief doel voorbij is (datum < vandaag)
  * zonder resultaat. Geeft de meest recente voorbije terug. Gebruikt voor popup.
@@ -871,7 +883,10 @@ export function getActiveRaceGoalText(): string {
  * Dagen tot actief doel (negatief als in verleden).
  */
 export function getDaysUntilActiveRace(): number {
-  const dateStr = getActiveRaceDate();
+  return getDaysUntilActiveRaceFor(getActiveRaceDate());
+}
+
+function getDaysUntilActiveRaceFor(dateStr: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const race = new Date(dateStr);
@@ -894,13 +909,23 @@ export function formatRaceDateNL(dateStr?: string): string {
 export function buildRaceContextText(): string {
   const upcoming = getUpcomingGoals();
   if (upcoming.length === 0) {
-    // Fallback naar profiel als er geen doelen zijn
-    const label = getActiveRaceLabel();
-    const dateFmt = formatRaceDateNL();
-    const days = getDaysUntilActiveRace();
-    const goalText = getActiveRaceGoalText();
-    const daysText = days >= 0 ? `, nog ${days} dagen` : ` (voorbij)`;
-    return `${label} op ${dateFmt}${daysText}. Doel: ${goalText}.`;
+    // Geen aankomende wedstrijd: laatste race (actief-verlopen of gearchiveerd) als context,
+    // met expliciete instructie dat de atleet in de herstel-/overgangsfase zit.
+    const lastActive = getActiveGoal();
+    const lastArchived = getArchivedGoals()[0];
+    const last = lastActive && lastActive.date < new Date().toISOString().split('T')[0]
+      ? lastActive
+      : lastArchived ?? lastActive;
+    if (last) {
+      const info = GOAL_TYPES.find(t => t.type === last.type);
+      const label = (info?.label || last.name).toLowerCase();
+      const daysAgo = Math.abs(getDaysUntilActiveRaceFor(last.date));
+      const resultText = last.result
+        ? `Resultaat: ${formatDuration(last.result.totalTimeSeconds)}${last.targetTimeSeconds ? ` (doel was onder ${formatDuration(last.targetTimeSeconds)})` : ''}.`
+        : 'Resultaat nog niet ingevuld.';
+      return `GEEN AANKOMENDE WEDSTRIJD. Laatste race: ${last.name} (${label}) op ${formatRaceDateNL(last.date)}, ${daysAgo} dagen geleden. ${resultText} De atleet zit in de herstel-/overgangsfase: adviseer actief herstel, onderhoudstraining en het kiezen van een nieuw doel — geen wedstrijdvoorbereiding.`;
+    }
+    return 'GEEN AANKOMENDE WEDSTRIJD en geen eerdere races bekend. Adviseer algemene fitheid en help de atleet een doel te kiezen.';
   }
 
   const next = upcoming[0];
@@ -1099,6 +1124,11 @@ export function clearActivitySwimVariant(activityId: string | number): void {
   const map = getSwimVariants();
   delete map[String(activityId)];
   setItem(KEYS.SWIM_VARIANTS, map);
+}
+
+/** Zwemtempo-targets per zone, afgeleid uit recente zwemtrainingen in het archief. */
+export function getSwimPaceTargets(): SwimPaceTargets | null {
+  return estimateSwimPaceTargets(getActivityArchive());
 }
 
 /** Laatst gekozen zwem-variant — wordt de default bij de volgende check-out. */

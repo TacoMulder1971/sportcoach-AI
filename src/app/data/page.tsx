@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory } from '@/lib/training-load';
-import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants } from '@/lib/types';
+import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones } from '@/lib/storage';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence } from '@/lib/training-load';
+import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
 import BuildupBarChart from '@/components/BuildupBarChart';
@@ -21,6 +21,12 @@ import DataManagementCard from '@/components/DataManagementCard';
 import WeeklyVolumeChart, { WeeklyVolumeData } from '@/components/WeeklyVolumeChart';
 
 type Section = 'overzicht' | 'trends' | 'activiteiten' | 'materiaal' | 'instellingen';
+
+function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
+  if (sport === 'hardlopen') return getRunZones();
+  if (sport === 'fietsen' || sport === 'mountainbike') return getCyclingZones();
+  return HEART_RATE_ZONES;
+}
 
 export default function DataPage() {
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
@@ -115,6 +121,14 @@ export default function DataPage() {
     if (!garmin) return null;
     return calculateTrainingLoad(statsActivities, garmin.health);
   }, [garmin, statsActivities]);
+
+  // Plan-adherentie: gepland vs. gedaan over de afgelopen 7 dagen (uit het archief)
+  const adherence = useMemo(() => {
+    if (!garmin) return null;
+    const { plan, cycleStartDate } = getActivePlan();
+    const archive = filterStatsActivities(getActivityArchive(), equipment, assignments);
+    return computeWeekAdherence(plan, cycleStartDate, archive, zonesForSport);
+  }, [garmin, equipment, assignments]);
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
@@ -497,6 +511,62 @@ export default function DataPage() {
                     <p className="text-xs text-gray-500">Calorieen</p>
                   </div>
                 </div>
+              </div>
+            </section>
+          )}
+
+          {/* Plan-adherentie: gepland vs. gedaan */}
+          {adherence && (
+            <section>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Volgens plan</h2>
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <p className={`text-3xl font-bold ${adherence.completionPct >= 85 ? 'text-green-600' : adherence.completionPct >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
+                      {adherence.completionPct}%
+                    </p>
+                    <p className="text-sm font-semibold text-gray-700">{adherence.label}</p>
+                  </div>
+                  <div className="text-right text-xs text-gray-400">
+                    <p>{adherence.completedCount} van {adherence.plannedCount} sessies gedaan</p>
+                    <p>afgelopen 7 dagen</p>
+                    {adherence.avgMatchScore !== null && (
+                      <p className="mt-0.5 text-gray-500 font-medium">gem. uitvoering {adherence.avgMatchScore}%</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-100 rounded-full h-2 mt-3">
+                  <div
+                    className={`h-2 rounded-full ${adherence.completionPct >= 85 ? 'bg-green-500' : adherence.completionPct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
+                    style={{ width: `${adherence.completionPct}%` }}
+                  />
+                </div>
+
+                {/* Per dag: stip per geplande sessie (groen gedaan / rood gemist), — = rustdag */}
+                <div className="grid grid-cols-7 gap-1 mt-4">
+                  {adherence.days.map((d) => (
+                    <div key={d.date} className="text-center">
+                      <p className="text-[10px] text-gray-400 mb-1">{d.dayLabel.split(' ')[0]}</p>
+                      {d.restDay || d.planned.length === 0 ? (
+                        <span className="text-xs text-gray-300">—</span>
+                      ) : (
+                        <div className="flex justify-center gap-0.5">
+                          {d.planned.map((p, i) => (
+                            <span
+                              key={i}
+                              title={`${p.session.sport} ${p.session.type}${p.done ? ` · uitvoering ${p.matchScore}%` : ' · gemist'}`}
+                              className={`w-2.5 h-2.5 rounded-full ${p.done ? 'bg-green-500' : 'bg-red-300'}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-2">
+                  Stip per geplande sessie: groen = gedaan, rood = gemist. Krachttraining telt niet mee.
+                </p>
               </div>
             </section>
           )}

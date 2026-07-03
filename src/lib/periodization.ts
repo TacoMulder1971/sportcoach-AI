@@ -79,15 +79,32 @@ export function getDaysUntilRace(raceDate: string = FALLBACK_RACE_DATE): number 
   return Math.ceil((race.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// Na de racedag (en zonder nieuw doel): herstel-/overgangsfase. Bewust NIET in
+// TRAINING_PHASES — de tijdlijnen (Countdown, seizoensoverzicht) tonen alleen de
+// aanloopfases; deze fase bestaat alleen als "huidige fase" voor UI en AI-context.
+export const POST_RACE_PHASE: TrainingPhase = {
+  id: 'herstel',
+  label: 'Herstel- en overgangsfase',
+  description: 'De wedstrijd is geweest. Actief herstel, onderhoudstraining en een nieuw doel kiezen.',
+  goals: ['Rustig bewegen (Z1/Z2)', 'Evalueer je race', 'Kies je volgende doel'],
+  color: '#14b8a6',
+  bgColor: '#f0fdfa',
+  borderColor: '#99f6e4',
+  minDays: -999,
+  maxDays: 0,
+};
+
 export function getCurrentPhase(raceDate: string = FALLBACK_RACE_DATE): TrainingPhase {
   const days = getDaysUntilRace(raceDate);
+  // Racedag zelf hoort nog bij de wedstrijdweek; daarna begint het herstel.
+  if (days < 0) return POST_RACE_PHASE;
   // Vind de fase waar dagen tot race in valt
   for (const phase of TRAINING_PHASES) {
     if (days > phase.minDays && days <= phase.maxDays) {
       return phase;
     }
   }
-  // Na de wedstrijd of exact op wedstrijddag
+  // Exact op wedstrijddag
   return TRAINING_PHASES[TRAINING_PHASES.length - 1];
 }
 

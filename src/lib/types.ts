@@ -359,6 +359,7 @@ export interface GoalResult {
   timeReflection: string;    // reflectie over tijd vs doel
   trainingReflection: string;// reflectie over trainingen (langer)
   filledAt: string;          // ISO datum dat resultaat is ingevuld
+  aiEvaluation?: string;     // AI-coach-evaluatie van de race (gegenereerd na invullen)
 }
 
 export interface DisciplineDistances {

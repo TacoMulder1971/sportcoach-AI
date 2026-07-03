@@ -312,8 +312,11 @@ export default function HomeContent() {
     <div className="bg-black min-h-screen">
       <div className="fixed top-0 inset-x-0 bg-black z-50" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
       <div className="fixed bottom-0 inset-x-0 bg-black z-40" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
-      {/* Hero */}
-      <Link href="/schema?tab=longterm" className="px-5 pt-6 block">
+      {/* Hero — bij een openstaand resultaat direct naar het invulformulier */}
+      <Link
+        href={pendingResultGoal ? `/schema?tab=longterm&goal=${pendingResultGoal.id}` : '/schema?tab=longterm'}
+        className="px-5 pt-6 block"
+      >
         <Countdown gradientClassName="bg-gradient-to-br from-teal-700 via-cyan-800 to-blue-900" />
       </Link>
 
@@ -326,9 +329,9 @@ export default function HomeContent() {
                 <IconTrophy className="w-4 h-4" style={{ color: '#f59e0b', filter: 'drop-shadow(0 0 6px #f59e0b)' }} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-400">Wedstrijd voltooid!</p>
+                <p className="text-sm font-semibold text-amber-400">Wedstrijd geweest!</p>
                 <p className="text-sm text-gray-300 mt-0.5">
-                  Je {pendingResultGoal.name} was voorbij. Vul je resultaat in.
+                  Je {pendingResultGoal.name} is geweest. Vul je resultaat in — je coach maakt er een evaluatie van.
                 </p>
                 <div className="flex gap-2 mt-2">
                   <Link

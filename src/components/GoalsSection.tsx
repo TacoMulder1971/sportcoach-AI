@@ -9,11 +9,100 @@ import {
   saveGoal,
   deleteGoal,
   archiveGoal,
+  saveGoalEvaluation,
   goalIsMultiSport,
   formatDuration,
   parseDuration,
   generateId,
+  getActivityArchive,
+  getHealthArchive,
+  buildGoalsHistoryText,
 } from '@/lib/storage';
+import { buildRaces, getRaceSplits, getPreRaceBuildup } from '@/lib/races';
+
+// ─── AI race-evaluatie ──────────────────────────────────────────
+// Bouwt de payload (splits uit Garmin/resultaat + trainingsaanloop uit het
+// archief) en vraagt /api/race-evaluation om een coach-evaluatie.
+async function generateRaceEvaluation(goal: Goal, result: GoalResult): Promise<string> {
+  const archive = getActivityArchive();
+  const race = buildRaces([{ ...goal, result }], archive)[0];
+  const splits = getRaceSplits(race).map(s => ({
+    label: s.label,
+    timeSeconds: s.timeSeconds,
+    distanceKm: s.distanceKm,
+    avgHR: s.avgHR,
+    pace: s.pace,
+  }));
+
+  const b = getPreRaceBuildup(archive, getHealthArchive(), goal.date);
+  const weeklyTrimp = (b.weekly.find(w => w.label.includes('TRIMP'))?.data ?? []).filter(d => d.value > 0);
+  const buildup = b.totalSessions > 0
+    ? {
+        totalSessions: b.totalSessions,
+        totalMinutes: b.totalMinutes,
+        totalKm: b.totalKm,
+        totalTrimp: b.totalTrimp,
+        avgHR: b.avgHR,
+        spanWeeks: b.spanWeeks,
+        weeklyTrimp,
+        bySport: b.bySport.map(s => ({ label: s.label, sessions: s.sessions, minutes: s.minutes, km: s.km })),
+      }
+    : null;
+
+  const typeLabel = GOAL_TYPES.find(t => t.type === goal.type)?.label || goal.type;
+  const res = await fetch('/api/race-evaluation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      goal: {
+        name: goal.name,
+        typeLabel,
+        date: goal.date,
+        targetTimeSeconds: goal.targetTimeSeconds,
+        note: goal.note,
+      },
+      result: {
+        totalTimeSeconds: result.totalTimeSeconds,
+        rating: result.rating,
+        timeReflection: result.timeReflection,
+        trainingReflection: result.trainingReflection,
+      },
+      splits,
+      buildup,
+      goalsHistory: buildGoalsHistoryText(),
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.evaluation) throw new Error(data.error || 'Evaluatie mislukt');
+  return data.evaluation as string;
+}
+
+/** Simpele **vet**-markdown naar JSX (de evaluatie gebruikt alleen vet + alinea's). */
+function EvaluationText({ text, className }: { text: string; className?: string }) {
+  return (
+    <div className={className}>
+      {text.split('\n').map((line, i) => {
+        if (!line.trim()) return <div key={i} className="h-2" />;
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <p key={i} className="leading-relaxed">
+            {parts.map((p, j) =>
+              p.startsWith('**') && p.endsWith('**')
+                ? <strong key={j}>{p.slice(2, -2)}</strong>
+                : <span key={j}>{p}</span>
+            )}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+interface EvalState {
+  goal: Goal;
+  status: 'loading' | 'done' | 'error';
+  text?: string;
+}
 
 interface GoalsSectionProps {
   onGoalChange?: () => void;
@@ -23,16 +112,39 @@ interface GoalsSectionProps {
 
 export default function GoalsSection({ onGoalChange, autoOpenResult, dark = false }: GoalsSectionProps) {
   const [upcoming, setUpcoming] = useState<Goal[]>([]);
+  const [pendingResult, setPendingResult] = useState<Goal[]>([]);
   const [archived, setArchived] = useState<Goal[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [resultGoal, setResultGoal] = useState<Goal | null>(null);
   const [showSchemaPrompt, setShowSchemaPrompt] = useState<Goal | null>(null);
+  const [evalState, setEvalState] = useState<EvalState | null>(null);
 
   const refresh = () => {
     setUpcoming(getUpcomingGoals());
     setArchived(getArchivedGoals());
+    // Verlopen actieve doelen zonder resultaat — anders onzichtbaar in deze lijst
+    const today = new Date().toISOString().split('T')[0];
+    setPendingResult(
+      getGoals()
+        .filter(g => g.status === 'active' && g.date < today && !g.result)
+        .sort((a, b) => b.date.localeCompare(a.date))
+    );
+  };
+
+  // Genereer (of hergenereer) de coach-evaluatie voor een doel met resultaat
+  const runEvaluation = (goal: Goal, result: GoalResult) => {
+    setEvalState({ goal, status: 'loading' });
+    generateRaceEvaluation(goal, result)
+      .then(text => {
+        saveGoalEvaluation(goal.id, text);
+        setEvalState(s => (s && s.goal.id === goal.id ? { ...s, status: 'done', text } : s));
+        refresh();
+      })
+      .catch(() => {
+        setEvalState(s => (s && s.goal.id === goal.id ? { ...s, status: 'error' } : s));
+      });
   };
 
   useEffect(() => {
@@ -66,6 +178,38 @@ export default function GoalsSection({ onGoalChange, autoOpenResult, dark = fals
 
   return (
     <div className="space-y-4">
+      {/* Verlopen races die op een resultaat wachten */}
+      {pendingResult.map(g => (
+        <div
+          key={g.id}
+          className={dark
+            ? 'rounded-3xl p-4 border bg-amber-500/10 border-amber-500/30'
+            : 'rounded-xl p-4 border bg-amber-50 border-amber-200'}
+        >
+          <p className={`text-xs font-semibold uppercase tracking-wide mb-0.5 ${dark ? 'text-amber-400' : 'text-amber-700'}`}>
+            Wacht op resultaat
+          </p>
+          <h3 className={`font-semibold text-base ${dark ? 'text-gray-100' : 'text-gray-900'}`}>{g.name}</h3>
+          <p className={`text-xs ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
+            {typeLabel(g.type)} · {formatDate(g.date)}
+          </p>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => setResultGoal(g)}
+              className="text-xs bg-amber-500 text-black px-3 py-1.5 rounded-lg font-semibold"
+            >
+              Resultaat invullen
+            </button>
+            <button
+              onClick={() => setEditGoal(g)}
+              className={`text-xs px-2 py-1.5 ${dark ? 'text-gray-400' : 'text-gray-500'}`}
+            >
+              Wijzig
+            </button>
+          </div>
+        </div>
+      ))}
+
       {/* Aankomende doelen */}
       {upcoming.length > 0 ? (
         <div className="space-y-3">
@@ -149,6 +293,7 @@ export default function GoalsSection({ onGoalChange, autoOpenResult, dark = fals
                   key={g.id}
                   goal={g}
                   onEdit={() => setEditGoal(g)}
+                  onGenerateEvaluation={g.result ? () => runEvaluation(g, g.result!) : undefined}
                   formatDate={formatDate}
                   typeLabel={typeLabel}
                   dark={dark}
@@ -204,10 +349,28 @@ export default function GoalsSection({ onGoalChange, autoOpenResult, dark = fals
           onClose={() => setResultGoal(null)}
           onSave={(result) => {
             archiveGoal(resultGoal.id, result);
+            const archivedGoal: Goal = { ...resultGoal, status: 'archived', result };
             setResultGoal(null);
             refresh();
             onGoalChange?.();
+            // Direct door naar de coach-evaluatie van deze race
+            runEvaluation(archivedGoal, result);
           }}
+        />
+      )}
+
+      {evalState && (
+        <EvaluationModal
+          state={evalState}
+          hasUpcoming={upcoming.length > 0}
+          onRetry={() => {
+            if (evalState.goal.result) runEvaluation(evalState.goal, evalState.goal.result);
+          }}
+          onNewGoal={() => {
+            setEvalState(null);
+            setShowNew(true);
+          }}
+          onClose={() => setEvalState(null)}
         />
       )}
 
@@ -230,12 +393,14 @@ export default function GoalsSection({ onGoalChange, autoOpenResult, dark = fals
 function ArchiveRow({
   goal,
   onEdit,
+  onGenerateEvaluation,
   formatDate,
   typeLabel,
   dark = false,
 }: {
   goal: Goal;
   onEdit: () => void;
+  onGenerateEvaluation?: () => void;
   formatDate: (d: string) => string;
   typeLabel: (t: GoalType) => string;
   dark?: boolean;
@@ -309,6 +474,19 @@ function ArchiveRow({
                   <p className="text-xs text-gray-700 whitespace-pre-wrap">{r.trainingReflection}</p>
                 </div>
               )}
+              {r.aiEvaluation ? (
+                <div className={`rounded-lg p-2.5 ${dark ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+                  <p className={`text-xs font-semibold mb-1 ${dark ? 'text-blue-400' : 'text-blue-700'}`}>Coach-evaluatie</p>
+                  <EvaluationText text={r.aiEvaluation} className={`text-xs space-y-0.5 ${dark ? 'text-gray-300' : 'text-gray-700'}`} />
+                </div>
+              ) : onGenerateEvaluation ? (
+                <button
+                  onClick={onGenerateEvaluation}
+                  className={`text-xs font-medium ${dark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'}`}
+                >
+                  ✨ Genereer coach-evaluatie
+                </button>
+              ) : null}
             </>
           ) : (
             <p className="text-xs text-gray-400 italic">Geen resultaat ingevuld</p>
@@ -732,6 +910,88 @@ function GoalResultModal({
           >
             Opslaan & archiveren
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Coach-evaluatie modal (na resultaat invullen) ──────────────
+
+function EvaluationModal({
+  state,
+  hasUpcoming,
+  onRetry,
+  onNewGoal,
+  onClose,
+}: {
+  state: EvalState;
+  hasUpcoming: boolean;
+  onRetry: () => void;
+  onNewGoal: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4 pb-20 sm:pb-4">
+      <div className="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col">
+        <div className="p-5 border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">🏅 Coach-evaluatie</h2>
+              <p className="text-xs text-gray-500">{state.goal.name}</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 flex-1 overflow-y-auto">
+          {state.status === 'loading' && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <div className="flex gap-1">
+                <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce" />
+                <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.1s]" />
+                <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+              </div>
+              <p className="text-sm text-gray-500 text-center">
+                Je coach analyseert je race en je trainingsaanloop...
+              </p>
+            </div>
+          )}
+          {state.status === 'error' && (
+            <div className="text-center py-6 space-y-3">
+              <p className="text-sm text-gray-600">Kon de evaluatie niet genereren.</p>
+              <button
+                onClick={onRetry}
+                className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+              >
+                Probeer opnieuw
+              </button>
+            </div>
+          )}
+          {state.status === 'done' && state.text && (
+            <EvaluationText text={state.text} className="text-sm text-gray-700 space-y-1" />
+          )}
+        </div>
+
+        <div className="p-5 border-t border-gray-100 flex gap-2 justify-end flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
+          >
+            Sluiten
+          </button>
+          {state.status === 'done' && !hasUpcoming && (
+            <button
+              onClick={onNewGoal}
+              className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Kies je volgende doel
+            </button>
+          )}
         </div>
       </div>
     </div>

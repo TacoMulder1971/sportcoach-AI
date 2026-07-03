@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import SportIcon from '@/components/SportIcon';
 import { TrainingDay, SessionBreakdown, SessionSegment, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import {
@@ -11,7 +11,9 @@ import {
   saveSessionBreakdowns,
   sessionsSignature,
   getStrengthWorkoutForSession,
+  getSwimPaceTargets,
 } from '@/lib/storage';
+import { SwimPaceTargets, formatSwimPaceRange } from '@/lib/swim';
 import { formatDuration } from '@/lib/schedule';
 import StrengthWorkoutDetail from '@/components/StrengthWorkoutDetail';
 
@@ -19,6 +21,18 @@ function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
   if (sport === 'hardlopen') return getRunZones();
   if (sport === 'fietsen' || sport === 'mountainbike') return getCyclingZones();
   return HEART_RATE_ZONES;
+}
+
+// Zwemmen stuurt op tempo per 100m i.p.v. hartslag (bpm is in het water onbruikbaar).
+function zoneBadgeContent(sport: Sport, zoneInfo: HeartRateZoneInfo, swimPaces: SwimPaceTargets | null, withLabel: boolean): string {
+  if (sport === 'zwemmen') {
+    const t = swimPaces?.zones.find((z) => z.zone === zoneInfo.zone);
+    const base = withLabel ? `${zoneInfo.zone} · ${zoneInfo.label}` : zoneInfo.zone;
+    return t ? `${base} · ${formatSwimPaceRange(t)} /100m` : `${zoneInfo.zone} · ${zoneInfo.label}`;
+  }
+  return withLabel
+    ? `${zoneInfo.zone} · ${zoneInfo.label} · ${zoneInfo.min}–${zoneInfo.max} bpm`
+    : `${zoneInfo.zone} · ${zoneInfo.min}–${zoneInfo.max} bpm`;
 }
 
 function capitalize(s: string): string {
@@ -31,7 +45,7 @@ const SPORT_LABEL: Record<string, string> = {
   multisport: 'Multisport', kracht: 'Kracht', rust: 'Rust',
 };
 
-function SegmentRow({ segment, sport }: { segment: SessionSegment; sport: Sport }) {
+function SegmentRow({ segment, sport, swimPaces }: { segment: SessionSegment; sport: Sport; swimPaces: SwimPaceTargets | null }) {
   const zoneInfo = segment.zone ? zonesForSport(sport).find((z) => z.zone === segment.zone) : null;
   const accent =
     segment.kind === 'warmup' ? '#22c55e' : segment.kind === 'cooldown' ? '#9ca3af' : zoneInfo?.color || '#3b82f6';
@@ -47,7 +61,7 @@ function SegmentRow({ segment, sport }: { segment: SessionSegment; sport: Sport 
             className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full"
             style={{ backgroundColor: `${zoneInfo.color}26`, color: zoneInfo.color }}
           >
-            {zoneInfo.zone} · {zoneInfo.min}–{zoneInfo.max} bpm
+            {zoneBadgeContent(sport, zoneInfo, swimPaces, false)}
           </span>
         )}
       </div>
@@ -67,6 +81,8 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
   const [error, setError] = useState<string | null>(null);
 
   const sessions = training && !training.isRestDay ? training.sessions : [];
+  const hasSwim = sessions.some((s) => s.sport === 'zwemmen');
+  const swimPaces = useMemo(() => (hasSwim ? getSwimPaceTargets() : null), [hasSwim]);
   // Krachtsessies krijgen een vaste oefenlijst (geen AI-breakdown met zones).
   const breakdownSessions = sessions.filter((s) => s.sport !== 'kracht');
   const signature = breakdownSessions.length > 0 ? sessionsSignature(breakdownSessions) : '';
@@ -170,7 +186,7 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
                       className="text-xs font-semibold px-2 py-0.5 rounded-full"
                       style={{ backgroundColor: `${zoneInfo.color}26`, color: zoneInfo.color }}
                     >
-                      {zoneInfo.zone} · {zoneInfo.label} · {zoneInfo.min}–{zoneInfo.max} bpm
+                      {zoneBadgeContent(session.sport, zoneInfo, swimPaces, true)}
                     </span>
                   )}
                 </div>
@@ -184,7 +200,7 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
               ) : breakdown ? (
                 <div className="space-y-3">
                   {breakdown.segments.map((seg, si) => (
-                    <SegmentRow key={si} segment={seg} sport={session.sport} />
+                    <SegmentRow key={si} segment={seg} sport={session.sport} swimPaces={swimPaces} />
                   ))}
                 </div>
               ) : loading ? (

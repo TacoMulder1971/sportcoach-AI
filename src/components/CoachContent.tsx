@@ -5,7 +5,7 @@ import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from '@/app/coach/CheckInContent';
 import WeeklyReportSection from '@/components/WeeklyReportSection';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getEquipment, getActivityAssignments, buildHRZoneText } from '@/lib/storage';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, getActiveRaceDate, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getUpcomingGoals, getEquipment, getActivityAssignments, buildHRZoneText } from '@/lib/storage';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
 import { getCurrentPhase } from '@/lib/periodization';
@@ -35,11 +35,15 @@ export default function CoachContent() {
     if (saved.length === 0) {
       const raceLabel = getActiveRaceLabel();
       const raceDate = formatRaceDateNL();
+      // Zonder aankomende wedstrijd (race geweest / geen doel) geen "richting je X"-intro
+      const intro = getUpcomingGoals().length > 0
+        ? `Ik ken je trainingsschema en help je richting je ${raceLabel} op ${raceDate}.`
+        : `Je ${raceLabel} is geweest — ik help je met herstel, evaluatie en het kiezen van je volgende doel.`;
       const welcome: ChatMessageType = {
         id: generateId(),
         role: 'assistant',
         content:
-          `Hoi! Ik ben je My Sport Coach AI. Ik ken je trainingsschema en help je richting je ${raceLabel} op ${raceDate}.\n\nJe kunt me alles vragen over:\n- Je trainingsschema en aanpassingen\n- Hartslagzones en intensiteit\n- Herstel en periodisering\n- Motivatie en mentale tips\n\nHoe kan ik je helpen?`,
+          `Hoi! Ik ben je My Sport Coach AI. ${intro}\n\nJe kunt me alles vragen over:\n- Je trainingsschema en aanpassingen\n- Hartslagzones en intensiteit\n- Herstel en periodisering\n- Motivatie en mentale tips\n\nHoe kan ik je helpen?`,
         createdAt: new Date().toISOString(),
       };
       saveChatMessage(welcome);
@@ -202,7 +206,7 @@ export default function CoachContent() {
         .slice(-7)
         .map((ci) => ({ date: ci.date, feeling: ci.feeling, note: ci.note }));
 
-      const currentPhase = getCurrentPhase();
+      const currentPhase = getCurrentPhase(getActiveRaceDate());
       const daysUntilRace = getDaysUntilActiveRace();
 
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });

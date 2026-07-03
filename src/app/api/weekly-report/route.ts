@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       totalVolumeMinutes,
       totalVolumeKm,
       weeklyNutrition,
+      adherence,
       raceContext,
     } = await request.json();
 
@@ -46,6 +47,18 @@ HUIDIGE FASE: ${currentPhase}\n`;
       }
     }
 
+    if (adherence && adherence.plannedCount > 0) {
+      prompt += `\nPLAN-ADHERENTIE (afgelopen 7 dagen, krachttraining niet meegeteld):
+- ${adherence.completedCount} van ${adherence.plannedCount} geplande sessies gedaan (${adherence.completionPct}%)`;
+      if (adherence.avgMatchScore !== null && adherence.avgMatchScore !== undefined) {
+        prompt += `\n- Gemiddelde uitvoering van gedane sessies: ${adherence.avgMatchScore}% (duur + intensiteit vs. plan)`;
+      }
+      if (adherence.missed && adherence.missed.length > 0) {
+        prompt += `\n- Gemiste sessies: ${adherence.missed.join('; ')}`;
+      }
+      prompt += '\n';
+    }
+
     if (checkIns && checkIns.length > 0) {
       prompt += `\nCHECK-INS DEZE WEEK:\n`;
       for (const ci of checkIns.slice(-7)) {
@@ -69,7 +82,7 @@ ${lowCalDays > 0 ? `- Waarschuwing: ${lowCalDays} dag(en) met minder dan 1500 kc
 
     prompt += `
 STRUCTUUR VAN HET RAPPORT:
-1. Kort overzicht van het trainingsvolume en de belasting (TRIMP)
+1. Kort overzicht van het trainingsvolume en de belasting (TRIMP)${adherence && adherence.plannedCount > 0 ? ', inclusief de plan-adherentie (hoeveel van het schema is uitgevoerd en hoe goed)' : ''}
 2. Bespreek de belastingtrend (stijgend/dalend/stabiel) en wat dat betekent
 3. Noem 1-2 concrete hoogtepunten of aandachtspunten uit de check-ins
 ${weeklyNutrition && weeklyNutrition.length > 0 ? '4. Geef 1-2 zinnen voedingsfeedback: zijn calorieën/koolhydraten/eiwit passend bij het trainingsvolume? Geef een concreet verbeterpunt.\n5.' : '4.'} Sluit af met één concrete focus voor de komende week, passend bij de ${currentPhase}

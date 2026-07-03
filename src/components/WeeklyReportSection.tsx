@@ -1,10 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getGarminData, getEquipment, getActivityAssignments, getActiveRaceDate, buildRaceContextText, getRecentNutritionLogs, getWeeklyReport, saveWeeklyReport } from '@/lib/storage';
+import { getGarminData, getEquipment, getActivityAssignments, getActiveRaceDate, buildRaceContextText, getRecentNutritionLogs, getWeeklyReport, saveWeeklyReport, getActivePlan, getActivityArchive, getRunZones, getCyclingZones } from '@/lib/storage';
 import { filterStatsActivities } from '@/lib/equipment';
-import { getWeeklyTRIMPTotals } from '@/lib/training-load';
+import { getWeeklyTRIMPTotals, computeWeekAdherence } from '@/lib/training-load';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
+import { Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
+
+function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
+  if (sport === 'hardlopen') return getRunZones();
+  if (sport === 'fietsen' || sport === 'mountainbike') return getCyclingZones();
+  return HEART_RATE_ZONES;
+}
 
 export default function WeeklyReportSection() {
   const [weeklyReport, setWeeklyReport] = useState<string | null>(null);
@@ -43,6 +50,11 @@ export default function WeeklyReportSection() {
       const totalVolumeMinutes = recent.reduce((s, a) => s + a.durationMinutes, 0);
       const totalVolumeKm = recent.reduce((s, a) => s + a.distanceKm, 0);
 
+      // Plan-adherentie over de afgelopen 7 dagen (archief = volledige historie)
+      const { plan, cycleStartDate } = getActivePlan();
+      const archiveStats = filterStatsActivities(getActivityArchive(), equipment, assignments);
+      const adherence = computeWeekAdherence(plan, cycleStartDate, archiveStats, zonesForSport);
+
       const res = await fetch('/api/weekly-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,6 +66,17 @@ export default function WeeklyReportSection() {
           totalVolumeMinutes,
           totalVolumeKm,
           weeklyNutrition: getRecentNutritionLogs(7),
+          adherence: adherence
+            ? {
+                plannedCount: adherence.plannedCount,
+                completedCount: adherence.completedCount,
+                completionPct: adherence.completionPct,
+                avgMatchScore: adherence.avgMatchScore,
+                missed: adherence.days.flatMap(d =>
+                  d.planned.filter(p => !p.done).map(p => `${d.dayLabel}: ${p.session.sport} ${p.session.type}`)
+                ),
+              }
+            : null,
           raceContext: buildRaceContextText(),
         }),
       });

@@ -1,8 +1,10 @@
 'use client';
 
-import { TrainingDay, HEART_RATE_ZONES, Sport, HeartRateZoneInfo } from '@/lib/types';
+import { useMemo } from 'react';
+import { TrainingDay, TrainingSession, HEART_RATE_ZONES, Sport, HeartRateZoneInfo } from '@/lib/types';
 import { formatDuration } from '@/lib/schedule';
-import { getRunZones, getCyclingZones } from '@/lib/storage';
+import { getRunZones, getCyclingZones, getSwimPaceTargets } from '@/lib/storage';
+import { SwimPaceTargets, formatSwimPaceRange } from '@/lib/swim';
 import SportIcon from './SportIcon';
 
 interface TrainingCardProps {
@@ -19,11 +21,26 @@ function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
   return HEART_RATE_ZONES;
 }
 
+// Badge-tekst per sessie: zwemmen krijgt richttempo per 100m (bpm is in het
+// water onbruikbaar), andere sporten het hartslagbereik.
+function zoneBadgeText(session: TrainingSession, zoneInfo: HeartRateZoneInfo, swimPaces: SwimPaceTargets | null): string {
+  if (session.sport === 'zwemmen') {
+    const t = swimPaces?.zones.find(z => z.zone === zoneInfo.zone);
+    return t
+      ? `${zoneInfo.zone} · ${zoneInfo.label} · ${formatSwimPaceRange(t)} /100m`
+      : `${zoneInfo.zone} · ${zoneInfo.label}`;
+  }
+  return `${zoneInfo.zone} · ${zoneInfo.label} · ${zoneInfo.min}–${zoneInfo.max} bpm`;
+}
+
 function capitalize(s: string): string {
   return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
 export default function TrainingCard({ training, isToday = false, compact = false, dark = false }: TrainingCardProps) {
+  const hasSwim = training.sessions.some((s) => s.sport === 'zwemmen');
+  const swimPaces = useMemo(() => (hasSwim ? getSwimPaceTargets() : null), [hasSwim]);
+
   if (dark) {
     return (
       <div
@@ -85,7 +102,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
                           className="text-xs font-semibold px-2 py-0.5 rounded-full"
                           style={{ backgroundColor: `${zoneInfo.color}26`, color: zoneInfo.color }}
                         >
-                          {zoneInfo.zone} · {zoneInfo.label} · {zoneInfo.min}–{zoneInfo.max} bpm
+                          {zoneBadgeText(session, zoneInfo, swimPaces)}
                         </span>
                       )}
                     </div>
@@ -139,19 +156,18 @@ export default function TrainingCard({ training, isToday = false, compact = fals
                     {formatDuration(session.durationMinutes)}
                   </span>
                 )}
-                {session.zone && (
-                  <span
-                    className={`${isToday ? 'text-sm px-2' : 'text-xs px-1.5'} py-0.5 rounded font-medium text-white`}
-                    style={{
-                      backgroundColor:
-                        HEART_RATE_ZONES.find((z) => z.zone === session.zone)?.color ?? '#888',
-                    }}
-                  >
-                    {session.zone}{' '}
-                    ({HEART_RATE_ZONES.find((z) => z.zone === session.zone)?.min}–
-                    {HEART_RATE_ZONES.find((z) => z.zone === session.zone)?.max} bpm)
-                  </span>
-                )}
+                {session.zone && (() => {
+                  const zoneInfo = zonesForSport(session.sport).find((z) => z.zone === session.zone);
+                  if (!zoneInfo) return null;
+                  return (
+                    <span
+                      className={`${isToday ? 'text-sm px-2' : 'text-xs px-1.5'} py-0.5 rounded font-medium text-white`}
+                      style={{ backgroundColor: zoneInfo.color }}
+                    >
+                      {zoneBadgeText(session, zoneInfo, swimPaces)}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
