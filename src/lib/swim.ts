@@ -1,5 +1,5 @@
 // Helpers voor zwem-varianten (binnen/buiten/openwater) en zwemtempo-targets.
-import { SwimVariant, ActivitySwimVariants, GarminActivity, HeartRateZone } from './types';
+import { SwimVariant, ActivitySwimVariants, GarminActivity, HeartRateZone, SwimPaceZone } from './types';
 
 /**
  * Bepaalt de zwem-variant van een activiteit.
@@ -28,9 +28,58 @@ export interface SwimPaceTarget {
 }
 
 export interface SwimPaceTargets {
-  baseSecPer100: number; // mediaan tempo van de recente zwemtrainingen
-  basedOnCount: number;  // aantal trainingen waarop dit gebaseerd is
+  baseSecPer100: number; // mediaan tempo van de recente zwemtrainingen (of handmatige waarde)
+  basedOnCount: number;  // aantal trainingen waarop dit gebaseerd is (0 bij handmatig)
+  source: 'auto' | 'handmatig'; // afgeleid uit archief of door de gebruiker ingesteld
   zones: SwimPaceTarget[];
+}
+
+/** "2:05" of "125" → seconden per 100m; null bij onbruikbare invoer. */
+export function parseSwimPace(input: string): number | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  let sec: number;
+  const colonMatch = trimmed.match(/^(\d{1,2})[:.](\d{1,2})$/);
+  if (colonMatch) {
+    sec = parseInt(colonMatch[1]) * 60 + parseInt(colonMatch[2]);
+  } else if (/^\d+$/.test(trimmed)) {
+    sec = parseInt(trimmed);
+  } else {
+    return null;
+  }
+  if (sec < PLAUSIBLE_SEC_PER_100.min || sec > PLAUSIBLE_SEC_PER_100.max) return null;
+  return sec;
+}
+
+/** Zone-richttempo's rond een gegeven basistempo (auto-schatting uit het archief). */
+export function buildSwimPaceTargets(baseSecPer100: number, source: 'auto' | 'handmatig', basedOnCount: number): SwimPaceTargets {
+  return {
+    baseSecPer100: Math.round(baseSecPer100),
+    basedOnCount,
+    source,
+    zones: ZONE_OFFSETS.map(z => ({
+      zone: z.zone,
+      label: z.label,
+      minSecPer100: Math.round(baseSecPer100 + z.min),
+      maxSecPer100: Math.round(baseSecPer100 + z.max),
+    })),
+  };
+}
+
+/** Targets uit handmatig ingestelde Z1–Z5-tempo's (volgorde Z1..Z5). */
+export function buildSwimPaceTargetsFromZones(zones: SwimPaceZone[]): SwimPaceTargets {
+  return {
+    // Z3 (aeroob) begint op het basistempo in de auto-afleiding; gebruik dat als referentie
+    baseSecPer100: zones[2]?.minSecPer100 ?? zones[0].minSecPer100,
+    basedOnCount: 0,
+    source: 'handmatig',
+    zones: ZONE_OFFSETS.map((z, i) => ({
+      zone: z.zone,
+      label: z.label,
+      minSecPer100: zones[i].minSecPer100,
+      maxSecPer100: zones[i].maxSecPer100,
+    })),
+  };
 }
 
 /** "125" → "2:05" */
@@ -83,14 +132,5 @@ export function estimateSwimPaceTargets(archive: GarminActivity[]): SwimPaceTarg
   const mid = Math.floor(sorted.length / 2);
   const base = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 
-  return {
-    baseSecPer100: Math.round(base),
-    basedOnCount: paces.length,
-    zones: ZONE_OFFSETS.map(z => ({
-      zone: z.zone,
-      label: z.label,
-      minSecPer100: Math.round(base + z.min),
-      maxSecPer100: Math.round(base + z.max),
-    })),
-  };
+  return buildSwimPaceTargets(base, 'auto', paces.length);
 }

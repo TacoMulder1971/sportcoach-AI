@@ -98,12 +98,19 @@ export interface HRZoneConfig {
   maxHR: number; // bovengrens Z5
 }
 
+/** Handmatig zwem-richttempo voor één zone (sec/100m). */
+export interface SwimPaceZone {
+  minSecPer100: number; // sneller uiteinde
+  maxSecPer100: number; // langzamer uiteinde
+}
+
 export interface UserProfile {
   name: string;
   maxHR: number;                // max hartslag hardlopen (legacy, ook z5max)
   maxHRCycling?: number;        // max hartslag fietsen (legacy)
   hrZonesRun?: HRZoneConfig;    // aangepaste zones hardlopen
   hrZonesCycling?: HRZoneConfig;// aangepaste zones fietsen
+  swimPaceZones?: SwimPaceZone[]; // handmatige zwemtempo's Z1–Z5; leeg = automatisch uit archief
   raceDate: string;
   raceGoal: string;
   raceType: string;

@@ -1,7 +1,7 @@
 import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
 import { trainingPlan } from '@/data/training-plan';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
-import { SwimPaceTargets, estimateSwimPaceTargets } from './swim';
+import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones } from './swim';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
 export function generateId(): string {
@@ -1126,8 +1126,13 @@ export function clearActivitySwimVariant(activityId: string | number): void {
   setItem(KEYS.SWIM_VARIANTS, map);
 }
 
-/** Zwemtempo-targets per zone, afgeleid uit recente zwemtrainingen in het archief. */
+/**
+ * Zwemtempo-targets per zone. Handmatig ingestelde Z1–Z5-tempo's (profiel)
+ * hebben voorrang; anders afgeleid uit recente zwemtrainingen in het archief.
+ */
 export function getSwimPaceTargets(): SwimPaceTargets | null {
+  const manual = getProfile().swimPaceZones;
+  if (manual && manual.length === 5) return buildSwimPaceTargetsFromZones(manual);
   return estimateSwimPaceTargets(getActivityArchive());
 }
 

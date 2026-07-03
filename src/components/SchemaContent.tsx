@@ -435,8 +435,9 @@ export default function SchemaContent() {
                     })}
                     <div className="p-3 border-t border-white/5 bg-white/[0.02]">
                       <p className="text-xs text-gray-500">
-                        Richttempo&apos;s o.b.v. je laatste {swimPaces.basedOnCount} zwemtrainingen
-                        (gemiddeld {formatSwimPace(swimPaces.baseSecPer100)} /100m).
+                        {swimPaces.source === 'handmatig'
+                          ? <>Handmatig ingestelde richttempo&apos;s — aan te passen via Data → Instellingen.</>
+                          : <>Richttempo&apos;s o.b.v. je laatste {swimPaces.basedOnCount} zwemtrainingen (gemiddeld {formatSwimPace(swimPaces.baseSecPer100)} /100m).</>}
                       </p>
                     </div>
                   </div>
