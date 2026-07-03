@@ -67,17 +67,26 @@ export default function VoedingPage() {
   const barSpacing = Math.floor(totalBarW / barCount);
 
   return (
-    <div className="space-y-5 px-4 pt-6">
+    <div className="bg-black min-h-screen">
+      <div className="fixed top-0 inset-x-0 bg-black z-50" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="fixed bottom-0 inset-x-0 bg-black z-40" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
+      <div className="space-y-5 px-4 pt-6 pb-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Voeding</h1>
-        <p className="text-gray-500 text-sm">MyFitnessPal data</p>
+        <h1 className="text-2xl font-bold text-white">Voeding</h1>
+        <p className="text-gray-400 text-sm">MyFitnessPal data</p>
       </div>
 
-      {/* Import card */}
-      <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
-        <p className="text-sm text-gray-500">
-          Exporteer je data uit MyFitnessPal en upload het <strong>Voedingsoverzicht</strong> CSV-bestand.
+      {/* Import: mét data een compacte kaart, zonder data één gecombineerde lege staat */}
+      <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
+        {logs.length === 0 && (
+          <div className="text-center pt-3">
+            <p className="text-3xl mb-2">🥗</p>
+            <p className="text-gray-100 font-medium">Nog geen voedingsdata</p>
+          </div>
+        )}
+        <p className={`text-sm text-gray-400 ${logs.length === 0 ? 'text-center' : ''}`}>
+          Exporteer je data uit MyFitnessPal en upload het <strong className="text-gray-300">Voedingsoverzicht</strong> CSV-bestand.
         </p>
         <button
           onClick={() => mfpInputRef.current?.click()}
@@ -118,7 +127,7 @@ export default function VoedingPage() {
         />
         {mfpImportStatus && (
           <div className={`text-sm p-3 rounded-xl ${
-            mfpImportStatus.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+            mfpImportStatus.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
           }`}>
             {mfpImportStatus.msg}
           </div>
@@ -128,14 +137,14 @@ export default function VoedingPage() {
       {/* 7-day chart */}
       {logs.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Afgelopen 7 dagen</h2>
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <h2 className="text-lg font-semibold text-white mb-3">Afgelopen 7 dagen</h2>
+          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
             <svg viewBox={`0 0 ${CHART_W} ${CHART_H}`} width="100%">
               {chartData.map((d, i) => {
                 const barH = yMax > 0 ? Math.round((d.calories / yMax) * barAreaH) : 0;
                 const x = i * barSpacing + 2;
                 const y = barAreaTop + barAreaH - barH;
-                const color = d.calories >= 1800 ? '#16a34a' : d.calories >= 1200 ? '#f97316' : d.calories > 0 ? '#ef4444' : '#e5e7eb';
+                const color = d.calories >= 1800 ? '#22c55e' : d.calories >= 1200 ? '#f97316' : d.calories > 0 ? '#ef4444' : 'rgba(255,255,255,0.08)';
                 return (
                   <g key={d.date}>
                     <rect
@@ -152,7 +161,7 @@ export default function VoedingPage() {
                         y={y - 2}
                         textAnchor="middle"
                         fontSize={8}
-                        fill="#6b7280"
+                        fill="#9ca3af"
                       >
                         {d.calories}
                       </text>
@@ -162,7 +171,7 @@ export default function VoedingPage() {
                       y={CHART_H - 2}
                       textAnchor="middle"
                       fontSize={9}
-                      fill="#9ca3af"
+                      fill="#6b7280"
                     >
                       {d.dayAbbr}
                     </text>
@@ -172,17 +181,17 @@ export default function VoedingPage() {
             </svg>
 
             {/* Stats row */}
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100 text-center">
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/5 text-center">
               <div>
-                <p className="text-xl font-bold text-gray-800">{avgKcal || '–'}</p>
+                <p className="text-xl font-bold text-gray-100">{avgKcal || '–'}</p>
                 <p className="text-xs text-gray-500">Gem. kcal</p>
               </div>
               <div>
-                <p className="text-xl font-bold text-blue-600">{avgKH || '–'}g</p>
+                <p className="text-xl font-bold text-blue-400">{avgKH || '–'}g</p>
                 <p className="text-xs text-gray-500">Gem. KH</p>
               </div>
               <div>
-                <p className="text-xl font-bold text-green-600">{avgEiwit || '–'}g</p>
+                <p className="text-xl font-bold text-green-400">{avgEiwit || '–'}g</p>
                 <p className="text-xs text-gray-500">Gem. eiwit</p>
               </div>
             </div>
@@ -193,21 +202,21 @@ export default function VoedingPage() {
       {/* Recent logs */}
       {logs.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Historie</h2>
+          <h2 className="text-lg font-semibold text-white mb-3">Historie</h2>
           <div className="space-y-2">
             {recentLogs.map(log => (
-              <div key={log.date} className="bg-white rounded-xl p-3 border border-gray-200 flex items-center gap-3">
+              <div key={log.date} className="bg-[#0d0d0f] rounded-3xl p-3 border border-white/5 flex items-center gap-3">
                 <div className="text-sm text-gray-500 w-20 flex-shrink-0">
                   {formatDate(log.date)}
                 </div>
                 <div className="flex-1 text-center">
-                  <span className="text-xl font-bold text-gray-900">{log.calories}</span>
+                  <span className="text-xl font-bold text-white">{log.calories}</span>
                   <span className="text-sm text-gray-500 ml-1">kcal</span>
                 </div>
                 <div className="flex gap-1 flex-wrap justify-end">
-                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{log.carbsG}g KH</span>
-                  <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full">{log.proteinG}g eiwit</span>
-                  <span className="text-xs bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full">{log.fatG}g vet</span>
+                  <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full">{log.carbsG}g KH</span>
+                  <span className="text-xs bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full">{log.proteinG}g eiwit</span>
+                  <span className="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded-full">{log.fatG}g vet</span>
                 </div>
               </div>
             ))}
@@ -215,15 +224,8 @@ export default function VoedingPage() {
         </section>
       )}
 
-      {/* Empty state */}
-      {logs.length === 0 && (
-        <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
-          <p className="text-gray-700 font-medium mb-1">Nog geen voedingsdata</p>
-          <p className="text-gray-400 text-sm">Importeer je MyFitnessPal CSV om te beginnen</p>
-        </div>
-      )}
-
       <div className="h-4" />
+      </div>
     </div>
   );
 }

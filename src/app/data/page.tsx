@@ -310,15 +310,15 @@ export default function DataPage() {
           className="fixed top-0 left-0 right-0 flex justify-center items-center z-50 pointer-events-none"
           style={{ height: syncing ? 56 : Math.min(pullDistance, 56) }}
         >
-          <div className="bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2">
+          <div className="bg-[#1c1c1e] border border-white/10 rounded-full shadow-lg px-4 py-2 flex items-center gap-2">
             <svg
-              className={`w-4 h-4 text-blue-500 ${syncing ? 'animate-spin' : ''}`}
+              className={`w-4 h-4 text-blue-400 ${syncing ? 'animate-spin' : ''}`}
               fill="none" viewBox="0 0 24 24" stroke="currentColor"
               style={{ transform: syncing ? undefined : `rotate(${Math.min(pullDistance / PULL_THRESHOLD, 1) * 180}deg)` }}
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-xs font-medium text-gray-300">
               {syncing ? 'Garmin syncing...' : pullDistance >= PULL_THRESHOLD ? 'Loslaten om te syncen' : 'Trek omlaag om te syncen'}
             </span>
           </div>
@@ -340,45 +340,8 @@ export default function DataPage() {
     </button>
   );
 
-  if (!garmin) {
-    return (
-      <div
-        className="px-4 pt-6 space-y-5"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {pullIndicator}
-
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Data</h1>
-          <p className="text-gray-500 text-sm">Garmin gegevens</p>
-        </div>
-
-        {syncError && (
-          <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">
-            {syncError}
-          </div>
-        )}
-
-        {syncButton}
-
-        <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
-          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-            <svg className="w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          </div>
-          <p className="text-gray-500 text-sm">Trek omlaag of tik de knop om je Garmin data op te halen</p>
-        </div>
-
-        <HeartRateZonesCard />
-        <StrengthWorkoutsCard />
-        <DataManagementCard />
-
-        <div className="h-4" />
-      </div>
-    );
-  }
-
+  // De sub-navigatie is er altijd — óók zonder Garmin-data, zodat Instellingen
+  // (Garmin-koppeling, zones, kracht) op dezelfde plek zitten als mét data.
   const SECTIONS: { id: Section; label: string }[] = [
     { id: 'overzicht', label: 'Overzicht' },
     { id: 'trends', label: 'Trends' },
@@ -387,9 +350,21 @@ export default function DataPage() {
     { id: 'instellingen', label: 'Instellingen' },
   ];
 
+  const noDataCard = (
+    <div className="bg-[#0d0d0f] rounded-3xl p-8 border border-white/5 text-center">
+      <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+        <svg className="w-6 h-6 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <p className="text-gray-400 text-sm">Nog geen Garmin-data. Koppel je account en synchroniseer om hier je gegevens te zien.</p>
+    </div>
+  );
+
   return (
-    <div
-      className="px-4 pt-6 space-y-5"
+    <div className="bg-black min-h-screen">
+      <div className="fixed top-0 inset-x-0 bg-black z-50" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="fixed bottom-0 inset-x-0 bg-black z-40" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
+      <div
+      className="px-4 pt-6 pb-8 space-y-5"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -398,25 +373,25 @@ export default function DataPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Data</h1>
-          <p className="text-gray-500 text-sm">Garmin gegevens {lastSync && `· ${lastSync}`}</p>
+          <h1 className="text-2xl font-bold text-white">Data</h1>
+          <p className="text-gray-400 text-sm">Garmin gegevens {lastSync && `· ${lastSync}`}</p>
         </div>
       </div>
 
       {syncError && (
-        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">
+        <div className="bg-red-500/10 text-red-400 text-sm p-3 rounded-xl">
           {syncError}
         </div>
       )}
 
       {/* Sub-navigatie */}
-      <div className="flex bg-gray-100 rounded-xl p-1">
+      <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
         {SECTIONS.map((s) => (
           <button
             key={s.id}
             onClick={() => setSection(s.id)}
             className={`flex-1 py-2 px-0.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-              section === s.id ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500'
+              section === s.id ? 'bg-blue-600 text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)]' : 'text-gray-400'
             }`}
           >
             {s.label}
@@ -426,13 +401,23 @@ export default function DataPage() {
 
       {(section === 'overzicht' || section === 'instellingen') && syncButton}
 
+      {/* Zonder Garmin-data: koppel-kaart prominent op Overzicht */}
+      {section === 'overzicht' && !garmin && (
+        <>
+          <GarminSetupCard onConnect={handleGarminSync} />
+          {noDataCard}
+        </>
+      )}
+      {section === 'trends' && !garmin && noDataCard}
+      {section === 'activiteiten' && !garmin && noDataCard}
+
       {section === 'overzicht' && (
         <>
           {/* Trainingsgereedheid detail */}
           {readiness && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Trainingsgereedheid</h2>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <h2 className="text-lg font-semibold text-white mb-3">Trainingsgereedheid</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-12 h-12 rounded-full ${readiness.bgColor} flex items-center justify-center`}>
                     <span className="text-white font-bold text-lg">{readiness.score}</span>
@@ -441,7 +426,7 @@ export default function DataPage() {
                     <p className={`text-xl font-bold ${readiness.color}`}>{readiness.label}</p>
                     <p className="text-xs text-gray-500">
                       {readiness.score}/{readiness.maxScore} punten
-                      {!readiness.dataComplete && <span className="text-amber-600"> · data incompleet</span>}
+                      {!readiness.dataComplete && <span className="text-amber-400"> · data incompleet</span>}
                     </p>
                   </div>
                 </div>
@@ -456,7 +441,7 @@ export default function DataPage() {
                       <div className="flex gap-1 flex-1">
                         {f.val === null
                           ? Array.from({ length: f.max }, (_, i) => (
-                              <div key={i} className="h-3 flex-1 rounded bg-gray-50 border border-dashed border-gray-300" />
+                              <div key={i} className="h-3 flex-1 rounded bg-white/5 border border-dashed border-white/15" />
                             ))
                           : Array.from({ length: f.max }, (_, i) => i + 1).map((i) => (
                               <div
@@ -464,18 +449,18 @@ export default function DataPage() {
                                 className={`h-3 flex-1 rounded ${
                                   i <= f.val!
                                     ? f.val! >= f.max * 0.6 ? 'bg-green-400' : f.val! >= f.max * 0.3 ? 'bg-yellow-400' : 'bg-red-400'
-                                    : 'bg-gray-100'
+                                    : 'bg-white/10'
                                 }`}
                               />
                             ))}
                       </div>
-                      <p className="text-xs text-gray-400 w-36 text-right">
+                      <p className="text-xs text-gray-500 w-36 text-right">
                         {f.val === null ? <span className="italic">geen data</span> : f.detail}
                       </p>
                     </div>
                   ))}
                 </div>
-                <p className="text-sm text-gray-600 mt-3 pt-3 border-t border-gray-100">{readiness.advice}</p>
+                <p className="text-sm text-gray-300 mt-3 pt-3 border-t border-white/5">{readiness.advice}</p>
               </div>
             </section>
           )}
@@ -483,31 +468,31 @@ export default function DataPage() {
           {/* Week overzicht */}
           {weekStats && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Deze week</h2>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <h2 className="text-lg font-semibold text-white mb-3">Deze week</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className="text-2xl font-bold text-blue-400">
                       {Math.floor(weekStats.totalMinutes / 60)}u{weekStats.totalMinutes % 60}m
                     </p>
                     <p className="text-xs text-gray-500">Trainingsduur</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-green-600">{weekStats.totalKm}</p>
+                    <p className="text-2xl font-bold text-green-400">{weekStats.totalKm}</p>
                     <p className="text-xs text-gray-500">Kilometer</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-orange-500">{weekStats.count}</p>
+                    <p className="text-2xl font-bold text-orange-400">{weekStats.count}</p>
                     <p className="text-xs text-gray-500">Sessies</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-center mt-3">
                   <div>
-                    <p className="text-2xl font-bold text-red-500">{weekStats.avgHR || '–'}</p>
+                    <p className="text-2xl font-bold text-red-400">{weekStats.avgHR || '–'}</p>
                     <p className="text-xs text-gray-500">Gem. HR</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-amber-500">{weekStats.totalCalories}</p>
+                    <p className="text-2xl font-bold text-amber-400">{weekStats.totalCalories}</p>
                     <p className="text-xs text-gray-500">Calorieen</p>
                   </div>
                 </div>
@@ -518,25 +503,25 @@ export default function DataPage() {
           {/* Plan-adherentie: gepland vs. gedaan */}
           {adherence && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Volgens plan</h2>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <h2 className="text-lg font-semibold text-white mb-3">Volgens plan</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <div className="flex items-baseline justify-between">
                   <div>
-                    <p className={`text-3xl font-bold ${adherence.completionPct >= 85 ? 'text-green-600' : adherence.completionPct >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
+                    <p className={`text-3xl font-bold ${adherence.completionPct >= 85 ? 'text-green-400' : adherence.completionPct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
                       {adherence.completionPct}%
                     </p>
-                    <p className="text-sm font-semibold text-gray-700">{adherence.label}</p>
+                    <p className="text-sm font-semibold text-gray-200">{adherence.label}</p>
                   </div>
-                  <div className="text-right text-xs text-gray-400">
+                  <div className="text-right text-xs text-gray-500">
                     <p>{adherence.completedCount} van {adherence.plannedCount} sessies gedaan</p>
                     <p>afgelopen 7 dagen</p>
                     {adherence.avgMatchScore !== null && (
-                      <p className="mt-0.5 text-gray-500 font-medium">gem. uitvoering {adherence.avgMatchScore}%</p>
+                      <p className="mt-0.5 text-gray-400 font-medium">gem. uitvoering {adherence.avgMatchScore}%</p>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-gray-100 rounded-full h-2 mt-3">
+                <div className="bg-white/10 rounded-full h-2 mt-3">
                   <div
                     className={`h-2 rounded-full ${adherence.completionPct >= 85 ? 'bg-green-500' : adherence.completionPct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
                     style={{ width: `${adherence.completionPct}%` }}
@@ -547,16 +532,16 @@ export default function DataPage() {
                 <div className="grid grid-cols-7 gap-1 mt-4">
                   {adherence.days.map((d) => (
                     <div key={d.date} className="text-center">
-                      <p className="text-[10px] text-gray-400 mb-1">{d.dayLabel.split(' ')[0]}</p>
+                      <p className="text-[10px] text-gray-500 mb-1">{d.dayLabel.split(' ')[0]}</p>
                       {d.restDay || d.planned.length === 0 ? (
-                        <span className="text-xs text-gray-300">—</span>
+                        <span className="text-xs text-gray-600">—</span>
                       ) : (
                         <div className="flex justify-center gap-0.5">
                           {d.planned.map((p, i) => (
                             <span
                               key={i}
                               title={`${p.session.sport} ${p.session.type}${p.done ? ` · uitvoering ${p.matchScore}%` : ' · gemist'}`}
-                              className={`w-2.5 h-2.5 rounded-full ${p.done ? 'bg-green-500' : 'bg-red-300'}`}
+                              className={`w-2.5 h-2.5 rounded-full ${p.done ? 'bg-green-500' : 'bg-red-400/70'}`}
                             />
                           ))}
                         </div>
@@ -564,7 +549,7 @@ export default function DataPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-gray-400 mt-2">
+                <p className="text-[10px] text-gray-500 mt-2">
                   Stip per geplande sessie: groen = gedaan, rood = gemist. Krachttraining telt niet mee.
                 </p>
               </div>
@@ -574,8 +559,8 @@ export default function DataPage() {
           {/* Training Load detail */}
           {trainingLoad && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Training Load</h2>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <h2 className="text-lg font-semibold text-white mb-3">Training Load</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className={`text-3xl font-bold ${trainingLoad.statusColor}`}>{trainingLoad.weekLoad}</p>
@@ -583,53 +568,53 @@ export default function DataPage() {
                       {trainingLoad.status.charAt(0).toUpperCase() + trainingLoad.status.slice(1)}
                     </p>
                   </div>
-                  <div className="text-right text-xs text-gray-400">
+                  <div className="text-right text-xs text-gray-500">
                     <p>TRIMP (7 dagen)</p>
                     <p>Max HR: {getProfile().maxHR} bpm</p>
                   </div>
                 </div>
                 {/* Load zones */}
-                <div className="relative bg-gray-100 rounded-full h-3 mb-2">
+                <div className="relative bg-white/10 rounded-full h-3 mb-2">
                   <div className="absolute left-0 top-0 h-3 bg-blue-400 rounded-l-full" style={{ width: '25%' }} />
                   <div className="absolute left-[25%] top-0 h-3 bg-green-500" style={{ width: '33%' }} />
                   <div className="absolute left-[58%] top-0 h-3 bg-orange-500" style={{ width: '25%' }} />
                   <div className="absolute left-[83%] top-0 h-3 bg-red-500 rounded-r-full" style={{ width: '17%' }} />
                   {/* Indicator */}
                   <div
-                    className="absolute top-[-4px] w-3 h-5 bg-gray-800 rounded-sm border-2 border-white"
+                    className="absolute top-[-4px] w-3 h-5 bg-white rounded-sm border-2 border-black"
                     style={{ left: `${Math.min(97, (trainingLoad.weekLoad / 600) * 100)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[10px] text-gray-400">
+                <div className="flex justify-between text-[10px] text-gray-500">
                   <span>Laag</span>
                   <span>Optimaal</span>
                   <span>Hoog</span>
                   <span>Over</span>
                 </div>
-                <p className="text-sm text-gray-600 mt-3">{trainingLoad.advice}</p>
+                <p className="text-sm text-gray-300 mt-3">{trainingLoad.advice}</p>
               </div>
             </section>
           )}
 
           {/* Gezondheid */}
-          {garmin.health && (
+          {garmin?.health && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Gezondheid</h2>
-              <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-4">
+              <h2 className="text-lg font-semibold text-white mb-3">Gezondheid</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-4">
                 {/* Slaap */}
                 <div>
-                  <p className="text-xs text-gray-400 mb-2">Slaap</p>
+                  <p className="text-xs text-gray-500 mb-2">Slaap</p>
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div>
-                      <p className="text-xl font-bold text-purple-600">{garmin.health.sleepDurationHours}u</p>
+                      <p className="text-xl font-bold text-purple-400">{garmin.health.sleepDurationHours}u</p>
                       <p className="text-xs text-gray-500">Duur</p>
                     </div>
                     <div>
-                      <p className="text-xl font-bold text-amber-500">{garmin.health.sleepScore || '–'}</p>
+                      <p className="text-xl font-bold text-amber-400">{garmin.health.sleepScore || '–'}</p>
                       <p className="text-xs text-gray-500">Score</p>
                     </div>
                     <div>
-                      <p className="text-xl font-bold text-indigo-500">{garmin.health.deepSleepMinutes}m</p>
+                      <p className="text-xl font-bold text-indigo-400">{garmin.health.deepSleepMinutes}m</p>
                       <p className="text-xs text-gray-500">Diep</p>
                     </div>
                   </div>
@@ -637,29 +622,29 @@ export default function DataPage() {
                     <div className="flex gap-1 mt-2">
                       <div className="h-2 rounded-full bg-indigo-500" style={{ flex: garmin.health.deepSleepMinutes }} />
                       <div className="h-2 rounded-full bg-blue-400" style={{ flex: garmin.health.remSleepMinutes }} />
-                      <div className="h-2 rounded-full bg-gray-200" style={{ flex: Math.max(0, (garmin.health.sleepDurationHours * 60) - garmin.health.deepSleepMinutes - garmin.health.remSleepMinutes) }} />
+                      <div className="h-2 rounded-full bg-white/10" style={{ flex: Math.max(0, (garmin.health.sleepDurationHours * 60) - garmin.health.deepSleepMinutes - garmin.health.remSleepMinutes) }} />
                     </div>
                   )}
-                  <div className="flex gap-4 mt-1 text-[10px] text-gray-400">
+                  <div className="flex gap-4 mt-1 text-[10px] text-gray-500">
                     <span>Diep: {garmin.health.deepSleepMinutes}m</span>
                     <span>REM: {garmin.health.remSleepMinutes}m</span>
                   </div>
                 </div>
 
                 {/* Hartslag & HRV */}
-                <div className="border-t border-gray-100 pt-3">
-                  <p className="text-xs text-gray-400 mb-2">Hart & Herstel</p>
+                <div className="border-t border-white/5 pt-3">
+                  <p className="text-xs text-gray-500 mb-2">Hart & Herstel</p>
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div>
-                      <p className="text-xl font-bold text-red-500">{garmin.health.restingHR || '–'}</p>
+                      <p className="text-xl font-bold text-red-400">{garmin.health.restingHR || '–'}</p>
                       <p className="text-xs text-gray-500">Rust HR</p>
                     </div>
                     <div>
-                      <p className="text-xl font-bold text-green-600">{garmin.health.avgOvernightHrv || '–'}</p>
+                      <p className="text-xl font-bold text-green-400">{garmin.health.avgOvernightHrv || '–'}</p>
                       <p className="text-xs text-gray-500">HRV</p>
                     </div>
                     <div>
-                      <p className="text-xl font-bold text-blue-500">
+                      <p className="text-xl font-bold text-blue-400">
                         {garmin.health.bodyBatteryChange > 0 ? '+' : ''}{garmin.health.bodyBatteryChange || '–'}
                       </p>
                       <p className="text-xs text-gray-500">Battery</p>
@@ -672,19 +657,19 @@ export default function DataPage() {
 
                 {/* Drempels & ademhaling */}
                 {(garmin.health.lactateThresholdHR || garmin.health.lactateThresholdPace || garmin.health.avgRespirationRate) && (
-                  <div className="border-t border-gray-100 pt-3">
-                    <p className="text-xs text-gray-400 mb-2">Drempels & ademhaling</p>
+                  <div className="border-t border-white/5 pt-3">
+                    <p className="text-xs text-gray-500 mb-2">Drempels & ademhaling</p>
                     <div className="grid grid-cols-3 gap-3 text-center">
                       <div>
-                        <p className="text-xl font-bold text-rose-600">{garmin.health.lactateThresholdHR || '–'}</p>
+                        <p className="text-xl font-bold text-rose-400">{garmin.health.lactateThresholdHR || '–'}</p>
                         <p className="text-xs text-gray-500">LT HR (bpm)</p>
                       </div>
                       <div>
-                        <p className="text-xl font-bold text-rose-500">{garmin.health.lactateThresholdPace || '–'}</p>
+                        <p className="text-xl font-bold text-rose-400">{garmin.health.lactateThresholdPace || '–'}</p>
                         <p className="text-xs text-gray-500">LT tempo</p>
                       </div>
                       <div>
-                        <p className="text-xl font-bold text-teal-600">{garmin.health.avgRespirationRate || '–'}</p>
+                        <p className="text-xl font-bold text-teal-400">{garmin.health.avgRespirationRate || '–'}</p>
                         <p className="text-xs text-gray-500">Ademh./min</p>
                       </div>
                     </div>
@@ -692,10 +677,10 @@ export default function DataPage() {
                 )}
 
                 {/* Stappen */}
-                <div className="border-t border-gray-100 pt-3">
+                <div className="border-t border-white/5 pt-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-400">Stappen</p>
-                    <p className="text-lg font-bold text-gray-700">{garmin.health.steps?.toLocaleString('nl-NL') || '–'}</p>
+                    <p className="text-xs text-gray-500">Stappen</p>
+                    <p className="text-lg font-bold text-gray-200">{garmin.health.steps?.toLocaleString('nl-NL') || '–'}</p>
                   </div>
                 </div>
               </div>
@@ -709,8 +694,8 @@ export default function DataPage() {
           {/* Trainingsbelasting grafiek */}
           {dailyTRIMP.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Belasting (6 weken)</h2>
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <h2 className="text-lg font-semibold text-white mb-3">Belasting (6 weken)</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <TrainingLoadChart data={dailyTRIMP} />
                 <div className="flex gap-3 mt-3 flex-wrap">
                   {[
@@ -719,7 +704,7 @@ export default function DataPage() {
                     { zone: 'hoog', color: '#f97316', label: 'Hoog' },
                     { zone: 'overbelast', color: '#ef4444', label: 'Overbelast' },
                   ].map(({ color, label }) => (
-                    <span key={label} className="flex items-center gap-1 text-[10px] text-gray-500">
+                    <span key={label} className="flex items-center gap-1 text-[10px] text-gray-400">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
                       {label}
                     </span>
@@ -732,8 +717,8 @@ export default function DataPage() {
           {/* Trends grafieken */}
           {(weeklyTrends || volumeData.some(d => d.zwemmen + d.fietsen + d.hardlopen > 0) || healthTrends) && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Trends (8 weken)</h2>
-              <div className="bg-gray-100 rounded-xl p-4 space-y-5">
+              <h2 className="text-lg font-semibold text-white mb-3">Trends (8 weken)</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-5">
                 {/* Volume per sport */}
                 <WeeklyVolumeChart data={volumeData} />
 
@@ -766,13 +751,13 @@ export default function DataPage() {
         <MaterialSection />
       )}
 
-      {section === 'activiteiten' && (
+      {section === 'activiteiten' && garmin && (
         <>
           {/* Alle activiteiten */}
           {garmin.activities.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Activiteiten</h2>
-              <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              <h2 className="text-lg font-semibold text-white mb-3">Activiteiten</h2>
+              <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 divide-y divide-white/5">
                 {garmin.activities.map((a) => {
                   const assignedEq = equipmentForActivity(a, equipment, assignments);
                   // Alleen voor fietsen tonen we het materiaal-icoon (race/MTB/stad).
@@ -794,7 +779,7 @@ export default function DataPage() {
                         <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="md" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{a.activityName}</p>
+                        <p className="text-sm font-medium text-gray-100 truncate">{a.activityName}</p>
                         <p className="text-xs text-gray-500">
                           {a.durationMinutes}min
                           {a.distanceKm > 0 && ` · ${a.distanceKm}km`}
@@ -806,11 +791,11 @@ export default function DataPage() {
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400">{a.date}</span>
+                          <span className="text-xs text-gray-500">{a.date}</span>
                           <button
                             onClick={() => handleDeleteActivity(a.id, a.activityName)}
                             aria-label="Activiteit verwijderen"
-                            className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
+                            className="text-gray-600 hover:text-red-400 transition-colors p-0.5"
                           >
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="3 6 5 6 21 6" />
@@ -840,7 +825,7 @@ export default function DataPage() {
                       <div className="mt-2 ml-10">
                         <button
                           onClick={() => toggleSplits(a.id)}
-                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                          className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors"
                           aria-expanded={expandedSplits.has(a.id)}
                         >
                           <svg
@@ -878,7 +863,7 @@ export default function DataPage() {
                                   <span className="w-5 text-center">{emoji}</span>
                                   <span className={`font-medium ${col} w-16`}>{label}</span>
                                   {s.distance > 0 && <span className="text-gray-500">{s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance.toFixed(2)}km`}</span>}
-                                  <span className="text-gray-600">{mins}:{secs.toString().padStart(2, '0')}</span>
+                                  <span className="text-gray-300">{mins}:{secs.toString().padStart(2, '0')}</span>
                                   {s.avgHR > 0 && <span className="text-red-400">HR {s.avgHR}</span>}
                                   {(s.avgPower || 0) > 0 && <span className="text-amber-500">{s.avgPower}W</span>}
                                 </div>
@@ -925,6 +910,7 @@ export default function DataPage() {
 
       {/* Bottom spacer for nav */}
       <div className="h-4" />
+      </div>
     </div>
   );
 }

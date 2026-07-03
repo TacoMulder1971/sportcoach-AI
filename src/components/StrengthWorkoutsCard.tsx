@@ -76,7 +76,7 @@ export default function StrengthWorkoutsCard() {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Krachtoefeningen aanpassen</h2>
+      <h2 className="text-lg font-semibold text-white mb-3">Krachtoefeningen aanpassen</h2>
       <p className="text-xs text-gray-500 mb-3">
         Pas de oefeningen aan die op de Home-tab onder &ldquo;Training vandaag&rdquo; verschijnen bij een krachtsessie.
       </p>
@@ -85,63 +85,63 @@ export default function StrengthWorkoutsCard() {
         {ORDER.map((id) => {
           const w = workouts[id];
           return (
-            <div key={id} className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
+            <div key={id} className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
               <div className="flex items-baseline justify-between gap-2">
-                <h3 className="font-semibold text-gray-900">{w.title}</h3>
-                <span className="text-xs text-gray-400">{w.focus}</span>
+                <h3 className="font-semibold text-gray-100">{w.title}</h3>
+                <span className="text-xs text-gray-500">{w.focus}</span>
               </div>
 
               <input
                 value={w.intro || ''}
                 onChange={(e) => update(id, (x) => { x.intro = e.target.value; })}
                 placeholder="Korte introtekst (optioneel)"
-                className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs text-gray-600"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 placeholder:text-gray-500"
               />
 
               {w.blocks.map((block, bi) => (
-                <div key={bi} className="rounded-lg border border-gray-100 bg-gray-50 p-2.5 space-y-2">
+                <div key={bi} className="rounded-lg border border-white/5 bg-white/[0.03] p-2.5 space-y-2">
                   <input
                     value={block.label}
                     onChange={(e) => update(id, (x) => { x.blocks[bi].label = e.target.value; })}
-                    className="w-full bg-transparent text-sm font-semibold text-rose-600 px-1 py-0.5 focus:outline-none focus:bg-white focus:rounded"
+                    className="w-full bg-transparent text-sm font-semibold text-rose-400 px-1 py-0.5 focus:outline-none focus:bg-white/10 focus:rounded"
                   />
 
                   <div className="space-y-2">
                     {block.exercises.map((ex, ei) => (
-                      <div key={ei} className="bg-white rounded-lg border border-gray-200 p-2">
+                      <div key={ei} className="bg-white/[0.03] rounded-lg border border-white/10 p-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="w-5 h-5 rounded bg-rose-50 text-rose-500 text-[11px] font-bold flex items-center justify-center flex-shrink-0 tabular-nums">
+                          <span className="w-5 h-5 rounded bg-rose-500/15 text-rose-400 text-[11px] font-bold flex items-center justify-center flex-shrink-0 tabular-nums">
                             {ei + 1}
                           </span>
                           <input
                             value={ex.name}
                             onChange={(e) => editExercise(id, bi, ei, 'name', e.target.value)}
                             placeholder="Oefening"
-                            className="flex-1 min-w-0 border border-gray-200 rounded px-2 py-1 text-sm font-medium text-gray-800"
+                            className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm font-medium text-gray-100 placeholder:text-gray-500"
                           />
                           <input
                             value={ex.prescription}
                             onChange={(e) => editExercise(id, bi, ei, 'prescription', e.target.value)}
                             placeholder="3×12"
-                            className="w-20 border border-gray-200 rounded px-2 py-1 text-sm text-center text-gray-800"
+                            className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-center text-gray-100 placeholder:text-gray-500"
                           />
                           <div className="flex flex-col">
-                            <button onClick={() => moveExercise(id, bi, ei, -1)} disabled={ei === 0} className="text-gray-400 disabled:opacity-25 leading-none px-1" title="Omhoog">▲</button>
-                            <button onClick={() => moveExercise(id, bi, ei, 1)} disabled={ei === block.exercises.length - 1} className="text-gray-400 disabled:opacity-25 leading-none px-1" title="Omlaag">▼</button>
+                            <button onClick={() => moveExercise(id, bi, ei, -1)} disabled={ei === 0} className="text-gray-500 disabled:opacity-25 leading-none px-1" title="Omhoog">▲</button>
+                            <button onClick={() => moveExercise(id, bi, ei, 1)} disabled={ei === block.exercises.length - 1} className="text-gray-500 disabled:opacity-25 leading-none px-1" title="Omlaag">▼</button>
                           </div>
-                          <button onClick={() => removeExercise(id, bi, ei)} className="text-gray-300 hover:text-red-500 px-1" title="Verwijderen">✕</button>
+                          <button onClick={() => removeExercise(id, bi, ei)} className="text-gray-600 hover:text-red-400 px-1" title="Verwijderen">✕</button>
                         </div>
                         <input
                           value={ex.note || ''}
                           onChange={(e) => editExercise(id, bi, ei, 'note', e.target.value)}
                           placeholder="Techniektip (optioneel)"
-                          className="w-full mt-1.5 border border-gray-100 rounded px-2 py-1 text-xs text-gray-500"
+                          className="w-full mt-1.5 bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-gray-400 placeholder:text-gray-500"
                         />
                       </div>
                     ))}
                   </div>
 
-                  <button onClick={() => addExercise(id, bi)} className="text-xs font-medium text-rose-600 hover:text-rose-700">
+                  <button onClick={() => addExercise(id, bi)} className="text-xs font-medium text-rose-400 hover:text-rose-300">
                     + Oefening toevoegen
                   </button>
                 </div>
@@ -151,7 +151,7 @@ export default function StrengthWorkoutsCard() {
                 <button onClick={() => save(id)} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700">
                   {savedId === id ? '✓ Opgeslagen' : 'Opslaan'}
                 </button>
-                <button onClick={() => reset(id)} className="px-3 py-2 rounded-xl text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
+                <button onClick={() => reset(id)} className="px-3 py-2 rounded-xl text-sm font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10">
                   Standaard
                 </button>
               </div>

@@ -58,10 +58,12 @@ export default function WedstrijdDetailPage() {
 
   if (race === null) {
     return (
-      <div className="px-4 pt-6 space-y-4">
-        <BackLink />
-        <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
-          <p className="text-gray-500 text-sm">Wedstrijd niet gevonden.</p>
+      <div className="bg-black min-h-screen">
+        <div className="px-4 pt-6 space-y-4">
+          <BackLink />
+          <div className="bg-[#0d0d0f] rounded-3xl p-8 border border-white/5 text-center">
+            <p className="text-gray-400 text-sm">Wedstrijd niet gevonden.</p>
+          </div>
         </div>
       </div>
     );
@@ -73,7 +75,10 @@ export default function WedstrijdDetailPage() {
   const result = race.goal.result;
 
   return (
-    <div className="px-4 pt-6 space-y-4">
+    <div className="bg-black min-h-screen">
+      <div className="fixed top-0 inset-x-0 bg-black z-50" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="fixed bottom-0 inset-x-0 bg-black z-40" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
+      <div className="px-4 pt-6 pb-8 space-y-4">
       <BackLink />
 
       {/* Donkere hero */}
@@ -138,8 +143,8 @@ export default function WedstrijdDetailPage() {
       {/* Splits */}
       {splits.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Splits</h2>
-          <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <h2 className="text-lg font-semibold text-white mb-3">Splits</h2>
+          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
             <RaceSplitBar splits={splits} />
           </div>
         </section>
@@ -148,7 +153,7 @@ export default function WedstrijdDetailPage() {
       {/* Weer op de racedag */}
       {race.goal.location && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Weer op de racedag</h2>
+          <h2 className="text-lg font-semibold text-white mb-3">Weer op de racedag</h2>
           <WeatherCard weather={weather} loading={weatherLoading} />
         </section>
       )}
@@ -156,10 +161,10 @@ export default function WedstrijdDetailPage() {
       {/* Reflectie uit resultaat */}
       {result?.trainingReflection && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Terugblik</h2>
-          <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-2">
-            {result.timeReflection && <p className="text-sm text-gray-700">{result.timeReflection}</p>}
-            <p className="text-sm text-gray-600 leading-relaxed">{result.trainingReflection}</p>
+          <h2 className="text-lg font-semibold text-white mb-3">Terugblik</h2>
+          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-2">
+            {result.timeReflection && <p className="text-sm text-gray-200">{result.timeReflection}</p>}
+            <p className="text-sm text-gray-400 leading-relaxed">{result.trainingReflection}</p>
           </div>
         </section>
       )}
@@ -167,16 +172,16 @@ export default function WedstrijdDetailPage() {
       {/* AI-coach-evaluatie */}
       {result?.aiEvaluation && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Coach-evaluatie</h2>
-          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+          <h2 className="text-lg font-semibold text-white mb-3">Coach-evaluatie</h2>
+          <div className="bg-blue-500/10 rounded-3xl p-4 border border-blue-500/20">
             {result.aiEvaluation.split('\n').map((line, i) => {
               if (!line.trim()) return <div key={i} className="h-2" />;
               const parts = line.split(/(\*\*[^*]+\*\*)/g);
               return (
-                <p key={i} className="text-sm text-gray-700 leading-relaxed">
+                <p key={i} className="text-sm text-gray-300 leading-relaxed">
                   {parts.map((p, j) =>
                     p.startsWith('**') && p.endsWith('**')
-                      ? <strong key={j}>{p.slice(2, -2)}</strong>
+                      ? <strong key={j} className="text-gray-100">{p.slice(2, -2)}</strong>
                       : <span key={j}>{p}</span>
                   )}
                 </p>
@@ -216,8 +221,8 @@ export default function WedstrijdDetailPage() {
 
             {/* Verdeling per sport */}
             {buildup.bySport.length > 0 && (
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
-                <p className="text-xs font-semibold text-gray-500 mb-2">Verdeling per sport</p>
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
+                <p className="text-xs font-semibold text-gray-400 mb-2">Verdeling per sport</p>
                 <div className="flex w-full h-3 rounded-full overflow-hidden mb-3">
                   {buildup.bySport.map(s => (
                     <div key={s.sport} style={{ width: `${(s.minutes / buildup.totalMinutes) * 100}%`, backgroundColor: s.color }} title={s.label} />
@@ -227,10 +232,10 @@ export default function WedstrijdDetailPage() {
                   {buildup.bySport.map(s => (
                     <div key={s.sport} className="flex items-center gap-2 text-xs">
                       <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: s.color }} />
-                      <span className="font-medium text-gray-700 w-24">{s.label}</span>
-                      <span className="text-gray-500">{s.sessions}×</span>
-                      <span className="text-gray-400">· {fmtHours(s.minutes)}</span>
-                      {s.km > 0 && <span className="text-gray-400">· {Math.round(s.km)}km</span>}
+                      <span className="font-medium text-gray-200 w-24">{s.label}</span>
+                      <span className="text-gray-400">{s.sessions}×</span>
+                      <span className="text-gray-500">· {fmtHours(s.minutes)}</span>
+                      {s.km > 0 && <span className="text-gray-500">· {Math.round(s.km)}km</span>}
                     </div>
                   ))}
                 </div>
@@ -239,7 +244,7 @@ export default function WedstrijdDetailPage() {
 
             {/* Weekgrafieken */}
             {buildup.weekly.length > 0 && (
-              <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-6">
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-6">
                 {buildup.weekly.map(t => (
                   <BuildupBarChart key={t.label} data={t.data} color={t.color} unit={t.unit} title={t.label} />
                 ))}
@@ -247,21 +252,21 @@ export default function WedstrijdDetailPage() {
             )}
 
             {/* Activiteiten */}
-            <div className="bg-white rounded-xl border border-gray-200">
-              <p className="text-xs font-semibold text-gray-500 px-4 pt-4 pb-2">Activiteiten ({buildup.activities.length})</p>
-              <div className="divide-y divide-gray-100">
+            <div className="bg-[#0d0d0f] rounded-3xl border border-white/5">
+              <p className="text-xs font-semibold text-gray-400 px-4 pt-4 pb-2">Activiteiten ({buildup.activities.length})</p>
+              <div className="divide-y divide-white/5">
                 {buildup.activities.map(a => (
                   <div key={a.id} className="flex items-center gap-3 px-4 py-2.5">
                     <SportIcon sport={a.sport !== 'overig' ? a.sport : 'overig'} size="sm" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{a.activityName}</p>
+                      <p className="text-sm font-medium text-gray-100 truncate">{a.activityName}</p>
                       <p className="text-xs text-gray-500">
                         {a.durationMinutes}min
                         {a.distanceKm > 0 && ` · ${a.distanceKm}km`}
                         {a.avgHR > 0 && ` · HR ${a.avgHR}`}
                       </p>
                     </div>
-                    <span className="text-xs text-gray-400 flex-shrink-0">
+                    <span className="text-xs text-gray-500 flex-shrink-0">
                       {new Date(a.date).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
@@ -270,8 +275,8 @@ export default function WedstrijdDetailPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
-            <p className="text-sm text-gray-400">
+          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 text-center">
+            <p className="text-sm text-gray-500">
               Nog geen historische activiteiten in deze periode. Synchroniseer Garmin op het
               Data-scherm om je aanloop te vullen.
             </p>
@@ -280,6 +285,7 @@ export default function WedstrijdDetailPage() {
       </section>
 
       <div className="h-4" />
+      </div>
     </div>
   );
 }
@@ -306,7 +312,7 @@ function fmtHours(minutes: number): string {
 
 function BackLink() {
   return (
-    <Link href="/wedstrijden" className="inline-flex items-center gap-1 text-sm text-blue-600 font-medium">
+    <Link href="/wedstrijden" className="inline-flex items-center gap-1 text-sm text-blue-400 font-medium">
       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 12H5M12 19l-7-7 7-7" />
       </svg>

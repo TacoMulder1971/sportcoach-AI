@@ -34,13 +34,13 @@ export default function HeartRateZonesCard() {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Hartslagzones instellen</h2>
-      <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-4">
+      <h2 className="text-lg font-semibold text-white mb-3">Hartslagzones instellen</h2>
+      <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-4">
         <p className="text-xs text-gray-500">Stel de ondergrens van elke zone in (bpm). De bovengrens van Z5 is je max hartslag.</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs text-gray-500 border-b border-gray-100">
+              <tr className="text-xs text-gray-500 border-b border-white/10">
                 <th className="text-left py-2 pr-3 font-medium">Zone</th>
                 <th className="text-center py-2 px-2 font-medium">Hardlopen</th>
                 <th className="text-center py-2 pl-2 font-medium">Fietsen</th>
@@ -48,17 +48,17 @@ export default function HeartRateZonesCard() {
             </thead>
             <tbody>
               {['Z1', 'Z2', 'Z3', 'Z4', 'Z5', 'Max HR'].map((label, idx) => (
-                <tr key={label} className="border-b border-gray-50">
-                  <td className="py-2 pr-3 font-semibold text-gray-700 whitespace-nowrap">{label}</td>
+                <tr key={label} className="border-b border-white/5">
+                  <td className="py-2 pr-3 font-semibold text-gray-200 whitespace-nowrap">{label}</td>
                   <td className="py-1 px-2">
                     <input type="number" min={60} max={230} value={zonesRun[idx]}
                       onChange={e => setZonesRun(z => z.map((v, i) => i === idx ? e.target.value : v))}
-                      className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center" />
+                      className="w-20 bg-white/5 border border-white/10 text-white rounded-lg px-2 py-1 text-sm text-center" />
                   </td>
                   <td className="py-1 pl-2">
                     <input type="number" min={60} max={230} value={zonesBike[idx]}
                       onChange={e => setZonesBike(z => z.map((v, i) => i === idx ? e.target.value : v))}
-                      className="w-20 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center" />
+                      className="w-20 bg-white/5 border border-white/10 text-white rounded-lg px-2 py-1 text-sm text-center" />
                   </td>
                 </tr>
               ))}

@@ -28,11 +28,12 @@ const TYPE_SPORT_DEFAULT: Record<EquipmentType, Sport> = {
   fiets: 'fietsen', // legacy
 };
 
+// Donker thema (kaarten op de Data-tab); de formulier-modal blijft licht.
 const WEAR_COLORS: Record<WearStatus, { bar: string; text: string; pill: string }> = {
-  ok: { bar: 'bg-green-500', text: 'text-green-700', pill: 'bg-green-100 text-green-700' },
-  warning: { bar: 'bg-amber-500', text: 'text-amber-700', pill: 'bg-amber-100 text-amber-700' },
-  overdue: { bar: 'bg-red-500', text: 'text-red-700', pill: 'bg-red-100 text-red-700' },
-  na: { bar: 'bg-gray-300', text: 'text-gray-500', pill: 'bg-gray-100 text-gray-600' },
+  ok: { bar: 'bg-green-500', text: 'text-green-400', pill: 'bg-green-500/15 text-green-400' },
+  warning: { bar: 'bg-amber-500', text: 'text-amber-400', pill: 'bg-amber-500/15 text-amber-400' },
+  overdue: { bar: 'bg-red-500', text: 'text-red-400', pill: 'bg-red-500/15 text-red-400' },
+  na: { bar: 'bg-white/20', text: 'text-gray-400', pill: 'bg-white/10 text-gray-300' },
 };
 
 export default function MaterialSection() {
@@ -56,10 +57,10 @@ export default function MaterialSection() {
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">Materiaal</h2>
+        <h2 className="text-lg font-semibold text-white">Materiaal</h2>
         <button
           onClick={() => setShowForm({ mode: 'new' })}
-          className="text-sm text-blue-600 font-medium flex items-center gap-1"
+          className="text-sm text-blue-400 font-medium flex items-center gap-1"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
           Nieuw
@@ -67,7 +68,7 @@ export default function MaterialSection() {
       </div>
 
       {active.length === 0 && retired.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center text-sm text-gray-500">
+        <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4 text-center text-sm text-gray-500">
           Nog geen materiaal. Voeg je fiets of hardloopschoenen toe om km te tellen.
         </div>
       ) : (
@@ -185,17 +186,17 @@ function EquipmentCard({
   const isRetired = eq.status === 'retired';
 
   return (
-    <div className={`bg-white rounded-xl border ${isRetired ? 'border-gray-200 opacity-70' : 'border-gray-200'} p-4`}>
+    <div className={`bg-[#0d0d0f] rounded-3xl border border-white/5 ${isRetired ? 'opacity-70' : ''} p-4`}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
           <div className="flex items-center gap-2.5 flex-wrap">
             <EquipmentIcon type={eq.type} size="md" />
-            <span className="font-semibold text-gray-900">{eq.name}</span>
+            <span className="font-semibold text-gray-100">{eq.name}</span>
             {eq.isDefault && !isRetired && (
-              <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">DEFAULT</span>
+              <span className="text-[10px] bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full font-medium">DEFAULT</span>
             )}
             {isRetired && (
-              <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-medium">GEPENSIONEERD</span>
+              <span className="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded-full font-medium">GEPENSIONEERD</span>
             )}
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -214,7 +215,7 @@ function EquipmentCard({
             </span>
             <span className="text-xs text-gray-500">{Math.round((km / eq.kmLimit) * 100)}%</span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
             <div
               className={`h-full ${WEAR_COLORS[wear].bar} transition-all`}
               style={{ width: `${Math.min(100, (km / eq.kmLimit) * 100)}%` }}
@@ -222,7 +223,7 @@ function EquipmentCard({
           </div>
         </div>
       ) : (
-        <div className="mb-3 text-sm text-gray-700">
+        <div className="mb-3 text-sm text-gray-200">
           <span className="font-semibold">{Math.round(km)} km</span> <span className="text-gray-500">gereden</span>
         </div>
       )}
@@ -239,7 +240,7 @@ function EquipmentCard({
                   <span className={`inline-block px-2 py-0.5 rounded-full font-medium ${colors.pill} mr-2`}>
                     {m.name}
                   </span>
-                  <span className="text-gray-600">
+                  <span className="text-gray-400">
                     {m.intervalKm ? `${Math.round(s.kmSince)}/${m.intervalKm}km` : ''}
                     {m.intervalKm && m.intervalDays ? ' · ' : ''}
                     {m.intervalDays ? `${s.daysAgo}/${m.intervalDays}d` : ''}
@@ -249,7 +250,7 @@ function EquipmentCard({
                 {!isRetired && onMaintenanceDone && (
                   <button
                     onClick={() => onMaintenanceDone(m.id, km)}
-                    className="text-blue-600 text-xs font-medium ml-2 flex-shrink-0"
+                    className="text-blue-400 text-xs font-medium ml-2 flex-shrink-0"
                   >
                     ✓ Gedaan
                   </button>
@@ -265,26 +266,26 @@ function EquipmentCard({
       )}
 
       {/* Actie-knoppen */}
-      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+      <div className="flex items-center gap-2 pt-2 border-t border-white/5">
         {!isRetired && !eq.isDefault && onSetDefault && (
-          <button onClick={onSetDefault} className="text-xs text-blue-600 font-medium">
+          <button onClick={onSetDefault} className="text-xs text-blue-400 font-medium">
             ⭐ Default
           </button>
         )}
-        <button onClick={onEdit} className="text-xs text-gray-600 font-medium ml-auto">
+        <button onClick={onEdit} className="text-xs text-gray-400 font-medium ml-auto">
           ✏️ Bewerken
         </button>
         {!isRetired && onRetire && (
-          <button onClick={onRetire} className="text-xs text-gray-600 font-medium">
+          <button onClick={onRetire} className="text-xs text-gray-400 font-medium">
             📦 Pensioneren
           </button>
         )}
         {isRetired && onReactivate && (
-          <button onClick={onReactivate} className="text-xs text-blue-600 font-medium">
+          <button onClick={onReactivate} className="text-xs text-blue-400 font-medium">
             ↺ Heractiveren
           </button>
         )}
-        <button onClick={onDelete} className="text-xs text-red-500 font-medium">
+        <button onClick={onDelete} className="text-xs text-red-400 font-medium">
           🗑
         </button>
       </div>

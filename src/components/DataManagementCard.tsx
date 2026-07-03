@@ -9,9 +9,9 @@ export default function DataManagementCard() {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Data beheer</h2>
-      <div className="bg-white rounded-xl p-4 border border-gray-200 space-y-3">
-        <p className="text-sm text-gray-500">
+      <h2 className="text-lg font-semibold text-white mb-3">Data beheer</h2>
+      <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
+        <p className="text-sm text-gray-400">
           Exporteer je data als backup of importeer een eerder gemaakte backup.
         </p>
         <div className="flex gap-3">
@@ -28,7 +28,7 @@ export default function DataManagementCard() {
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex-1 py-3 rounded-xl font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all text-sm"
+            className="flex-1 py-3 rounded-xl font-semibold text-gray-200 bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-sm"
           >
             Importeer data
           </button>
@@ -61,7 +61,7 @@ export default function DataManagementCard() {
         />
         {status && (
           <div className={`text-sm p-3 rounded-xl ${
-            status.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+            status.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
           }`}>
             {status.msg}
           </div>

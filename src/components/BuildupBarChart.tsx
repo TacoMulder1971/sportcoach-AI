@@ -79,7 +79,7 @@ export default function BuildupBarChart({ data, color, title, unit }: BuildupBar
 
   return (
     <div>
-      <p className="text-sm font-semibold text-gray-700 mb-1">{title}</p>
+      <p className="text-sm font-semibold text-gray-300 mb-1">{title}</p>
       <div
         className="relative"
         onMouseMove={handleMouseMove}
@@ -93,8 +93,8 @@ export default function BuildupBarChart({ data, color, title, unit }: BuildupBar
             const val = Math.round(max * frac);
             return (
               <g key={frac}>
-                <line x1={padL} y1={y} x2={W - padR} y2={y} stroke={frac === 0 ? '#e5e7eb' : '#f1f5f9'} strokeWidth={1} />
-                <text x={padL - 6} y={y + 3.5} textAnchor="end" fontSize={10} fill="#64748b">{val}</text>
+                <line x1={padL} y1={y} x2={W - padR} y2={y} stroke={frac === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'} strokeWidth={1} />
+                <text x={padL - 6} y={y + 3.5} textAnchor="end" fontSize={10} fill="#9ca3af">{val}</text>
               </g>
             );
           })}
@@ -123,7 +123,7 @@ export default function BuildupBarChart({ data, color, title, unit }: BuildupBar
             if (i % every !== 0 && i !== n - 1) return null;
             const x = padL + i * (barW + gap) + barW / 2;
             return (
-              <text key={i} x={x} y={H - 6} textAnchor="middle" fontSize={8} fill="#94a3b8">
+              <text key={i} x={x} y={H - 6} textAnchor="middle" fontSize={8} fill="#6b7280">
                 {d.label}
               </text>
             );

@@ -90,7 +90,7 @@ export default function WeeklyVolumeChart({ data }: { data: WeeklyVolumeData[] }
 
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 mb-1">Wekelijks volume per sport (minuten)</p>
+      <p className="text-xs font-semibold text-gray-400 mb-1">Wekelijks volume per sport (minuten)</p>
       <div
         className="relative"
         onMouseMove={handleMouseMove}
@@ -104,7 +104,7 @@ export default function WeeklyVolumeChart({ data }: { data: WeeklyVolumeData[] }
             const val = Math.round(maxTotal * frac);
             return (
               <g key={frac}>
-                <line x1={padL} y1={y} x2={W - padR} y2={y} stroke={frac === 0 ? '#e5e7eb' : '#f1f5f9'} strokeWidth={1} />
+                <line x1={padL} y1={y} x2={W - padR} y2={y} stroke={frac === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'} strokeWidth={1} />
                 <text x={padL - 4} y={y + 3.5} textAnchor="end" fontSize={9} fill="#9ca3af">{val}</text>
               </g>
             );
@@ -191,7 +191,7 @@ export default function WeeklyVolumeChart({ data }: { data: WeeklyVolumeData[] }
         {([['zwemmen', '#3b82f6'], ['fietsen', '#22c55e'], ['hardlopen', '#f97316']] as const).map(([sport, color]) => (
           <div key={sport} className="flex items-center gap-1">
             <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
-            <span className="text-xs text-gray-500 capitalize">{sport}</span>
+            <span className="text-xs text-gray-400 capitalize">{sport}</span>
           </div>
         ))}
       </div>

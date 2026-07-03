@@ -455,13 +455,11 @@ export default function HomeContent() {
                 </button>
               </div>
               {(syncing || loadingDaily) && !dailyMessage ? (
-                <div className="flex items-center gap-2 py-1">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.1s]" />
-                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  </div>
-                  <span className="text-sm text-gray-400">{syncing ? 'Syncing...' : 'Coach denkt na...'}</span>
+                <div className="py-1 space-y-2" aria-label={syncing ? 'Garmin synct...' : 'Coach denkt na...'}>
+                  <div className="h-3.5 rounded-full bg-white/10 animate-pulse w-full" />
+                  <div className="h-3.5 rounded-full bg-white/10 animate-pulse w-11/12 [animation-delay:0.15s]" />
+                  <div className="h-3.5 rounded-full bg-white/10 animate-pulse w-4/6 [animation-delay:0.3s]" />
+                  <p className="text-xs text-gray-500 pt-0.5">{syncing ? 'Garmin syncen...' : 'Coach denkt na...'}</p>
                 </div>
               ) : dailyMessage ? (
                 <p className="text-base text-gray-100 leading-relaxed">{dailyMessage}</p>

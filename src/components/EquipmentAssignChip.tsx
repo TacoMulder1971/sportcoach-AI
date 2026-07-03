@@ -46,10 +46,10 @@ export default function EquipmentAssignChip({ activity, equipment, assignments, 
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}
         className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
           hasOverride
-            ? 'bg-blue-100 text-blue-700'
+            ? 'bg-blue-500/15 text-blue-400'
             : assigned
-              ? 'bg-gray-100 text-gray-600'
-              : 'bg-amber-50 text-amber-600 border border-dashed border-amber-300'
+              ? 'bg-white/10 text-gray-300'
+              : 'bg-amber-500/10 text-amber-400 border border-dashed border-amber-500/40'
         }`}
         title={assigned?.name || 'Geen materiaal toegewezen'}
       >

@@ -32,7 +32,7 @@ export default function SwimVariantChip({ activity, variants, onChange }: Props)
     <>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-        className="text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 bg-gray-100 text-gray-600"
+        className="text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 bg-white/10 text-gray-300"
         title={SWIM_VARIANT_LABEL[current]}
       >
         🌊 {shortLabel[current]}

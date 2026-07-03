@@ -69,7 +69,7 @@ export default function TrainingLoadChart({ data }: TrainingLoadChartProps) {
           y1={INNER_H - Math.round((50 / maxTrimp) * INNER_H)}
           x2={chartWidth - PADDING_LEFT}
           y2={INNER_H - Math.round((50 / maxTrimp) * INNER_H)}
-          stroke="#e5e7eb"
+          stroke="rgba(255,255,255,0.15)"
           strokeWidth="1"
           strokeDasharray="3,3"
         />
@@ -91,7 +91,7 @@ export default function TrainingLoadChart({ data }: TrainingLoadChartProps) {
                   y1={0}
                   x2={x - BAR_GAP / 2 - 1}
                   y2={INNER_H}
-                  stroke="#f3f4f6"
+                  stroke="rgba(255,255,255,0.06)"
                   strokeWidth="1"
                 />
               )}
@@ -136,7 +136,7 @@ export default function TrainingLoadChart({ data }: TrainingLoadChartProps) {
 
       {/* Tooltip */}
       {tooltip && (
-        <div className="text-xs text-gray-600 text-center mt-1">
+        <div className="text-xs text-gray-400 text-center mt-1">
           {new Date(tooltip.date).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}
           {': '}
           <span className="font-medium">{tooltip.trimp} TRIMP</span>

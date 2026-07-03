@@ -25,7 +25,7 @@ export default function RaceSplitBar({ splits }: { splits: RaceSplit[] }) {
       </div>
 
       {/* Onderdeel-rijen */}
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-white/5">
         {splits.map((s, i) => (
           <div key={i} className="flex items-center gap-3 py-2">
             <span
@@ -34,7 +34,7 @@ export default function RaceSplitBar({ splits }: { splits: RaceSplit[] }) {
             />
             <span className="w-5 text-center">{EMOJI[s.discipline] || '•'}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{s.label}</p>
+              <p className="text-sm font-semibold text-gray-100">{s.label}</p>
               <p className="text-xs text-gray-500">
                 {s.distanceKm && s.distanceKm > 0 && (
                   <>{s.distanceKm < 1 ? `${Math.round(s.distanceKm * 1000)}m` : `${s.distanceKm.toFixed(2)}km`}</>
@@ -44,7 +44,7 @@ export default function RaceSplitBar({ splits }: { splits: RaceSplit[] }) {
                 {s.avgPower && <> · {s.avgPower}W</>}
               </p>
             </div>
-            <span className="text-sm font-bold text-gray-900 tabular-nums flex-shrink-0">
+            <span className="text-sm font-bold text-white tabular-nums flex-shrink-0">
               {formatDuration(s.timeSeconds)}
             </span>
           </div>

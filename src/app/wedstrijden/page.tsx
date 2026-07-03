@@ -47,16 +47,19 @@ export default function WedstrijdenPage() {
   const nextRace = upcoming[0];
 
   return (
-    <div className="px-4 pt-6 space-y-6">
+    <div className="bg-black min-h-screen">
+      <div className="fixed top-0 inset-x-0 bg-black z-50" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="fixed bottom-0 inset-x-0 bg-black z-40" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
+      <div className="px-4 pt-6 pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Wedstrijden</h1>
-        <p className="text-gray-500 text-sm">Je races, splits en trends op één plek</p>
+        <h1 className="text-2xl font-bold text-white">Wedstrijden</h1>
+        <p className="text-gray-400 text-sm">Je races, splits en trends op één plek</p>
       </div>
 
       {races.length === 0 && (
-        <div className="bg-white rounded-xl p-8 border border-gray-200 text-center">
+        <div className="bg-[#0d0d0f] rounded-3xl p-8 border border-white/5 text-center">
           <p className="text-3xl mb-2">🏁</p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-400 text-sm">
             Nog geen wedstrijden. Voeg een doel toe op het Home-scherm.
           </p>
         </div>
@@ -128,7 +131,7 @@ export default function WedstrijdenPage() {
       {/* Overige komende wedstrijden */}
       {upcoming.length > 1 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Ook gepland</h2>
+          <h2 className="text-lg font-semibold text-white mb-3">Ook gepland</h2>
           <div className="space-y-2">
             {upcoming.slice(1).map(r => (
               <RaceRow key={r.goal.id} race={r} />
@@ -140,7 +143,7 @@ export default function WedstrijdenPage() {
       {/* Afgeronde wedstrijden */}
       {done.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Afgerond</h2>
+          <h2 className="text-lg font-semibold text-white mb-3">Afgerond</h2>
           <div className="space-y-2">
             {done.map(r => (
               <RaceRow key={r.goal.id} race={r} showResult />
@@ -150,6 +153,7 @@ export default function WedstrijdenPage() {
       )}
 
       <div className="h-4" />
+      </div>
     </div>
   );
 }
@@ -161,25 +165,35 @@ function RaceRow({ race, showResult }: { race: Race; showResult?: boolean }) {
   return (
     <Link
       href={`/wedstrijden/${race.goal.id}`}
-      className="flex items-center gap-3 bg-white rounded-xl p-3 border border-gray-200 active:scale-98 transition-transform"
+      className="flex items-center gap-3 bg-[#0d0d0f] rounded-3xl p-3 border border-white/5 active:scale-98 transition-transform"
     >
       <HeroIcons race={race} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900 truncate">{race.goal.name}</p>
+        <p className="text-sm font-semibold text-gray-100 truncate">{race.goal.name}</p>
         <p className="text-xs text-gray-500">
           {formatRaceDateNL(race.goal.date)}
           {splits.length > 0 && ` · ${splits.length} onderdelen`}
         </p>
         {showResult && rating && (
-          <p className="text-xs text-amber-500 mt-0.5">{'★'.repeat(rating)}{'☆'.repeat(5 - rating)}</p>
+          <p className="text-xs text-amber-400 mt-0.5">{'★'.repeat(rating)}{'☆'.repeat(5 - rating)}</p>
         )}
       </div>
       <div className="text-right flex-shrink-0">
         {total ? (
-          <p className="text-sm font-bold text-gray-900 tabular-nums">{formatDuration(total)}</p>
-        ) : (
-          <p className="text-xs text-gray-400">geen tijd</p>
-        )}
+          <p className="text-sm font-bold text-white tabular-nums">{formatDuration(total)}</p>
+        ) : showResult ? (
+          // Afgerond zonder tijd: geen doodlopend "geen tijd" maar direct naar het invulformulier
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.location.href = `/schema?tab=longterm&goal=${race.goal.id}`;
+            }}
+            className="text-xs font-semibold bg-amber-500 text-black px-2.5 py-1 rounded-lg"
+          >
+            Vul tijd in
+          </button>
+        ) : null}
       </div>
     </Link>
   );

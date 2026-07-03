@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
+  /* Hele app donker (Whoop-stijl); --foreground blijft donker als default
+     voor de lichte formulier-modals (die zetten zelf bg-white). */
+  --background: #000000;
   --foreground: #0f172a;
 }
 
