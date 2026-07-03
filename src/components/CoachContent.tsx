@@ -12,7 +12,7 @@ import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load
 import { getCurrentPhase } from '@/lib/periodization';
 
 export default function CoachContent() {
-  const [activeTab, setActiveTab] = useState<'daily' | 'checkin' | 'chat' | 'report'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'checkin' | 'chat' | 'report'>('checkin');
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
