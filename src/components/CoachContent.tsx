@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from '@/app/coach/CheckInContent';
 import WeeklyReportSection from '@/components/WeeklyReportSection';
+import DailyCoachSection from '@/components/DailyCoachSection';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
 import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, getActiveRaceDate, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getUpcomingGoals, getEquipment, getActivityAssignments, buildHRZoneText } from '@/lib/storage';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
@@ -11,7 +12,7 @@ import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load
 import { getCurrentPhase } from '@/lib/periodization';
 
 export default function CoachContent() {
-  const [activeTab, setActiveTab] = useState<'checkin' | 'chat' | 'report'>('chat');
+  const [activeTab, setActiveTab] = useState<'daily' | 'checkin' | 'chat' | 'report'>('daily');
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -328,28 +329,28 @@ export default function CoachContent() {
       {/* Sub-tab switcher */}
       <div className="px-5 pt-1 flex-shrink-0">
         <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
-          <button
-            onClick={() => setActiveTab('checkin')}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'checkin' ? 'bg-blue-600 text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)]' : 'text-gray-400'}`}
-          >
-            Check-out
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'chat' ? 'bg-blue-600 text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)]' : 'text-gray-400'}`}
-          >
-            Chat met coach
-          </button>
-          <button
-            onClick={() => setActiveTab('report')}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'report' ? 'bg-blue-600 text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)]' : 'text-gray-400'}`}
-          >
-            Weekrapport
-          </button>
+          {([
+            { id: 'daily', label: 'Vandaag' },
+            { id: 'checkin', label: 'Check-out' },
+            { id: 'chat', label: 'Chat' },
+            { id: 'report', label: 'Weekrapport' },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)]' : 'text-gray-400'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {activeTab === 'checkin' ? (
+      {activeTab === 'daily' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <DailyCoachSection />
+        </div>
+      ) : activeTab === 'checkin' ? (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <CheckInContent onComplete={() => setActiveTab('chat')} />
         </div>

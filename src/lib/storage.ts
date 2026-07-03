@@ -255,11 +255,13 @@ export function saveGarminData(data: GarminSyncData): void {
 export async function syncGarminData(): Promise<GarminSyncData | null> {
   const existingData = getGarminData();
   const existingActivityIds = existingData?.activities?.map(a => a.id) || [];
+  // Credentials meesturen (multi-user); server valt terug op env vars als ze ontbreken
+  const creds = getGarminCredentials();
 
   const res = await fetch('/api/garmin/sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ existingActivityIds }),
+    body: JSON.stringify({ existingActivityIds, email: creds?.email, password: creds?.password }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
