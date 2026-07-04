@@ -324,9 +324,9 @@ export default function SchemaContent() {
 
             {/* Ad-hoc aanpassing modal */}
             {adjustDay && (
-              <div className="fixed inset-0 bg-black/70 z-50 flex items-end">
-                <div className="bg-[#0d0d0f] border-t border-white/10 w-full rounded-t-3xl p-5 space-y-4 animate-slide-up">
-                  <div className="flex items-center justify-between">
+              <div className="fixed inset-0 bg-black/70 z-[60] flex items-end">
+                <div className="bg-[#0d0d0f] border-t border-white/10 w-full rounded-t-3xl max-h-[85vh] flex flex-col animate-slide-up">
+                  <div className="flex items-center justify-between p-5 pb-0 flex-shrink-0">
                     <h3 className="text-lg font-semibold text-gray-100">{adjustDay.day.day} aanpassen</h3>
                     <button onClick={() => setAdjustDay(null)} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
                       <svg className="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -335,23 +335,25 @@ export default function SchemaContent() {
                     </button>
                   </div>
 
-                  <p className="text-sm text-gray-400">
-                    Wat wil je veranderen? De AI past het schema aan (ook de rest van de week als nodig).
-                  </p>
+                  <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                    <p className="text-sm text-gray-400">
+                      Wat wil je veranderen? De AI past het schema aan (ook de rest van de week als nodig).
+                    </p>
 
-                  <textarea
-                    value={adjustText}
-                    onChange={(e) => setAdjustText(e.target.value)}
-                    placeholder="Bijv. 'Kan vandaag niet, verschuif naar morgen' of 'Wil langer fietsen vandaag'"
-                    className="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl p-3 text-sm resize-none h-24 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    autoFocus
-                  />
+                    <textarea
+                      value={adjustText}
+                      onChange={(e) => setAdjustText(e.target.value)}
+                      placeholder="Bijv. 'Kan vandaag niet, verschuif naar morgen' of 'Wil langer fietsen vandaag'"
+                      className="w-full bg-white/5 border border-white/10 text-white placeholder:text-gray-500 rounded-xl p-3 text-sm resize-none h-24 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoFocus
+                    />
 
-                  {adjustError && (
-                    <div className="bg-red-500/10 text-red-400 text-sm p-3 rounded-xl">{adjustError}</div>
-                  )}
+                    {adjustError && (
+                      <div className="bg-red-500/10 text-red-400 text-sm p-3 rounded-xl">{adjustError}</div>
+                    )}
+                  </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 p-5 pt-0 flex-shrink-0">
                     <button onClick={() => setAdjustDay(null)} className="flex-1 py-3 rounded-xl font-semibold text-gray-300 bg-white/5 border border-white/10">
                       Annuleren
                     </button>
