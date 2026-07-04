@@ -66,33 +66,54 @@ const TRI_STRENGTH: StrengthWorkout = {
   title: 'Triatlon-kracht',
   focus: 'Functionele kracht & blessurepreventie',
   totalMinutes: 40,
-  intro: 'Triatlon-ondersteunend: benen, romp en houding. 60–90 sec rust tussen de sets.',
+  intro:
+    'Krachtstation + elastische banden + eigen lichaam. In supersets (A1→A2, rust, herhaal) — scheelt tijd en houdt de hartslag op. 3 sets, 12–15 herhalingen, 60–90 sec rust. Off-season mag zwaarder: 4×6–8.',
   blocks: [
     {
       label: 'Warming-up — 5 min',
       exercises: [
-        { name: 'Dynamisch mobiliseren', prescription: '3–4 min', note: 'Heupen, enkels, schouders' },
-        { name: 'Bodyweight squats', prescription: '1×15', note: 'Op gang komen' },
+        { name: 'Foam roll + dynamisch mobiliseren', prescription: '4 min', note: 'Heupen, enkels, schouders' },
+        { name: 'Band pull-aparts', prescription: '1×20', note: 'Schouders activeren' },
       ],
     },
     {
-      label: 'Hoofdblok — 3 rondes',
-      note: '60–90 sec rust tussen de sets',
+      label: 'Superset A — 3 rondes',
+      note: '60–90 sec rust',
       exercises: [
-        { name: 'Goblet squat', prescription: '3×12', note: 'Borst hoog, knieën naar buiten' },
-        { name: 'Bulgarian split squat', prescription: '3×10 per been', note: 'Achterste voet verhoogd' },
-        { name: 'Roemeense deadlift (1-benig)', prescription: '3×10 per been', note: 'Rug recht, hamstring voelen' },
-        { name: 'Step-ups', prescription: '3×12 per been', note: 'Volledig doorstrekken bovenop' },
-        { name: 'Push-ups', prescription: '3×12', note: 'Lichaam in één lijn' },
-        { name: 'Dumbbell row', prescription: '3×12 per arm', note: 'Schouderbladen samenknijpen' },
-        { name: 'Calf raises', prescription: '3×15', note: 'Volledige beweging, even vasthouden' },
-        { name: 'Plank', prescription: '3×45 sec', note: 'Kern strak, niet doorzakken' },
+        { name: 'Leg extension (machine)', prescription: '3×15', note: 'Quadriceps — fietskracht' },
+        { name: 'Lat pulldown (machine)', prescription: '3×12', note: 'Rug/lats — zwem-trek' },
+      ],
+    },
+    {
+      label: 'Superset B — 3 rondes',
+      note: '60–90 sec rust',
+      exercises: [
+        { name: 'Leg curl (machine)', prescription: '3×12', note: 'Hamstrings — loopkracht' },
+        { name: 'Chest press (machine)', prescription: '3×12', note: 'Duw-balans, houding' },
+      ],
+    },
+    {
+      label: 'Superset C — 3 rondes',
+      note: '60–90 sec rust',
+      exercises: [
+        { name: 'Bulgarian split squat', prescription: '3×10 per been', note: 'Achterste voet verhoogd — single-leg stabiliteit' },
+        { name: 'Seated row (lage katrol)', prescription: '3×12', note: 'Schouderbladen samenknijpen — houding' },
+      ],
+    },
+    {
+      label: 'Prehab & core — 2 rondes',
+      note: 'Blessurepreventie, weinig rust',
+      exercises: [
+        { name: '1-benige Roemeense deadlift', prescription: '2×10 per been', note: 'Band of eigen lichaam — glutes/hamstrings + balans' },
+        { name: 'Face pulls (band)', prescription: '2×15', note: 'Rotator cuff — schoudergezondheid zwem' },
+        { name: 'Kuitheffing (1-benig)', prescription: '2×15 per been', note: 'Volledige beweging, even vasthouden' },
+        { name: 'Pallof press (band)', prescription: '2×10 per zijde', note: 'Anti-rotatie romp, niet meedraaien' },
       ],
     },
     {
       label: 'Cooldown',
       exercises: [
-        { name: 'Stretchen', prescription: '3–5 min', note: 'Heupbuigers, hamstrings, kuiten' },
+        { name: 'Stretchen', prescription: '4 min', note: 'Heupbuigers, hamstrings, kuiten' },
       ],
     },
   ],
