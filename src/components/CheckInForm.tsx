@@ -208,9 +208,13 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           feedback: data.content,
           messages: [assistantMsg],
         });
+      } else {
+        const errorMsg: CheckInMessage = { role: 'assistant', content: 'Sorry, er ging iets mis bij het ophalen van feedback. Probeer het later opnieuw.' };
+        setMessages([errorMsg]);
       }
     } catch {
-      // Feedback is optional
+      const errorMsg: CheckInMessage = { role: 'assistant', content: 'Sorry, er ging iets mis bij het ophalen van feedback. Probeer het later opnieuw.' };
+      setMessages([errorMsg]);
     } finally {
       setLoadingFeedback(false);
       setSyncStatus('idle');
@@ -267,9 +271,13 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           feedback: data.content,
           messages: allMessages,
         });
+      } else {
+        const errorMsg: CheckInMessage = { role: 'assistant', content: 'Sorry, er ging iets mis. Probeer het opnieuw.' };
+        setMessages([...updatedMessages, errorMsg]);
       }
     } catch {
-      // silently fail
+      const errorMsg: CheckInMessage = { role: 'assistant', content: 'Sorry, er ging iets mis. Probeer het opnieuw.' };
+      setMessages([...updatedMessages, errorMsg]);
     } finally {
       setSending(false);
     }

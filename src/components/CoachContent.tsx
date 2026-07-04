@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from '@/app/coach/CheckInContent';
 import WeeklyReportSection from '@/components/WeeklyReportSection';
@@ -12,6 +13,7 @@ import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load
 import { getCurrentPhase } from '@/lib/periodization';
 
 export default function CoachContent() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'daily' | 'checkin' | 'chat' | 'report'>('checkin');
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState('');
@@ -352,7 +354,7 @@ export default function CoachContent() {
         </div>
       ) : activeTab === 'checkin' ? (
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <CheckInContent onComplete={() => setActiveTab('chat')} />
+          <CheckInContent onComplete={() => router.push('/')} />
         </div>
       ) : activeTab === 'report' ? (
         <div className="flex-1 min-h-0 overflow-y-auto">
