@@ -46,7 +46,9 @@ const SPORT_LABEL: Record<string, string> = {
 };
 
 function SegmentRow({ segment, sport, swimPaces }: { segment: SessionSegment; sport: Sport; swimPaces: SwimPaceTargets | null }) {
-  const zoneInfo = segment.zone ? zonesForSport(sport).find((z) => z.zone === segment.zone) : null;
+  // Warming-up en cooldown sturen alleen op tijd — geen hartslagzone als doel.
+  const isWarmupCooldown = segment.kind === 'warmup' || segment.kind === 'cooldown';
+  const zoneInfo = segment.zone && !isWarmupCooldown ? zonesForSport(sport).find((z) => z.zone === segment.zone) : null;
   const accent =
     segment.kind === 'warmup' ? '#22c55e' : segment.kind === 'cooldown' ? '#9ca3af' : zoneInfo?.color || '#3b82f6';
 
