@@ -265,6 +265,65 @@ export async function POST(request: Request) {
       if (y?.dailySleepDTO?.sleepTimeSeconds) sleepData = y;
     }
 
+    // ── Dedicated wellness-/readiness-endpoints ───────────────────
+    // De sleep-DTO is één brekbare bron. Garmins ré-app leest HRV/rusthart/body
+    // battery uit APARTE services die vaak nog werken als getSleepData faalt of
+    // leeg is. We halen ze direct op (zelfde geauthenticeerde client als de
+    // activiteit-details) en gebruiken ze als primaire bron mét slaap als fallback.
+    const isoDay = today; // YYYY-MM-DD (Amsterdam)
+    const yISO = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(d); })();
+
+    const fetchJson = async <T,>(url: string, label: string): Promise<T | null> => {
+      try {
+        const raw = await gcGet<T>(url);
+        console.log(`[readiness] ${label} OK →`, raw ? JSON.stringify(raw).slice(0, 600) : 'null');
+        return raw ?? null;
+      } catch (e) {
+        console.error(`[readiness] ${label} FAILED:`, e instanceof Error ? e.message : e);
+        return null;
+      }
+    };
+
+    // displayName nodig voor de daily-summary URL
+    let displayName: string | undefined;
+    try {
+      const profile = await (GC as unknown as { getUserProfile: () => Promise<{ displayName?: string }> }).getUserProfile();
+      displayName = profile?.displayName;
+    } catch (e) {
+      console.error('[readiness] getUserProfile() FAILED:', e instanceof Error ? e.message : e);
+    }
+
+    type HrvResp = { hrvSummary?: { lastNightAvg?: number; weeklyAvg?: number; status?: string } };
+    type DailyResp = {
+      restingHeartRate?: number;
+      totalSteps?: number;
+      avgWakingRespirationValue?: number;
+      bodyBatteryChargedValue?: number;
+      bodyBatteryDrainedValue?: number;
+      bodyBatteryMostRecentValue?: number;
+    };
+    type ReadinessResp = { score?: number; hrvWeeklyAverage?: number; sleepScore?: number; restingHeartRate?: number };
+
+    // HRV (val terug op gisteren als vannacht nog leeg is)
+    let hrv = await fetchJson<HrvResp>(`${API_BASE}/hrv-service/hrv/${isoDay}`, `hrv(${isoDay})`);
+    if (!hrv?.hrvSummary?.lastNightAvg) {
+      const y = await fetchJson<HrvResp>(`${API_BASE}/hrv-service/hrv/${yISO}`, `hrv(${yISO})`);
+      if (y?.hrvSummary?.lastNightAvg) hrv = y;
+    }
+
+    // Training readiness (Garmins eigen readiness-score; array of object)
+    const readinessRaw = await fetchJson<ReadinessResp[] | ReadinessResp>(
+      `${API_BASE}/metrics-service/metrics/trainingreadiness/${isoDay}`, `trainingreadiness(${isoDay})`);
+    const readiness: ReadinessResp | null = Array.isArray(readinessRaw) ? (readinessRaw[0] ?? null) : readinessRaw;
+
+    // Daily summary (rusthart, stappen, body battery, ademhaling)
+    let daily: DailyResp | null = null;
+    if (displayName) {
+      daily = await fetchJson<DailyResp>(
+        `${API_BASE}/usersummary-service/usersummary/daily/${encodeURIComponent(displayName)}?calendarDate=${isoDay}`,
+        `dailySummary(${isoDay})`);
+    }
+
     // ── Stappen (los; mag falen zonder de readiness te slopen) ─────
     let steps = 0;
     try {
@@ -282,7 +341,32 @@ export async function POST(request: Request) {
       console.error('[readiness] getUserSettings() FAILED:', e instanceof Error ? e.message : e);
     }
 
-    if (sleepData) {
+    // ── Samenvoegen: dedicated endpoints eerst, slaap als fallback ──
+    const bodyBatteryChange =
+      typeof sleepData?.bodyBatteryChange === 'number' && sleepData.bodyBatteryChange !== 0
+        ? sleepData.bodyBatteryChange
+        : (typeof daily?.bodyBatteryChargedValue === 'number' || typeof daily?.bodyBatteryDrainedValue === 'number')
+          ? (daily?.bodyBatteryChargedValue || 0) - (daily?.bodyBatteryDrainedValue || 0)
+          : (sleepData?.bodyBatteryChange || 0);
+
+    const avgOvernightHrv = Math.round(
+      hrv?.hrvSummary?.lastNightAvg || sleepData?.avgOvernightHrv || readiness?.hrvWeeklyAverage || hrv?.hrvSummary?.weeklyAvg || 0);
+    const hrvStatus = hrv?.hrvSummary?.status || sleepData?.hrvStatus || 'onbekend';
+    const restingHR = Math.round(daily?.restingHeartRate || sleepData?.restingHeartRate || readiness?.restingHeartRate || 0);
+    const sleepScore = sleepData?.dailySleepDTO?.sleepScores?.overall?.value || readiness?.sleepScore || 0;
+    const respiration = Math.round(
+      (sleepData as unknown as Record<string, number>)?.avgWakingRespirationValue
+      || (sleepData as unknown as Record<string, number>)?.averageRespirationValue
+      || daily?.avgWakingRespirationValue || 0) || undefined;
+
+    // Bouw health zodra ÉÉN bron iets zinnigs gaf — niet meer afhankelijk van alleen slaap.
+    const hasAnyData = !!(
+      sleepData?.dailySleepDTO?.sleepTimeSeconds || avgOvernightHrv || restingHR
+      || sleepScore || bodyBatteryChange || (steps || daily?.totalSteps)
+      || (hrvStatus && hrvStatus !== 'onbekend')
+    );
+
+    if (hasAnyData) {
       // Lactaatdrempel zit genest onder userData
       const userData = (userSettings?.userData as Record<string, unknown> | undefined);
 
@@ -300,25 +384,23 @@ export async function POST(request: Request) {
 
       health = {
         date: today,
-        sleepDurationHours: Math.round(((sleepData.dailySleepDTO?.sleepTimeSeconds || 0) / 3600) * 10) / 10,
-        sleepScore: sleepData.dailySleepDTO?.sleepScores?.overall?.value || 0,
-        deepSleepMinutes: Math.round((sleepData.dailySleepDTO?.deepSleepSeconds || 0) / 60),
-        remSleepMinutes: Math.round((sleepData.dailySleepDTO?.remSleepSeconds || 0) / 60),
-        avgOvernightHrv: Math.round(sleepData.avgOvernightHrv || 0),
-        hrvStatus: sleepData.hrvStatus || 'onbekend',
-        restingHR: Math.round(sleepData.restingHeartRate || 0),
-        bodyBatteryChange: sleepData.bodyBatteryChange || 0,
-        steps: steps || 0,
-        avgRespirationRate: Math.round((sleepData as unknown as Record<string, number>)?.avgWakingRespirationValue || (sleepData as unknown as Record<string, number>)?.averageRespirationValue || 0) || undefined,
+        sleepDurationHours: Math.round(((sleepData?.dailySleepDTO?.sleepTimeSeconds || 0) / 3600) * 10) / 10,
+        sleepScore,
+        deepSleepMinutes: Math.round((sleepData?.dailySleepDTO?.deepSleepSeconds || 0) / 60),
+        remSleepMinutes: Math.round((sleepData?.dailySleepDTO?.remSleepSeconds || 0) / 60),
+        avgOvernightHrv,
+        hrvStatus,
+        restingHR,
+        bodyBatteryChange,
+        steps: steps || daily?.totalSteps || 0,
+        avgRespirationRate: respiration,
         lactateThresholdHR: Math.round(Number(userData?.lactateThresholdHeartRate) || 0) || undefined,
         lactateThresholdPace,
       };
       console.log('[readiness] health opgebouwd →', JSON.stringify(health));
     } else {
-      // Alleen als er écht geen slaapdata was (vandaag noch gisteren). HRV/rusthart/
-      // body battery komen allemaal uit dit object, dus zonder slaap geen readiness.
-      console.warn('[readiness] GEEN slaapdata (vandaag noch gisteren) — health blijft null. '
-        + 'Mogelijk sessie/scope verlopen, of Garmin heeft de nacht nog niet gepost.');
+      console.warn('[readiness] GEEN readiness-data uit welke bron dan ook (slaap/hrv/readiness/daily) — health blijft null. '
+        + 'Check de bovenstaande [readiness]-regels: als álle endpoints FAILED tonen is het sessie/auth; tonen ze lege objecten, dan heeft Garmin de nacht nog niet gepost.');
     }
 
     const syncData: GarminSyncData = {
