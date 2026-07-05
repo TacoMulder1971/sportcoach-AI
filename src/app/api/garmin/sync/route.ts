@@ -215,16 +215,74 @@ export async function POST(request: Request) {
       }
     }));
 
-    // Fetch sleep + health data + lactaatdrempel
+    // Fetch sleep + health data + lactaatdrempel.
+    //
+    // BELANGRIJK: elke bron wordt LOS opgehaald. Vroeger hingen slaap + stappen +
+    // instellingen in één Promise.all binnen één try/catch — één falende call
+    // (bv. getSteps() gooit "Can't find daily steps for this date." als er vandaag
+    // nog geen stappen-record is) gooide dan de héle readiness weg naar `health = null`,
+    // stil, zonder UI-signaal. Nu overleeft de rest als één bron faalt, en loggen we
+    // per endpoint precies wat er terugkomt.
     let health: GarminHealthStats | null = null;
-    try {
-      const [sleepData, steps, userSettings] = await Promise.all([
-        GC.getSleepData(),
-        GC.getSteps(),
-        (GC as unknown as { getUserSettings: () => Promise<Record<string, unknown>> }).getUserSettings().catch(() => null),
-      ]);
-      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date());
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(new Date());
 
+    type SleepDTO = {
+      dailySleepDTO?: {
+        sleepTimeSeconds?: number;
+        deepSleepSeconds?: number;
+        remSleepSeconds?: number;
+        sleepScores?: { overall?: { value?: number } };
+      };
+      avgOvernightHrv?: number;
+      hrvStatus?: string;
+      restingHeartRate?: number;
+      bodyBatteryChange?: number;
+    } & Record<string, unknown>;
+
+    // ── Slaap/HRV/body battery ─────────────────────────────────────
+    // Default is vandaag; als die (nog) leeg is, valt Garmin terug op de nacht
+    // van gisteren. We loggen de ruwe vorm zodat een shape-wijziging zichtbaar is.
+    let sleepData: SleepDTO | null = null;
+    const fetchSleep = async (date: Date, label: string): Promise<SleepDTO | null> => {
+      try {
+        const raw = await (GC as unknown as { getSleepData: (d?: Date) => Promise<SleepDTO> }).getSleepData(date);
+        console.log(`[readiness] getSleepData(${label}) OK — keys:`, raw ? Object.keys(raw) : null,
+          '| avgOvernightHrv:', raw?.avgOvernightHrv, '| hrvStatus:', raw?.hrvStatus,
+          '| restingHeartRate:', raw?.restingHeartRate, '| bodyBatteryChange:', raw?.bodyBatteryChange,
+          '| sleepTimeSeconds:', raw?.dailySleepDTO?.sleepTimeSeconds);
+        return raw || null;
+      } catch (e) {
+        console.error(`[readiness] getSleepData(${label}) FAILED:`, e instanceof Error ? e.message : e);
+        return null;
+      }
+    };
+    sleepData = await fetchSleep(new Date(), 'vandaag');
+    // Leeg = geen echte slaapdata (bv. `dailySleepDTO` ontbreekt of 0 sec) → probeer gisteren.
+    if (!sleepData?.dailySleepDTO?.sleepTimeSeconds) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const y = await fetchSleep(yesterday, 'gisteren');
+      if (y?.dailySleepDTO?.sleepTimeSeconds) sleepData = y;
+    }
+
+    // ── Stappen (los; mag falen zonder de readiness te slopen) ─────
+    let steps = 0;
+    try {
+      steps = (await GC.getSteps()) || 0;
+      console.log('[readiness] getSteps() OK —', steps);
+    } catch (e) {
+      console.error('[readiness] getSteps() FAILED (readiness blijft intact):', e instanceof Error ? e.message : e);
+    }
+
+    // ── Gebruikersinstellingen (lactaatdrempel) ───────────────────
+    let userSettings: Record<string, unknown> | null = null;
+    try {
+      userSettings = await (GC as unknown as { getUserSettings: () => Promise<Record<string, unknown>> }).getUserSettings();
+    } catch (e) {
+      console.error('[readiness] getUserSettings() FAILED:', e instanceof Error ? e.message : e);
+    }
+
+    if (sleepData) {
       // Lactaatdrempel zit genest onder userData
       const userData = (userSettings?.userData as Record<string, unknown> | undefined);
 
@@ -242,21 +300,25 @@ export async function POST(request: Request) {
 
       health = {
         date: today,
-        sleepDurationHours: Math.round(((sleepData?.dailySleepDTO?.sleepTimeSeconds || 0) / 3600) * 10) / 10,
-        sleepScore: sleepData?.dailySleepDTO?.sleepScores?.overall?.value || 0,
-        deepSleepMinutes: Math.round((sleepData?.dailySleepDTO?.deepSleepSeconds || 0) / 60),
-        remSleepMinutes: Math.round((sleepData?.dailySleepDTO?.remSleepSeconds || 0) / 60),
-        avgOvernightHrv: Math.round(sleepData?.avgOvernightHrv || 0),
-        hrvStatus: sleepData?.hrvStatus || 'onbekend',
-        restingHR: Math.round(sleepData?.restingHeartRate || 0),
-        bodyBatteryChange: sleepData?.bodyBatteryChange || 0,
+        sleepDurationHours: Math.round(((sleepData.dailySleepDTO?.sleepTimeSeconds || 0) / 3600) * 10) / 10,
+        sleepScore: sleepData.dailySleepDTO?.sleepScores?.overall?.value || 0,
+        deepSleepMinutes: Math.round((sleepData.dailySleepDTO?.deepSleepSeconds || 0) / 60),
+        remSleepMinutes: Math.round((sleepData.dailySleepDTO?.remSleepSeconds || 0) / 60),
+        avgOvernightHrv: Math.round(sleepData.avgOvernightHrv || 0),
+        hrvStatus: sleepData.hrvStatus || 'onbekend',
+        restingHR: Math.round(sleepData.restingHeartRate || 0),
+        bodyBatteryChange: sleepData.bodyBatteryChange || 0,
         steps: steps || 0,
         avgRespirationRate: Math.round((sleepData as unknown as Record<string, number>)?.avgWakingRespirationValue || (sleepData as unknown as Record<string, number>)?.averageRespirationValue || 0) || undefined,
         lactateThresholdHR: Math.round(Number(userData?.lactateThresholdHeartRate) || 0) || undefined,
         lactateThresholdPace,
       };
-    } catch (e) {
-      console.error('Garmin health data error:', e);
+      console.log('[readiness] health opgebouwd →', JSON.stringify(health));
+    } else {
+      // Alleen als er écht geen slaapdata was (vandaag noch gisteren). HRV/rusthart/
+      // body battery komen allemaal uit dit object, dus zonder slaap geen readiness.
+      console.warn('[readiness] GEEN slaapdata (vandaag noch gisteren) — health blijft null. '
+        + 'Mogelijk sessie/scope verlopen, of Garmin heeft de nacht nog niet gepost.');
     }
 
     const syncData: GarminSyncData = {
