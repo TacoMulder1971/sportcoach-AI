@@ -35,6 +35,12 @@ body {
   padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Safe area for top notch/status bar (viewport-fit: cover laat de webview
+   onder de notch doorlopen; zonder deze padding valt de bovenkant weg) */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 /* Hide Next.js dev tools button (overlaps navigation) */
 nextjs-portal {
   display: none !important;

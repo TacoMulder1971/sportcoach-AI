@@ -36,7 +36,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
       </head>
       <body className="antialiased">
-        <main className="max-w-lg mx-auto min-h-screen pb-safe">
+        <main className="max-w-lg mx-auto min-h-screen pt-safe pb-safe">
           {children}
         </main>
         <Navigation />
