@@ -7,7 +7,8 @@ import SportIcon from '@/components/SportIcon';
 import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import LatestActivityCard from '@/components/LatestActivityCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile } from '@/lib/storage';
+import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
@@ -72,6 +73,7 @@ function mondayOf(d: Date): Date {
 
 export default function HomeContent() {
   const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
+  const [hasOwnPlan, setHasOwnPlan] = useState(true);
   const [yesterdayTraining, setYesterdayTraining] = useState<TrainingDay | null>(null);
   const [garmin, setGarmin] = useState<GarminSyncData | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -119,6 +121,7 @@ export default function HomeContent() {
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
           equipmentAttention,
+          athleteProfile: athleteProfilePayload(getProfile()),
         }),
       });
 
@@ -135,7 +138,8 @@ export default function HomeContent() {
   }, []);
 
   useEffect(() => {
-    const { plan, cycleStartDate } = getActivePlan();
+    const { plan, cycleStartDate, id } = getActivePlan();
+    setHasOwnPlan(id !== 'default');
     const training = getTodayTraining(plan, cycleStartDate);
     const yt = getTrainingForDayOffset(-1, plan, cycleStartDate);
     setTodayTraining(training);
@@ -495,7 +499,23 @@ export default function HomeContent() {
               </div>
             </div>
           )}
-          <TodayTrainingDetail training={todayTraining} />
+          {hasOwnPlan ? (
+            <TodayTrainingDetail training={todayTraining} />
+          ) : (
+            /* Nog geen eigen (AI-gegenereerd) schema — geen voorbeeldschema tonen,
+               maar de weg wijzen naar doel + schema-generatie. */
+            <a href="/schema/nieuw" className="block bg-[#0d0d0f] rounded-3xl p-6 border border-white/5">
+              <p className="text-white font-semibold">Nog geen eigen trainingsschema</p>
+              <p className="text-gray-400 text-sm mt-1 leading-relaxed">
+                Laat je coach een schema op maat maken op basis van je profiel
+                {' '}— en stel eventueel eerst een wedstrijddoel in.
+              </p>
+              <span className="inline-flex items-center gap-1.5 mt-3 bg-blue-600 text-white rounded-full px-3.5 py-1.5 text-sm font-semibold">
+                Maak mijn schema
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
+            </a>
+          )}
         </div>
 
         {/* Volume per sport — vergeleken met vorige week */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek } from '@/lib/types';
+import { AthleteProfilePayload, buildAthleteProfileText, buildSportConstraintText } from '@/lib/athlete';
 
 const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'kracht', 'rust'];
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace, raceContext, hrZoneText } = await request.json();
+    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace, raceContext, hrZoneText, athleteProfile } = await request.json();
 
     if (!currentPlan || !adjustmentRequest) {
       return NextResponse.json({ error: 'Verplichte velden ontbreken' }, { status: 400 });
@@ -100,10 +101,13 @@ export async function POST(request: NextRequest) {
 
     const dayName = DAY_NAMES[dayIndex] || 'onbekend';
     const currentPlanText = planToText(currentPlan);
+    const profile = (athleteProfile ?? null) as AthleteProfilePayload | null;
+    const profileText = buildAthleteProfileText(profile);
+    const sportConstraint = buildSportConstraintText(profile);
 
     const systemPrompt = `Je bent My Sport Coach AI planmaker. De atleet wil een ad-hoc aanpassing aan zijn trainingsschema.
 
-ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
+${profileText ? `${profileText}\n\n` : ''}ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
@@ -117,10 +121,10 @@ Pas het schema aan. Als de wijziging gevolgen heeft voor andere dagen (bv. train
 Behoud de rest van het schema zoveel mogelijk intact.
 
 REGELS:
-- Balanceer zwemmen/fietsen/hardlopen over de week
+- Balanceer de sporten van de atleet over de week
 - Maximaal 2 sessies per dag
 - Behoud bestaande krachtsessies (sport:"kracht") zoveel mogelijk; kracht heeft GEEN zone
-- Descriptions in het Nederlands
+${sportConstraint ? `- ${sportConstraint}\n` : ''}- Descriptions in het Nederlands
 
 STRICT OUTPUT FORMAT:
 Antwoord ALLEEN met een JSON code block. Geen andere tekst ervoor of erna.

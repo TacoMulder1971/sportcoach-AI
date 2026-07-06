@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, ALL_TRAINING_SPORTS, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
 import { trainingPlan } from '@/data/training-plan';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
 import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones } from './swim';
@@ -197,7 +197,28 @@ export function clearChatMessages(): void {
 
 // Profile
 export function getProfile(): UserProfile {
-  return getItem<UserProfile>(KEYS.PROFILE, DEFAULT_PROFILE);
+  const stored = getItem<UserProfile | null>(KEYS.PROFILE, null);
+  if (!stored) return DEFAULT_PROFILE;
+  // Legacy-migratie: profielen van vóór de personalisatie (2026-07-06) missen
+  // `onboarded`. Die gebruikers draaiden de volledige triatlon-ervaring →
+  // alle sporten + krachttraining aan, geen onboarding-wizard.
+  if (stored.onboarded === undefined) {
+    const migrated: UserProfile = {
+      ...stored,
+      sports: stored.sports ?? [...ALL_TRAINING_SPORTS],
+      strengthTraining: stored.strengthTraining ?? true,
+      onboarded: true,
+    };
+    setItem(KEYS.PROFILE, migrated);
+    return migrated;
+  }
+  return stored;
+}
+
+/** Heeft deze gebruiker de onboarding doorlopen (of is gemigreerd)? */
+export function isOnboarded(): boolean {
+  if (typeof window === 'undefined') return true;
+  return getProfile().onboarded === true;
 }
 
 export function saveProfile(profile: UserProfile): void {
@@ -672,7 +693,11 @@ function runGoalsMigration(): void {
   if (localStorage.getItem(KEYS.GOALS_MIGRATED)) return;
   try {
     const existing = getItem<Goal[]>(KEYS.GOALS, []);
-    if (existing.length === 0) {
+    // Alleen seeden voor bestaande gebruikers (met opgeslagen profiel van vóór
+    // het Doelen-systeem). Nieuwe gebruikers starten zonder doel — anders
+    // kregen die het standaard-triatlondoel van de oorspronkelijke atleet.
+    const hasExistingProfile = localStorage.getItem(KEYS.PROFILE) !== null;
+    if (existing.length === 0 && hasExistingProfile) {
       const profile = getProfile();
       const raceType = profile.raceType?.toLowerCase() || '';
       let type: Goal['type'] = 'eigen';

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
 
 // Sonnet redeneert op dagniveau (zoals adjust-day) — trainingsinhoud, geen pure opmaak.
 export const maxDuration = 30;
@@ -19,10 +20,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { sessions, hrZoneText } = (await request.json()) as {
+    const { sessions, hrZoneText, athleteProfile } = (await request.json()) as {
       sessions: SessionInput[];
       hrZoneText?: string;
+      athleteProfile?: AthleteProfilePayload;
     };
+    const profileText = buildAthleteProfileText(athleteProfile ?? null);
 
     if (!sessions || !Array.isArray(sessions) || sessions.length === 0) {
       return NextResponse.json({ error: 'Geen sessies opgegeven' }, { status: 400 });
@@ -35,9 +38,9 @@ export async function POST(request: NextRequest) {
       )
       .join('\n');
 
-    const prompt = `Je bent een ervaren triatlon/duursport-coach. Werk voor ELKE onderstaande trainingssessie een gedetailleerd uitvoeringsplan uit dat de atleet direct kan overnemen (bijv. in een Garmin-horloge).
+    const prompt = `Je bent een ervaren duursport-coach. Werk voor ELKE onderstaande trainingssessie een gedetailleerd uitvoeringsplan uit dat de atleet direct kan overnemen (bijv. in een Garmin-horloge).
 
-${hrZoneText ? `HARTSLAGZONES (gebruik uitsluitend deze zone-codes Z1–Z5):\n${hrZoneText}\n\n` : ''}SESSIES VAN VANDAAG:
+${profileText ? `${profileText}\n\n` : ''}${hrZoneText ? `HARTSLAGZONES (gebruik uitsluitend deze zone-codes Z1–Z5):\n${hrZoneText}\n\n` : ''}SESSIES VAN VANDAAG:
 ${sessionList}
 
 Splits elke sessie op in opeenvolgende segmenten:

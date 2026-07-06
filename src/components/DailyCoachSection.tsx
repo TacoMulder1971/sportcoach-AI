@@ -16,7 +16,9 @@ import {
   getActiveRaceDate,
   buildRaceContextText,
   buildGoalsHistoryText,
+  getProfile,
 } from '@/lib/storage';
+import { athleteProfilePayload } from '@/lib/athlete';
 import { getTodayTraining, getTrainingForDayOffset, getDaysUntilRace, getCurrentWeekNumber, getDaysInCurrentCycle } from '@/lib/schedule';
 import { filterStatsActivities, buildEquipmentAttentionLine } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness } from '@/lib/training-load';
@@ -66,6 +68,7 @@ export default function DailyCoachSection() {
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
           equipmentAttention,
+          athleteProfile: athleteProfilePayload(getProfile()),
         }),
       });
 

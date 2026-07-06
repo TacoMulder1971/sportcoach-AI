@@ -7,7 +7,8 @@ import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
 import SportIcon from '@/components/SportIcon';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace, getTodayTraining, getTrainingForDayOffset, formatDuration } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets } from '@/lib/storage';
+import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile } from '@/lib/storage';
+import { athleteProfilePayload, resolveSports } from '@/lib/athlete';
 import { SwimPaceTargets, formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
 import { TrainingWeek, TrainingDay, TrainingSession, GarminHealthStats, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import { TRAINING_PHASES, getPhaseProgress, getPhaseStatus, getPhaseDateRange } from '@/lib/periodization';
@@ -130,6 +131,8 @@ export default function SchemaContent() {
 
   // Zwemtempo-targets uit het archief (client-only; 1× per render van de tab)
   const swimPaces = useMemo(() => (mounted ? getSwimPaceTargets() : null), [mounted]);
+  // Sporten van de atleet — bepaalt welke zone-legenda's getoond worden
+  const athleteSports = useMemo(() => (mounted ? resolveSports(getProfile()) : []), [mounted]);
 
   useEffect(() => {
     const active = getActivePlan();
@@ -176,6 +179,7 @@ export default function SchemaContent() {
           daysUntilRace: getDaysUntilRace(getActiveRaceDate()),
           raceContext: buildRaceContextText(),
           hrZoneText: buildHRZoneText(),
+          athleteProfile: athleteProfilePayload(getProfile()),
         }),
       });
 
@@ -208,11 +212,26 @@ export default function SchemaContent() {
           {planId === 'default' ? '2-weekse cyclus' : `Dag ${cycleDay}/14 van cyclus`}
         </p>
 
-        {/* Detail voor je Garmin — vandaag & morgen */}
-        <div className="space-y-3">
-          <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} swimPaces={swimPaces} />
-          <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} swimPaces={swimPaces} />
-        </div>
+        {/* Nog geen eigen schema: voorbeeldschema verbergen, doorverwijzen naar generatie */}
+        {mounted && planId === 'default' ? (
+          <a href="/schema/nieuw" className="block bg-[#0d0d0f] rounded-3xl p-6 border border-white/5">
+            <p className="text-white font-semibold">Nog geen eigen trainingsschema</p>
+            <p className="text-gray-400 text-sm mt-1 leading-relaxed">
+              Laat je coach een 2-weeks schema op maat maken op basis van je profiel,
+              je doel en je beschikbaarheid.
+            </p>
+            <span className="inline-flex items-center gap-1.5 mt-3 bg-blue-600 text-white rounded-full px-3.5 py-1.5 text-sm font-semibold">
+              Maak mijn schema
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </span>
+          </a>
+        ) : (
+          /* Detail voor je Garmin — vandaag & morgen */
+          <div className="space-y-3">
+            <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} swimPaces={swimPaces} />
+            <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} swimPaces={swimPaces} />
+          </div>
+        )}
 
         {/* Backup herinnering */}
         {showBackupReminder && (
@@ -292,8 +311,8 @@ export default function SchemaContent() {
           </button>
         </div>
 
-        {/* Week view */}
-        {selectedWeek && week && (
+        {/* Week view — bij het voorbeeldschema (geen eigen plan) niet tonen */}
+        {selectedWeek && week && planId !== 'default' && (
           <>
             <div className="space-y-3">
               {week.days.map((day) => {
@@ -380,12 +399,12 @@ export default function SchemaContent() {
               </div>
             )}
 
-            {/* Hartslagzones legenda */}
+            {/* Hartslagzones legenda — alleen voor de sporten die de atleet traint */}
             <section className="space-y-4">
               {[
-                { label: 'Hardlopen', zones: getRunZones(), ltHR: health?.lactateThresholdHR, ltPace: health?.lactateThresholdPace },
-                { label: 'Fietsen', zones: getCyclingZones() },
-              ].map(({ label, zones, ltHR, ltPace }) => (
+                { label: 'Hardlopen', zones: getRunZones(), ltHR: health?.lactateThresholdHR, ltPace: health?.lactateThresholdPace, show: athleteSports.includes('hardlopen') },
+                { label: 'Fietsen', zones: getCyclingZones(), show: athleteSports.includes('fietsen') || athleteSports.includes('mountainbike') },
+              ].filter(({ show }) => show).map(({ label, zones, ltHR, ltPace }) => (
                 <div key={label}>
                   <h2 className="text-base font-semibold text-gray-300 mb-3">
                     Hartslagzones {label.toLowerCase()} (max HR: {zones[4].max})
@@ -415,7 +434,7 @@ export default function SchemaContent() {
               ))}
 
               {/* Zwemtempo's — in het water stuur je op tempo per 100m, niet op hartslag */}
-              {swimPaces && (
+              {swimPaces && athleteSports.includes('zwemmen') && (
                 <div>
                   <h2 className="text-base font-semibold text-gray-300 mb-3">
                     Zwemtempo&apos;s (per 100m)

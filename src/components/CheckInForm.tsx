@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport, SwimVariant, SWIM_VARIANT_LABEL } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant, getProfile } from '@/lib/storage';
+import { athleteProfilePayload } from '@/lib/athlete';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { buildEquipmentAttentionLine, filterStatsActivities, assignableEquipment, inSameSportGroup } from '@/lib/equipment';
@@ -197,6 +198,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           currentPlan,
           cycleStartDate,
           equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
+          athleteProfile: athleteProfilePayload(getProfile()),
         }),
       });
 
@@ -259,6 +261,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           currentPlan,
           cycleStartDate,
           equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
+          athleteProfile: athleteProfilePayload(getProfile()),
         }),
       });
 

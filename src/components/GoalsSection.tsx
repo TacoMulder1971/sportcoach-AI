@@ -17,7 +17,9 @@ import {
   getActivityArchive,
   getHealthArchive,
   buildGoalsHistoryText,
+  getProfile,
 } from '@/lib/storage';
+import { goalTypeMatchesSports, resolveSports } from '@/lib/athlete';
 import { buildRaces, getRaceSplits, getPreRaceBuildup } from '@/lib/races';
 
 // ─── AI race-evaluatie ──────────────────────────────────────────
@@ -584,7 +586,7 @@ function GoalFormModal({
               onChange={(e) => setType(e.target.value as GoalType)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
             >
-              {GOAL_TYPES.map(t => (
+              {GOAL_TYPES.filter(t => t.type === type || goalTypeMatchesSports(t.type, resolveSports(getProfile()))).map(t => (
                 <option key={t.type} value={t.type}>{t.label}</option>
               ))}
             </select>

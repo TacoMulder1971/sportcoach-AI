@@ -12,7 +12,9 @@ import {
   sessionsSignature,
   getStrengthWorkoutForSession,
   getSwimPaceTargets,
+  getProfile,
 } from '@/lib/storage';
+import { athleteProfilePayload } from '@/lib/athlete';
 import { SwimPaceTargets, formatSwimPaceRange } from '@/lib/swim';
 import { formatDuration } from '@/lib/schedule';
 import StrengthWorkoutDetail from '@/components/StrengthWorkoutDetail';
@@ -108,7 +110,7 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
         const res = await fetch('/api/session-breakdown', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessions: breakdownSessions, hrZoneText: buildHRZoneText() }),
+          body: JSON.stringify({ sessions: breakdownSessions, hrZoneText: buildHRZoneText(), athleteProfile: athleteProfilePayload(getProfile()) }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Mislukt');

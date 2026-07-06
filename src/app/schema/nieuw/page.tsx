@@ -10,7 +10,9 @@ import {
   getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText,
   getActivityArchive, getHealthArchive, getEquipment, getActivityAssignments, getArchivedGoals,
   buildHRZoneText,
+  getProfile,
 } from '@/lib/storage';
+import { athleteProfilePayload } from '@/lib/athlete';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildPerformanceSummary } from '@/lib/performance-summary';
 import { filterStatsActivities } from '@/lib/equipment';
@@ -138,6 +140,7 @@ export default function NieuwSchemaPage() {
           goalsHistory: buildGoalsHistoryText(),
           performanceSummary,
           hrZoneText: buildHRZoneText(),
+          athleteProfile: athleteProfilePayload(getProfile()),
         }),
       });
 
@@ -175,6 +178,7 @@ export default function NieuwSchemaPage() {
           daysUntilRace,
           raceContext: buildRaceContextText(),
           hrZoneText: buildHRZoneText(),
+          athleteProfile: athleteProfilePayload(getProfile()),
         }),
       });
 

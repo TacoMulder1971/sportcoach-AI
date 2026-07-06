@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getAmsterdamNow, relativeDayLabel, buildTimingRule } from '@/lib/coach-dates';
+import { AthleteProfilePayload, buildAthleteProfileText, coachPersona } from '@/lib/athlete';
 
 export const maxDuration = 30; // Opus coach-chat kan langer duren dan de standaard 10s
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
     const {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
       weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
-      raceContext, goalsHistory, equipmentAttention, hrZoneText,
+      raceContext, goalsHistory, equipmentAttention, hrZoneText, athleteProfile,
     } = await request.json();
 
     // Bouw schema tekst dynamisch
@@ -214,8 +215,12 @@ Week 2:
     }
 
     const defaultZoneText = 'Hardlopen: Max HR 172 bpm, Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max) | Fietsen: Max HR 164 bpm, Z1(82-98), Z2(98-115), Z3(115-131), Z4(131-148), Z5(148-164)';
+    // Personalisatie: persona + profielblok uit het meegestuurde atleet-profiel
+    const profile = (athleteProfile ?? null) as AthleteProfilePayload | null;
+    const personaText = profile ? `Je bent gespecialiseerd als ${coachPersona(profile)} — stem al je advies af op de sporten van deze atleet.\n` : '';
+    const profileBlock = profile ? `${buildAthleteProfileText(profile)}\n\n` : '';
     const BASE_PROMPT = BASE_PROMPT_INTRO.replace('{{HR_ZONE_TEXT}}', hrZoneText || defaultZoneText);
-    const fullSystemPrompt = BASE_PROMPT + planText + contextMessage;
+    const fullSystemPrompt = personaText + BASE_PROMPT + '\n\n' + profileBlock + planText + contextMessage;
 
     const client = new Anthropic({ apiKey });
 

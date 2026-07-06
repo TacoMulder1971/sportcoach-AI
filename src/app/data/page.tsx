@@ -18,6 +18,7 @@ import GarminSetupCard from '@/components/GarminSetupCard';
 import HeartRateZonesCard from '@/components/HeartRateZonesCard';
 import StrengthWorkoutsCard from '@/components/StrengthWorkoutsCard';
 import DataManagementCard from '@/components/DataManagementCard';
+import ProfileCard from '@/components/ProfileCard';
 import WeeklyVolumeChart, { WeeklyVolumeData } from '@/components/WeeklyVolumeChart';
 
 type Section = 'overzicht' | 'trends' | 'activiteiten' | 'materiaal' | 'instellingen';
@@ -899,6 +900,9 @@ export default function DataPage() {
 
       {section === 'instellingen' && (
         <>
+          {/* Profiel & coach-voorkeuren (sporten, niveau, kracht, coach-wensen) */}
+          <ProfileCard />
+
           {/* Garmin-koppeling instellen */}
           <GarminSetupCard onConnect={handleGarminSync} />
 

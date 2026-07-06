@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek, DayPreference } from '@/lib/types';
+import { AthleteProfilePayload, buildAthleteProfileText, buildSportConstraintText, buildStrengthStrategyText, buildStrengthFormatRule, coachPersona, isMultiSportAthlete } from '@/lib/athlete';
 
 export const maxDuration = 60; // Vercel timeout: twee-traps (Opus-redenering + snelle JSON) past hierin
 
@@ -179,9 +180,20 @@ export async function POST(request: NextRequest) {
       goalsHistory,
       performanceSummary,
       hrZoneText,
+      athleteProfile,
     } = body;
 
     const client = new Anthropic({ apiKey });
+
+    // Personalisatie: profieltekst, persona en kracht/sport-regels.
+    // Zonder profiel (legacy) valt alles terug op het oude triatlon-gedrag.
+    const profile = (athleteProfile ?? null) as AthleteProfilePayload | null;
+    const profileText = buildAthleteProfileText(profile);
+    const persona = coachPersona(profile);
+    const sportConstraint = buildSportConstraintText(profile);
+    const strengthStrategy = buildStrengthStrategyText(profile);
+    const strengthRule = buildStrengthFormatRule(profile);
+    const multiSport = isMultiSportAthlete(profile);
 
     // --- REFINE MODE ---
     if (mode === 'refine' && currentProposal && refinementFeedback) {
@@ -189,7 +201,7 @@ export async function POST(request: NextRequest) {
 
       const refinePrompt = `Je bent My Sport Coach AI planmaker. Je hebt eerder een 2-weekse trainingsplanning gemaakt.
 
-ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
+${profileText ? `${profileText}\n${sportConstraint ? `${sportConstraint}\n` : ''}\n` : ''}ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
@@ -203,9 +215,9 @@ Pas het schema aan op basis van de feedback. Behoud de algehele structuur maar v
 
 REGELS:
 - Geblokkeerde dagen (rustdagen) NIET wijzigen
-- Balanceer zwemmen/fietsen/hardlopen over de week
+- Balanceer de sporten van de atleet over de week
 - Maximaal 2 sessies per dag
-- Descriptions max 10 woorden, Nederlands
+${sportConstraint ? `- ${sportConstraint}\n` : ''}- Descriptions max 10 woorden, Nederlands
 
 ${JSON_FORMAT_SPEC}`;
 
@@ -296,14 +308,14 @@ ${JSON_FORMAT_SPEC}`;
     }
 
     // Gedeelde atleet-context voor beide traps
-    const athleteContext = `ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
+    const athleteContext = `${profileText ? `${profileText}\n${sportConstraint ? `${sportConstraint}\n` : ''}\n` : ''}ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 ${phaseAdvice}
 ${goalsHistory ? `\n${goalsHistory}\n` : ''}${blockedText}${preferencesText}${previousPlanText}${performanceText}`;
 
     // --- TRAP 1: Opus denkt na over de coachstrategie (extended thinking) ---
-    const strategyPrompt = `Je bent een ervaren triatloncoach. Analyseer de situatie van de atleet en bepaal de strategie voor de komende 2 trainingsweken. Schrijf GEEN schema in JSON — alleen je redenering en concrete richtlijnen.
+    const strategyPrompt = `Je bent een ervaren ${persona}. Analyseer de situatie van de atleet en bepaal de strategie voor de komende 2 trainingsweken. Schrijf GEEN schema in JSON — alleen je redenering en concrete richtlijnen.
 
 ${athleteContext}
 
@@ -316,20 +328,17 @@ Houd expliciet rekening met de PRESTATIES van de afgelopen weken:
 Geef je antwoord als beknopte coachnotitie in het Nederlands:
 1. KORTE ANALYSE (2-4 zinnen): hoe staat de atleet ervoor op basis van de recente prestaties en herstel.
 2. STRATEGIE WEEK 1 en WEEK 2: belasting-progressie, accenten per discipline, intensiteitsverdeling, herstel.
-3. CONCRETE SESSIE-RICHTLIJNEN per week: welke type sessies, ongeveer hoeveel en welke duur/zone, plus minimaal 1 brick-sessie per 2 weken.
+3. CONCRETE SESSIE-RICHTLIJNEN per week: welke type sessies, ongeveer hoeveel en welke duur/zone${multiSport ? ', plus minimaal 1 brick-sessie per 2 weken' : ''}.
 Wees specifiek met getallen (duur, zones) zodat een schema hier 1-op-1 op gebouwd kan worden.
 
-KRACHT (verplicht inplannen, elke week):
-- 3× per week een korte CORE-workout van 7 minuten (sport "kracht", type "core") — plan deze op lichtere dagen of als tweede sessie naast een rustige duurtraining; nooit op een volledige rustdag.
-- 2× per week een triatlon-ondersteunende KRACHTtraining van ~40 minuten (sport "kracht", type "kracht") — combineer met een triatlontrainingsdag, bij voorkeur niet vlak vóór een zware sleutelsessie.
-- Krachtsessies hebben GEEN hartslagzone. Verzwaar de week niet onnodig: kracht komt bovenop, niet in plaats van de duurtraining.`;
+${strengthStrategy}`;
 
     const strategyResponse = await client.messages.create({
       model: 'claude-opus-4-8',
       max_tokens: 4000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium' },
-      system: 'Je bent een ervaren, data-gedreven triatloncoach die trainingsschema\'s afstemt op recente prestaties en herstel.',
+      system: `Je bent een ervaren, data-gedreven ${persona} die trainingsschema's afstemt op recente prestaties en herstel.`,
       messages: [{ role: 'user', content: strategyPrompt }],
     });
 
@@ -352,8 +361,8 @@ REGELS:
 - Geblokkeerde dagen MOETEN rustdagen zijn (sport:"rust", type:"rust", isRestDay:true)
 - Respecteer de dagvoorkeuren van de atleet (tijdstippen, specifieke sporten)
 - Maximaal 2 sessies per dag
-- KRACHT: plan per week 3× core (sport:"kracht", type:"core", durationMinutes:7, GEEN zone) op lichtere dagen + 2× krachttraining (sport:"kracht", type:"kracht", durationMinutes:40, GEEN zone) op triatlontrainingsdagen. Kracht mag de tweede sessie van een dag zijn, maar nooit op een rustdag.
-- Descriptions max 10 woorden, Nederlands
+${strengthRule}
+${sportConstraint ? `- ${sportConstraint}\n` : ''}- Descriptions max 10 woorden, Nederlands
 
 ${JSON_FORMAT_SPEC}`;
 

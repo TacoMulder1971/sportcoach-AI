@@ -4,6 +4,7 @@ import './globals.css';
 import Navigation from '@/components/Navigation';
 import PWARegister from '@/components/PWARegister';
 import LockScreen from '@/components/LockScreen';
+import OnboardingWizard from '@/components/OnboardingWizard';
 
 export const metadata: Metadata = {
   title: 'My Sport Coach AI',
@@ -50,6 +51,7 @@ export default async function RootLayout({
             </main>
             <Navigation />
             <PWARegister />
+            <OnboardingWizard />
           </>
         ) : (
           <LockScreen />

@@ -104,6 +104,12 @@ export interface SwimPaceZone {
   maxSecPer100: number; // langzamer uiteinde
 }
 
+/** Sporten die een gebruiker kan trainen (subset van Sport). */
+export type TrainingSport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike';
+export const ALL_TRAINING_SPORTS: TrainingSport[] = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike'];
+
+export type AthleteLevel = 'beginner' | 'gevorderd' | 'ervaren';
+
 export interface UserProfile {
   name: string;
   maxHR: number;                // max hartslag hardlopen (legacy, ook z5max)
@@ -114,6 +120,15 @@ export interface UserProfile {
   raceDate: string;
   raceGoal: string;
   raceType: string;
+  // Personalisatie (2026-07-06, multi-user): ontbreekt `onboarded` dan is het
+  // een legacy-profiel → migratie in getProfile() vult de velden aan.
+  sports?: TrainingSport[];         // welke sporten traint deze gebruiker
+  birthYear?: number;               // → default max HR (220 − leeftijd)
+  level?: AthleteLevel;
+  trainingDaysPerWeek?: number;     // 2..7
+  strengthTraining?: boolean;       // 40-min krachttraining inplannen (core is altijd aan)
+  coachNotes?: string;              // vrije coach-wensen, gaan mee in alle AI-prompts
+  onboarded?: boolean;              // onboarding doorlopen (of legacy-migratie)
 }
 
 /**

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { getAmsterdamNow, relativeDayLabel } from '@/lib/coach-dates';
+import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +11,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention } = await request.json();
+    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention, athleteProfile } = await request.json();
+    const profileText = buildAthleteProfileText((athleteProfile ?? null) as AthleteProfilePayload | null);
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
     const now = new Date();
@@ -30,7 +32,7 @@ DATA-INTEGRITEIT (KRITIEK):
 - Als data ontbreekt: zeg dat eerlijk in plaats van te gokken.
 - TIMING (KRITIEK): noem een activiteit alleen "gisteren" als die het label [GISTEREN] heeft, en "vandaag" alleen bij [VANDAAG]. Voor alles ouder: gebruik de WEEKDAG-naam uit het label (bijv. "woensdag"), NIET "gisteren" of "eergisteren". Verzin NOOIT wanneer iets gedaan is.
 
-ATLEET: ${raceContext || `Traint voor een wedstrijd (nog ${daysUntilRace} dagen).`}
+${profileText ? `${profileText}\n\n` : ''}ATLEET: ${raceContext || `Traint voor een wedstrijd (nog ${daysUntilRace} dagen).`}
 
 VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCycle}/14).\n`;
 
