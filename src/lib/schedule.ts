@@ -3,6 +3,20 @@ import { TrainingDay, TrainingWeek } from './types';
 
 const DEFAULT_CYCLE_START = '2026-02-23';
 
+// Vandaag als UTC-middernacht op de Amsterdamse kalenderdag. Consistent met
+// alignCycleStartToRace (storage.ts): zo glijdt de dag-diff niet weg doordat de
+// ankerdatum als UTC-middernacht wordt geparsed maar `new Date()` als lokale tijd
+// — dat gaf op de tweede maandag ten onrechte week 1 (diff 6d23u i.p.v. 7d).
+function amsterdamTodayUTC(): Date {
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
+  return new Date(`${todayStr}T00:00:00Z`);
+}
+
+function parseCycleStartUTC(cycleStartDate?: string): Date {
+  const s = (cycleStartDate || DEFAULT_CYCLE_START).split('T')[0];
+  return new Date(`${s}T00:00:00Z`);
+}
+
 export function getTodayDayIndex(): number {
   const day = new Date().getDay();
   // JS: 0=Sunday, convert to 0=Monday
@@ -10,8 +24,8 @@ export function getTodayDayIndex(): number {
 }
 
 export function getCurrentWeekNumber(cycleStartDate?: string): 1 | 2 {
-  const startDate = new Date(cycleStartDate || DEFAULT_CYCLE_START);
-  const today = new Date();
+  const startDate = parseCycleStartUTC(cycleStartDate);
+  const today = amsterdamTodayUTC();
   const diffDays = Math.floor(
     (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
@@ -57,12 +71,12 @@ export function formatDuration(minutes: number): string {
 }
 
 export function getDaysInCurrentCycle(cycleStartDate?: string): number {
-  const startDate = new Date(cycleStartDate || DEFAULT_CYCLE_START);
-  const today = new Date();
+  const startDate = parseCycleStartUTC(cycleStartDate);
+  const today = amsterdamTodayUTC();
   const diffDays = Math.floor(
     (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
-  return (diffDays % 14) + 1; // dag 1-14 in de cyclus
+  return (((diffDays % 14) + 14) % 14) + 1; // dag 1-14 in de cyclus
 }
 
 export function getTrainingForDayOffset(
@@ -71,10 +85,11 @@ export function getTrainingForDayOffset(
   cycleStartDate?: string
 ): TrainingDay | null {
   const p = plan || trainingPlan;
-  const target = new Date();
-  target.setDate(target.getDate() + offset);
-  const dayIndex = target.getDay() === 0 ? 6 : target.getDay() - 1;
-  const startDate = new Date(cycleStartDate || DEFAULT_CYCLE_START);
+  const target = amsterdamTodayUTC();
+  target.setUTCDate(target.getUTCDate() + offset);
+  const dow = target.getUTCDay();
+  const dayIndex = dow === 0 ? 6 : dow - 1;
+  const startDate = parseCycleStartUTC(cycleStartDate);
   const diffDays = Math.floor((target.getTime() - startDate.getTime()) / 86400000);
   const weekNum: 1 | 2 = (diffDays < 0 || Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2) as 1 | 2;
   const week = p.find((w) => w.weekNumber === weekNum);
