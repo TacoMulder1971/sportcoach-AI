@@ -115,7 +115,12 @@ export default function OnboardingWizard() {
           </div>
 
           <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-5">
-            <p className="text-sm text-gray-400 mb-3">Welke sporten train je?</p>
+            <p className="text-sm text-gray-400 mb-1">Welke sporten wil je in je trainingsschema?</p>
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+              Je coach plant alleen de aangevinkte sporten in. Een andere sport
+              af en toe? Die kun je er later los bij vragen — hij komt niet
+              vanzelf in je schema.
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {SPORT_OPTIONS.map(({ sport, label }) => {
                 const active = sports.includes(sport);

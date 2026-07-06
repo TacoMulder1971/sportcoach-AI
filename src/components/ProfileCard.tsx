@@ -106,7 +106,11 @@ export default function ProfileCard() {
         </div>
       </div>
 
-      <p className="text-xs text-gray-500 mt-4 mb-2">Sporten</p>
+      <p className="text-xs text-gray-500 mt-4 mb-1">Sporten in je schema</p>
+      <p className="text-[11px] text-gray-600 mb-2 leading-relaxed">
+        Alleen aangevinkte sporten plant je coach in. Andere sporten kun je er
+        los bij vragen.
+      </p>
       <div className="grid grid-cols-2 gap-2">
         {SPORT_OPTIONS.map(({ sport, label }) => {
           const active = sports.includes(sport);

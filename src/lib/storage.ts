@@ -693,11 +693,13 @@ function runGoalsMigration(): void {
   if (localStorage.getItem(KEYS.GOALS_MIGRATED)) return;
   try {
     const existing = getItem<Goal[]>(KEYS.GOALS, []);
-    // Alleen seeden voor bestaande gebruikers (met opgeslagen profiel van vóór
-    // het Doelen-systeem). Nieuwe gebruikers starten zonder doel — anders
-    // kregen die het standaard-triatlondoel van de oorspronkelijke atleet.
-    const hasExistingProfile = localStorage.getItem(KEYS.PROFILE) !== null;
-    if (existing.length === 0 && hasExistingProfile) {
+    // Alleen seeden voor bestaande gebruikers die een échte race in hun profiel
+    // hadden staan (van vóór het Doelen-systeem). Nieuwe/geonboarde gebruikers
+    // hebben een leeg raceType → géén doel, anders kregen ze ten onrechte het
+    // standaard-triatlondoel van de oorspronkelijke atleet.
+    const storedProfile = getItem<UserProfile | null>(KEYS.PROFILE, null);
+    const hasRealRace = !!storedProfile?.raceType?.trim();
+    if (existing.length === 0 && hasRealRace) {
       const profile = getProfile();
       const raceType = profile.raceType?.toLowerCase() || '';
       let type: Goal['type'] = 'eigen';

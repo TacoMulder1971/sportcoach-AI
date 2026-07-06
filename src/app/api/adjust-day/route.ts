@@ -103,7 +103,9 @@ export async function POST(request: NextRequest) {
     const currentPlanText = planToText(currentPlan);
     const profile = (athleteProfile ?? null) as AthleteProfilePayload | null;
     const profileText = buildAthleteProfileText(profile);
-    const sportConstraint = buildSportConstraintText(profile);
+    // De atleet vraagt hier zelf een aanpassing — een expliciet verzoek om een
+    // andere sport mag dus wél worden gehonoreerd (allowExplicitRequest).
+    const sportConstraint = buildSportConstraintText(profile, true);
 
     const systemPrompt = `Je bent My Sport Coach AI planmaker. De atleet wil een ad-hoc aanpassing aan zijn trainingsschema.
 

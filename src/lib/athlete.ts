@@ -91,12 +91,20 @@ export function buildAthleteProfileText(p?: AthleteProfilePayload | null): strin
 }
 
 /**
- * Harde sport-beperking voor schema-routes: alleen de gekozen sporten inplannen.
+ * Sport-beperking voor schema-routes: alleen de gekozen sporten inplannen.
+ * De atleet heeft bij de intake per sport gekozen of die in het schema hoort.
+ *
+ * @param allowExplicitRequest bij aanpassingen/verfijningen: laat de coach tóch
+ *   een andere sport toevoegen als de atleet daar in het verzoek expliciet om vraagt.
  */
-export function buildSportConstraintText(p?: AthleteProfilePayload | null): string {
+export function buildSportConstraintText(p?: AthleteProfilePayload | null, allowExplicitRequest = false): string {
   const sports = resolveSports(p);
   if (sports.length === ALL_TRAINING_SPORTS.length) return '';
-  return `TOEGESTANE SPORTEN: plan uitsluitend sessies in ${sports.map((s) => `"${s}"`).join(', ')} (plus "kracht" en "rust"). Plan NOOIT sessies in andere sporten — deze atleet doet die sporten niet.`;
+  const allowed = sports.map((s) => `"${s}"`).join(', ');
+  if (allowExplicitRequest) {
+    return `SCHEMASPORTEN: standaard plan je alleen sessies in ${allowed} (plus "kracht" en "rust") — dit koos de atleet bij de intake. Voeg alleen een andere sport toe als de atleet daar in dit verzoek EXPLICIET om vraagt; doe het nooit uit jezelf.`;
+  }
+  return `SCHEMASPORTEN: plan uitsluitend sessies in ${allowed} (plus "kracht" en "rust"). De atleet koos bij de intake alleen deze sporten voor het schema — plan NOOIT uit jezelf een andere sport in.`;
 }
 
 /** Vereiste sporten per wedstrijd-doeltype (voor het filteren van de doeltype-kiezer). */

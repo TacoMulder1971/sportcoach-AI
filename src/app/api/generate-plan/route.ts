@@ -191,6 +191,8 @@ export async function POST(request: NextRequest) {
     const profileText = buildAthleteProfileText(profile);
     const persona = coachPersona(profile);
     const sportConstraint = buildSportConstraintText(profile);
+    // Bij verfijnen mag de atleet expliciet om een extra sport vragen.
+    const sportConstraintSoft = buildSportConstraintText(profile, true);
     const strengthStrategy = buildStrengthStrategyText(profile);
     const strengthRule = buildStrengthFormatRule(profile);
     const multiSport = isMultiSportAthlete(profile);
@@ -201,7 +203,7 @@ export async function POST(request: NextRequest) {
 
       const refinePrompt = `Je bent My Sport Coach AI planmaker. Je hebt eerder een 2-weekse trainingsplanning gemaakt.
 
-${profileText ? `${profileText}\n${sportConstraint ? `${sportConstraint}\n` : ''}\n` : ''}ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
+${profileText ? `${profileText}\n${sportConstraintSoft ? `${sportConstraintSoft}\n` : ''}\n` : ''}ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
@@ -217,7 +219,7 @@ REGELS:
 - Geblokkeerde dagen (rustdagen) NIET wijzigen
 - Balanceer de sporten van de atleet over de week
 - Maximaal 2 sessies per dag
-${sportConstraint ? `- ${sportConstraint}\n` : ''}- Descriptions max 10 woorden, Nederlands
+${sportConstraintSoft ? `- ${sportConstraintSoft}\n` : ''}- Descriptions max 10 woorden, Nederlands
 
 ${JSON_FORMAT_SPEC}`;
 
