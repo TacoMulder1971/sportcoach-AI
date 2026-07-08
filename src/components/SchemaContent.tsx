@@ -1,109 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
-import SportIcon from '@/components/SportIcon';
-import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace, getTodayTraining, getTrainingForDayOffset, formatDuration } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets } from '@/lib/storage';
-import { SwimPaceTargets, formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
-import { TrainingWeek, TrainingDay, TrainingSession, GarminHealthStats, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
+import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
+import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, toggleCycleWeekFlip } from '@/lib/storage';
+import { formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
+import { TrainingWeek, TrainingDay, GarminHealthStats, HEART_RATE_ZONES } from '@/lib/types';
 import { TRAINING_PHASES, getPhaseProgress, getPhaseStatus, getPhaseDateRange } from '@/lib/periodization';
 
 type TabSelection = 1 | 2 | 'longterm';
-
-function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
-  if (sport === 'hardlopen') return getRunZones();
-  if (sport === 'fietsen' || sport === 'mountainbike') return getCyclingZones();
-  return HEART_RATE_ZONES;
-}
-
-function capitalize(s: string): string {
-  return s.length > 0 ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
-
-const SPORT_LABEL: Record<string, string> = {
-  zwemmen: 'Zwemmen', fietsen: 'Fietsen', hardlopen: 'Hardlopen',
-  mountainbike: 'Mountainbike', wandelen: 'Wandelen', voetballen: 'Voetballen',
-  multisport: 'Multisport', kracht: 'Kracht', rust: 'Rust',
-};
-
-// Gedetailleerde sessie-kaart: alle info om in een Garmin-horloge over te nemen.
-function DetailedSession({ session, index, total, swimPaces }: { session: TrainingSession; index: number; total: number; swimPaces: SwimPaceTargets | null }) {
-  const zoneInfo = session.zone ? zonesForSport(session.sport).find((z) => z.zone === session.zone) : null;
-  const isSwim = session.sport === 'zwemmen';
-  const swimTarget = isSwim && zoneInfo ? swimPaces?.zones.find((z) => z.zone === zoneInfo.zone) : null;
-  return (
-    <div className="rounded-2xl bg-white/[0.03] border border-white/5 p-4">
-      <div className="flex items-center gap-3">
-        <SportIcon sport={session.sport} size="2xl" />
-        <div className="flex-1 min-w-0">
-          {total > 1 && (
-            <p className="text-gray-500 text-[11px] font-semibold uppercase tracking-wide">
-              Onderdeel {index + 1} van {total}
-            </p>
-          )}
-          <p className="text-base text-gray-100 leading-relaxed">{session.description}</p>
-        </div>
-      </div>
-
-      {/* Stat-grid: makkelijk over te nemen in Garmin */}
-      <div className="grid grid-cols-3 gap-px mt-3 rounded-xl overflow-hidden bg-white/5">
-        <div className="bg-[#0d0d0f] p-2.5 text-center">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wide">Sport</p>
-          <p className="text-gray-100 text-sm font-medium mt-0.5">{SPORT_LABEL[session.sport] || session.sport}</p>
-        </div>
-        <div className="bg-[#0d0d0f] p-2.5 text-center">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wide">Type</p>
-          <p className="text-gray-100 text-sm font-medium mt-0.5">{session.type ? capitalize(session.type) : '—'}</p>
-        </div>
-        <div className="bg-[#0d0d0f] p-2.5 text-center">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wide">Duur</p>
-          <p className="text-gray-100 text-sm font-medium mt-0.5">{session.durationMinutes ? formatDuration(session.durationMinutes) : '—'}</p>
-        </div>
-      </div>
-
-      {/* Intensiteits-doel — zwemmen: tempo per 100m; anders exact HR-bereik voor een Garmin-alert */}
-      {zoneInfo && (
-        <div className="flex items-center justify-between mt-2 rounded-xl px-3 py-2.5" style={{ backgroundColor: `${zoneInfo.color}1a` }}>
-          <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: zoneInfo.color }}>
-              {zoneInfo.zone}
-            </span>
-            <span className="text-sm font-medium" style={{ color: zoneInfo.color }}>{zoneInfo.label}</span>
-          </div>
-          <span className="text-sm font-bold tabular-nums" style={{ color: zoneInfo.color }}>
-            {isSwim
-              ? swimTarget ? `${formatSwimPaceRange(swimTarget)} /100m` : 'tempo op gevoel'
-              : `${zoneInfo.min}–${zoneInfo.max} bpm`}
-          </span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DetailedDay({ label, weekday, training, swimPaces }: { label: string; weekday: string; training: TrainingDay | null; swimPaces: SwimPaceTargets | null }) {
-  return (
-    <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
-      <div className="flex items-baseline justify-between mb-3">
-        <p className="text-gray-100 text-base font-semibold">{label}</p>
-        <p className="text-gray-500 text-xs uppercase tracking-wide">{weekday}</p>
-      </div>
-      {!training || training.isRestDay ? (
-        <p className="text-gray-500 text-sm">Rustdag — geen training gepland. Focus op herstel.</p>
-      ) : (
-        <div className="space-y-2">
-          {training.sessions.map((s, i) => (
-            <DetailedSession key={i} session={s} index={i} total={training.sessions.length} swimPaces={swimPaces} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function SchemaContent() {
   const searchParams = useSearchParams();
@@ -114,9 +22,9 @@ export default function SchemaContent() {
   const [planId, setPlanId] = useState<string>('default');
   const [selectedTab, setSelectedTab] = useState<TabSelection>(tabParam === 'longterm' ? 'longterm' : 1);
   const [cycleDay, setCycleDay] = useState(1);
-  const [todayTraining, setTodayTraining] = useState<TrainingDay | null>(null);
-  const [tomorrowTraining, setTomorrowTraining] = useState<TrainingDay | null>(null);
   const todayDayIndex = getTodayDayIndex();
+  const todayRef = useRef<HTMLDivElement>(null);
+  const didScrollRef = useRef(false);
 
   // Ad-hoc aanpassing state
   const [adjustDay, setAdjustDay] = useState<{ weekNumber: 1 | 2; day: TrainingDay } | null>(null);
@@ -131,7 +39,7 @@ export default function SchemaContent() {
   // Zwemtempo-targets uit het archief (client-only; 1× per render van de tab)
   const swimPaces = useMemo(() => (mounted ? getSwimPaceTargets() : null), [mounted]);
 
-  useEffect(() => {
+  function loadPlan() {
     const active = getActivePlan();
     setPlan(active.plan);
     setCycleStartDate(active.cycleStartDate);
@@ -139,12 +47,15 @@ export default function SchemaContent() {
     const currentWeek = getCurrentWeekNumber(active.cycleStartDate);
     if (tabParam !== 'longterm') setSelectedTab(currentWeek);
     setCycleDay(getDaysInCurrentCycle(active.cycleStartDate));
+  }
+
+  useEffect(() => {
+    loadPlan();
     setShowBackupReminder(shouldAutoBackup());
     setHealth(getGarminData()?.health || null);
     setRaceDate(getActiveRaceDate());
-    setTodayTraining(getTodayTraining(active.plan, active.cycleStartDate));
-    setTomorrowTraining(getTrainingForDayOffset(1, active.plan, active.cycleStartDate));
     setMounted(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabParam]);
 
   const currentWeek = cycleStartDate ? getCurrentWeekNumber(cycleStartDate) : 1;
@@ -152,12 +63,22 @@ export default function SchemaContent() {
   const week = selectedWeek ? plan?.find((w) => w.weekNumber === selectedWeek) : null;
   const showNewPlanPrompt = cycleDay >= 11;
 
-  const tomorrowWeekday = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return capitalize(d.toLocaleDateString('nl-NL', { weekday: 'long' }));
-  })();
-  const todayWeekday = capitalize(new Date().toLocaleDateString('nl-NL', { weekday: 'long' }));
+  // Bij openen direct naar vandaag scrollen (alleen 1× per bezoek, in de huidige week)
+  useEffect(() => {
+    if (didScrollRef.current) return;
+    if (!plan) return;
+    if (selectedWeek !== currentWeek) return;
+    if (!todayRef.current) return;
+    didScrollRef.current = true;
+    todayRef.current.scrollIntoView({ block: 'center' });
+  }, [plan, selectedWeek, currentWeek]);
+
+  // Handmatig de weken wisselen als de automatische berekening ernaast zit
+  function handleFlipWeeks() {
+    toggleCycleWeekFlip();
+    didScrollRef.current = false;
+    loadPlan();
+  }
 
   async function handleAdjust() {
     if (!adjustDay || !adjustText.trim() || !plan) return;
@@ -184,9 +105,6 @@ export default function SchemaContent() {
 
       setPlan(data.plan);
       updateActivePlan(data.plan);
-      // Vandaag/morgen-weergave meelopen met de aanpassing
-      setTodayTraining(getTodayTraining(data.plan, cycleStartDate));
-      setTomorrowTraining(getTrainingForDayOffset(1, data.plan, cycleStartDate));
       setAdjustDay(null);
       setAdjustText('');
     } catch (e) {
@@ -207,12 +125,6 @@ export default function SchemaContent() {
         <p className="text-gray-500 text-sm">
           {planId === 'default' ? '2-weekse cyclus' : `Dag ${cycleDay}/14 van cyclus`}
         </p>
-
-        {/* Detail voor je Garmin — vandaag & morgen */}
-        <div className="space-y-3">
-          <DetailedDay label="Vandaag" weekday={todayWeekday} training={todayTraining} swimPaces={swimPaces} />
-          <DetailedDay label={tomorrowWeekday} weekday="Morgen" training={tomorrowTraining} swimPaces={swimPaces} />
-        </div>
 
         {/* Backup herinnering */}
         {showBackupReminder && (
@@ -292,6 +204,19 @@ export default function SchemaContent() {
           </button>
         </div>
 
+        {/* Handmatige week-correctie: als de app de verkeerde week als "huidig" toont */}
+        {selectedWeek && (
+          <button
+            onClick={handleFlipWeeks}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 2.1 21 6l-4 3.9M3 11V9a4 4 0 0 1 4-4h14M7 21.9 3 18l4-3.9M21 13v2a4 4 0 0 1-4 4H3"/>
+            </svg>
+            Klopt de huidige week niet? Wissel week 1 ↔ 2
+          </button>
+        )}
+
         {/* Week view */}
         {selectedWeek && week && (
           <>
@@ -299,7 +224,12 @@ export default function SchemaContent() {
               {week.days.map((day) => {
                 const isToday = selectedWeek === currentWeek && day.dayIndex === todayDayIndex;
                 return (
-                  <div key={day.dayIndex} className="relative">
+                  <div
+                    key={day.dayIndex}
+                    ref={isToday ? todayRef : undefined}
+                    className="relative"
+                    style={isToday ? { scrollMarginTop: 'calc(env(safe-area-inset-top, 0px) + 5rem)' } : undefined}
+                  >
                     <TrainingCard training={day} isToday={isToday} dark />
                     {planId !== 'default' && (
                       <button

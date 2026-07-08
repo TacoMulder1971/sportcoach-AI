@@ -32,6 +32,7 @@ const KEYS = {
   GARMIN_CREDENTIALS: 'tricoach_garmin_credentials',
   SESSION_BREAKDOWN: 'tricoach_session_breakdown',
   STRENGTH_WORKOUTS: 'tricoach_strength_workouts',
+  CYCLE_WEEK_FLIP: 'tricoach_cycle_week_flip',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -458,6 +459,30 @@ function alignCycleStartToRace(cycleStartDate: string, numWeeks: number, raceDat
   return anchor.toISOString().split('T')[0];
 }
 
+/**
+ * Handmatige week-correctie: als de automatische week-berekening ernaast zit
+ * (bv. week 1 getoond terwijl het week 2 is), kan de gebruiker de weken wisselen.
+ * Slaat een boolean op; toegepast als een verschuiving van 7 dagen op de
+ * uiteindelijke ankerdatum, zodat de huidige week omklapt (week 1 ↔ 2) én de
+ * hele app (home/coach/schema) consistent meebeweegt.
+ */
+export function getCycleWeekFlip(): boolean {
+  return getItem<boolean>(KEYS.CYCLE_WEEK_FLIP, false);
+}
+
+export function toggleCycleWeekFlip(): boolean {
+  const next = !getCycleWeekFlip();
+  setItem(KEYS.CYCLE_WEEK_FLIP, next);
+  return next;
+}
+
+function shiftDateStr(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr.split('T')[0]}T00:00:00Z`);
+  if (isNaN(d.getTime())) return dateStr;
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
 export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string; id: string } {
   runZoneMigration();
   const activeId = getItem<string | null>(KEYS.ACTIVE_PLAN_ID, null);
@@ -465,7 +490,9 @@ export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string;
     const plans = getStoredPlans();
     const active = plans.find((p) => p.id === activeId);
     if (active) {
-      const cycleStartDate = alignCycleStartToRace(active.cycleStartDate, active.plan.length, getActiveRaceDate());
+      let cycleStartDate = alignCycleStartToRace(active.cycleStartDate, active.plan.length, getActiveRaceDate());
+      // Handmatige week-correctie wint altijd (ook over de race-uitlijning)
+      if (getCycleWeekFlip()) cycleStartDate = shiftDateStr(cycleStartDate, -7);
       return { plan: active.plan, cycleStartDate, id: active.id };
     }
   }
