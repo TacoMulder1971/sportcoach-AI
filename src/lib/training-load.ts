@@ -534,7 +534,8 @@ export interface AdherenceDay {
 export interface WeekAdherence {
   plannedCount: number;
   completedCount: number;
-  completionPct: number;        // gedane sessies / geplande sessies
+  completionPct: number;        // gedane sessies / geplande sessies (puur aan/uit)
+  adherencePct: number;         // kwaliteit-gewogen: gemist=0, gedaan=uitvoeringsscore
   avgMatchScore: number | null; // gemiddelde uitvoeringsscore van de gedane sessies
   label: string;
   days: AdherenceDay[];
@@ -563,6 +564,8 @@ export function computeWeekAdherence(
   const days: AdherenceDay[] = [];
   let plannedCount = 0;
   let completedCount = 0;
+  let qualitySum = 0; // som van uitvoeringsscores (gemist = 0)
+  let restDayCount = 0; // geplande rustdagen — rusten telt als 100% volgens plan
   const matchScores: number[] = [];
 
   for (let offset = -7; offset <= -1; offset++) {
@@ -572,6 +575,8 @@ export function computeWeekAdherence(
     const dayLabel = d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
 
     const training = getTrainingForDayOffset(offset, plan, cycleStartDate);
+    const isRestDay = !!training && training.isRestDay;
+    if (isRestDay) restDayCount++;
     const sessions = training && !training.isRestDay
       ? training.sessions.filter((s) => s.sport !== 'kracht' && s.sport !== 'rust')
       : [];
@@ -586,6 +591,7 @@ export function computeWeekAdherence(
       const activity = dayActivities[idx];
       const match = computeActivityMatchScore(activity, session, zonesForSport(session.sport));
       matchScores.push(match.score);
+      qualitySum += match.score;
       return { session, done: true, matchScore: match.score };
     });
 
@@ -594,19 +600,29 @@ export function computeWeekAdherence(
     days.push({ date: dateStr, dayLabel, restDay: !training || training.isRestDay, planned });
   }
 
-  if (plannedCount === 0) return null;
+  // Geen enkele geplande dag (geen trainingen én geen rustdagen) → niets te tonen.
+  if (plannedCount === 0 && restDayCount === 0) return null;
 
-  const completionPct = Math.round((completedCount / plannedCount) * 100);
+  const completionPct = plannedCount > 0 ? Math.round((completedCount / plannedCount) * 100) : 100;
+  // Kwaliteit-gewogen adherentie: gemiste sessies tellen als 0, gedane sessies
+  // met hun eigen uitvoeringsscore, en een geplande rustdag als 100% (rusten =
+  // volgens plan). Een training weegt zwaarder dan een rustdag, zodat een
+  // gemiste training niet wordt weggemaskeerd door de rustdagen.
+  const TRAINING_WEIGHT = 3;
+  const REST_WEIGHT = 1;
+  const weightedSum = TRAINING_WEIGHT * qualitySum + REST_WEIGHT * restDayCount * 100;
+  const weightTotal = TRAINING_WEIGHT * plannedCount + REST_WEIGHT * restDayCount;
+  const adherencePct = Math.round(weightedSum / weightTotal);
   const avgMatchScore = matchScores.length > 0
     ? Math.round(matchScores.reduce((s, v) => s + v, 0) / matchScores.length)
     : null;
-  const label = completionPct >= 85
+  const label = adherencePct >= 85
     ? 'Sterk volgens plan'
-    : completionPct >= 60
+    : adherencePct >= 60
     ? 'Redelijk volgens plan'
     : 'Veel sessies gemist';
 
-  return { plannedCount, completedCount, completionPct, avgMatchScore, label, days };
+  return { plannedCount, completedCount, completionPct, adherencePct, avgMatchScore, label, days };
 }
 
 /**
