@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek, DayPreference } from '@/lib/types';
+import { buildHrvCoachText } from '@/lib/training-load';
 
 export const maxDuration = 60; // Vercel timeout: twee-traps (Opus-redenering + snelle JSON) past hierin
 
@@ -255,7 +256,8 @@ ${JSON_FORMAT_SPEC}`;
     }
     if (garminData?.health) {
       const h = garminData.health;
-      performanceText += `\nHERSTEL: Slaap ${h.sleepDurationHours}u (score ${h.sleepScore}), HRV ${h.avgOvernightHrv}ms (${h.hrvStatus}), rust HR ${h.restingHR}\n`;
+      performanceText += `\nHERSTEL: Slaap ${h.sleepDurationHours}u (score ${h.sleepScore}), rust HR ${h.restingHR}\n`;
+      performanceText += `${buildHrvCoachText(h) || `HRV ${h.avgOvernightHrv}ms (${h.hrvStatus})`}\n`;
     }
     if (trainingLoad) {
       performanceText += `\nTRAINING LOAD: ${trainingLoad.weekLoad} TRIMP (${trainingLoad.status})\n`;

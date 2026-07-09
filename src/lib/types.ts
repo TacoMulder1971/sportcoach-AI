@@ -223,6 +223,9 @@ export interface GarminHealthStats {
   remSleepMinutes: number;
   avgOvernightHrv: number;
   hrvStatus: string;
+  hrvBaseline?: number;          // 7-daags HRV-gemiddelde (Garmin weeklyAvg) = marker binnen de band
+  hrvBaselineLow?: number;       // ondergrens balans-bandbreedte (Garmin baseline.balancedLow)
+  hrvBaselineHigh?: number;      // bovengrens balans-bandbreedte (Garmin baseline.balancedUpper)
   restingHR: number;
   bodyBatteryChange: number;
   steps: number;

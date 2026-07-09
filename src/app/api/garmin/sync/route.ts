@@ -293,7 +293,7 @@ export async function POST(request: Request) {
       console.error('[readiness] getUserProfile() FAILED:', e instanceof Error ? e.message : e);
     }
 
-    type HrvResp = { hrvSummary?: { lastNightAvg?: number; weeklyAvg?: number; status?: string } };
+    type HrvResp = { hrvSummary?: { lastNightAvg?: number; weeklyAvg?: number; status?: string; baseline?: { lowUpper?: number; balancedLow?: number; balancedUpper?: number; markerValue?: number } } };
     type DailyResp = {
       restingHeartRate?: number;
       totalSteps?: number;
@@ -351,6 +351,11 @@ export async function POST(request: Request) {
 
     const avgOvernightHrv = Math.round(
       hrv?.hrvSummary?.lastNightAvg || sleepData?.avgOvernightHrv || readiness?.hrvWeeklyAverage || hrv?.hrvSummary?.weeklyAvg || 0);
+    // 7-daags HRV-gemiddelde: marker binnen de balans-band
+    const hrvBaseline = Math.round(hrv?.hrvSummary?.weeklyAvg || readiness?.hrvWeeklyAverage || 0) || undefined;
+    // Balans-bandbreedte: de persoonlijke onder/bovengrens waartegen Garmin de status bepaalt
+    const hrvBaselineLow = Math.round(hrv?.hrvSummary?.baseline?.balancedLow || 0) || undefined;
+    const hrvBaselineHigh = Math.round(hrv?.hrvSummary?.baseline?.balancedUpper || 0) || undefined;
     const hrvStatus = hrv?.hrvSummary?.status || sleepData?.hrvStatus || 'onbekend';
     const restingHR = Math.round(daily?.restingHeartRate || sleepData?.restingHeartRate || readiness?.restingHeartRate || 0);
     const sleepScore = sleepData?.dailySleepDTO?.sleepScores?.overall?.value || readiness?.sleepScore || 0;
@@ -390,6 +395,9 @@ export async function POST(request: Request) {
         remSleepMinutes: Math.round((sleepData?.dailySleepDTO?.remSleepSeconds || 0) / 60),
         avgOvernightHrv,
         hrvStatus,
+        hrvBaseline,
+        hrvBaselineLow,
+        hrvBaselineHigh,
         restingHR,
         bodyBatteryChange,
         steps: steps || daily?.totalSteps || 0,
