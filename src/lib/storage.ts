@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, YazioCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
 import { trainingPlan } from '@/data/training-plan';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
 import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones } from './swim';
@@ -30,6 +30,7 @@ const KEYS = {
   HEALTH_ARCHIVE: 'tricoach_health_archive',
   RACE_WEATHER: 'tricoach_race_weather',
   GARMIN_CREDENTIALS: 'tricoach_garmin_credentials',
+  YAZIO_CREDENTIALS: 'tricoach_yazio_credentials',
   SESSION_BREAKDOWN: 'tricoach_session_breakdown',
   STRENGTH_WORKOUTS: 'tricoach_strength_workouts',
   CYCLE_WEEK_FLIP: 'tricoach_cycle_week_flip',
@@ -615,6 +616,24 @@ export function saveNutritionLogs(logs: NutritionLog[]): void {
   setItem(KEYS.NUTRITION, filtered);
 }
 
+// Voeg nieuwe logs samen met bestaande: nieuw wint per datum, maar behoud
+// bestaande aiFeedback als de nieuwe log er (nog) geen heeft. Gebruikt door de
+// Yazio-sync én de CSV-import.
+export function mergeNutritionLogs(incoming: NutritionLog[]): NutritionLog[] {
+  const byDate = new Map<string, NutritionLog>();
+  for (const log of getNutritionLogs()) byDate.set(log.date, log);
+  for (const log of incoming) {
+    const existing = byDate.get(log.date);
+    byDate.set(log.date, {
+      ...log,
+      aiFeedback: log.aiFeedback ?? existing?.aiFeedback,
+    });
+  }
+  const merged = [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date));
+  saveNutritionLogs(merged);
+  return getNutritionLogs().sort((a, b) => b.date.localeCompare(a.date));
+}
+
 export function saveNutritionFeedback(date: string, feedback: string): void {
   const logs = getNutritionLogs();
   const idx = logs.findIndex(n => n.date === date);
@@ -1187,4 +1206,19 @@ export function saveGarminCredentials(creds: GarminCredentials): void {
 export function clearGarminCredentials(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(KEYS.GARMIN_CREDENTIALS);
+}
+
+// Yazio-credentials (voeding-koppeling) — zelfde patroon als Garmin: per gebruiker
+// in localStorage, meegestuurd naar /api/yazio/sync. Env-vars als server-fallback.
+export function getYazioCredentials(): YazioCredentials | null {
+  return getItem<YazioCredentials | null>(KEYS.YAZIO_CREDENTIALS, null);
+}
+
+export function saveYazioCredentials(creds: YazioCredentials): void {
+  setItem(KEYS.YAZIO_CREDENTIALS, creds);
+}
+
+export function clearYazioCredentials(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.YAZIO_CREDENTIALS);
 }

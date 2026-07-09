@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { getNutritionLogs, saveNutritionLogs, parseMFPCsv } from '@/lib/storage';
+import { getNutritionLogs, saveNutritionLogs, parseMFPCsv, getYazioCredentials, mergeNutritionLogs } from '@/lib/storage';
 import { NutritionLog } from '@/lib/types';
+import YazioSetupCard from '@/components/YazioSetupCard';
 
 const DAY_ABBR = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 
@@ -24,11 +25,43 @@ function formatDate(dateStr: string): string {
 export default function VoedingPage() {
   const [logs, setLogs] = useState<NutritionLog[]>([]);
   const [mfpImportStatus, setMfpImportStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [yazioStatus, setYazioStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [showCsv, setShowCsv] = useState(false);
   const mfpInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLogs(getNutritionLogs().sort((a, b) => b.date.localeCompare(a.date)));
   }, []);
+
+  async function handleYazioSync() {
+    const creds = getYazioCredentials();
+    if (!creds) return;
+    setSyncing(true);
+    setYazioStatus(null);
+    try {
+      const res = await fetch('/api/yazio/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: creds.email, password: creds.password, days: 14 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setYazioStatus({ type: 'error', msg: data.error || 'Synchroniseren mislukt.' });
+      } else if (!data.logs || data.logs.length === 0) {
+        setYazioStatus({ type: 'error', msg: 'Geen gelogde voeding gevonden in de afgelopen 14 dagen.' });
+      } else {
+        const merged = mergeNutritionLogs(data.logs as NutritionLog[]);
+        setLogs(merged.sort((a, b) => b.date.localeCompare(a.date)));
+        setYazioStatus({ type: 'success', msg: `${data.logs.length} dag(en) gesynchroniseerd!` });
+      }
+    } catch {
+      setYazioStatus({ type: 'error', msg: 'Kon geen verbinding maken met Yazio.' });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setYazioStatus(null), 5000);
+    }
+  }
 
   const last7Days = getLast7Days();
   const logsByDate = new Map(logs.map(l => [l.date, l]));
@@ -74,62 +107,86 @@ export default function VoedingPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Voeding</h1>
-        <p className="text-gray-400 text-sm">MyFitnessPal data</p>
+        <p className="text-gray-400 text-sm">Gesynchroniseerd met Yazio</p>
       </div>
 
-      {/* Import: mét data een compacte kaart, zonder data één gecombineerde lege staat */}
-      <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 space-y-3">
-        {logs.length === 0 && (
-          <div className="text-center pt-3">
-            <p className="text-3xl mb-2">🥗</p>
-            <p className="text-gray-100 font-medium">Nog geen voedingsdata</p>
-          </div>
-        )}
-        <p className={`text-sm text-gray-400 ${logs.length === 0 ? 'text-center' : ''}`}>
-          Exporteer je data uit MyFitnessPal en upload het <strong className="text-gray-300">Voedingsoverzicht</strong> CSV-bestand.
-        </p>
+      {/* Lege staat: uitleg vóór de koppelkaart */}
+      {logs.length === 0 && (
+        <div className="text-center pt-1">
+          <p className="text-3xl mb-2">🥗</p>
+          <p className="text-gray-100 font-medium">Nog geen voedingsdata</p>
+          <p className="text-gray-500 text-sm mt-1">Koppel je Yazio-account om je macro&apos;s te synchroniseren.</p>
+        </div>
+      )}
+
+      {/* Yazio-koppeling (primair) */}
+      <YazioSetupCard onConnect={handleYazioSync} syncing={syncing} />
+      {yazioStatus && (
+        <div className={`text-sm p-3 rounded-xl ${
+          yazioStatus.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+        }`}>
+          {yazioStatus.msg}
+        </div>
+      )}
+
+      {/* CSV-import (alternatief, ingeklapt) */}
+      <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
         <button
-          onClick={() => mfpInputRef.current?.click()}
-          className="w-full py-3 rounded-xl font-semibold text-white bg-green-600 hover:bg-green-700 transition-all text-sm"
+          onClick={() => setShowCsv(v => !v)}
+          className="w-full flex items-center justify-between text-left"
         >
-          Importeer MyFitnessPal CSV
+          <span className="text-sm text-gray-400">Andere importmethode: MyFitnessPal CSV</span>
+          <span className="text-gray-500 text-lg leading-none">{showCsv ? '−' : '+'}</span>
         </button>
-        <input
-          ref={mfpInputRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              try {
-                const parsed = parseMFPCsv(reader.result as string);
-                if (parsed.length === 0) {
-                  setMfpImportStatus({ type: 'error', msg: 'Geen geldige voedingsdata gevonden' });
-                } else {
-                  const existing = getNutritionLogs().filter(
-                    n => !parsed.find(p => p.date === n.date)
-                  );
-                  saveNutritionLogs([...existing, ...parsed]);
-                  setLogs(getNutritionLogs().sort((a, b) => b.date.localeCompare(a.date)));
-                  setMfpImportStatus({ type: 'success', msg: `${parsed.length} dag(en) geïmporteerd!` });
-                }
-              } catch {
-                setMfpImportStatus({ type: 'error', msg: 'Fout bij verwerken van het CSV-bestand.' });
-              }
-              setTimeout(() => setMfpImportStatus(null), 4000);
-            };
-            reader.readAsText(file);
-            e.target.value = '';
-          }}
-        />
-        {mfpImportStatus && (
-          <div className={`text-sm p-3 rounded-xl ${
-            mfpImportStatus.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-          }`}>
-            {mfpImportStatus.msg}
+        {showCsv && (
+          <div className="space-y-3 mt-3">
+            <p className="text-sm text-gray-500">
+              Exporteer je data uit MyFitnessPal en upload het <strong className="text-gray-300">Voedingsoverzicht</strong> CSV-bestand.
+            </p>
+            <button
+              onClick={() => mfpInputRef.current?.click()}
+              className="w-full py-2.5 rounded-xl font-semibold text-gray-200 bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-sm"
+            >
+              Importeer MyFitnessPal CSV
+            </button>
+            <input
+              ref={mfpInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  try {
+                    const parsed = parseMFPCsv(reader.result as string);
+                    if (parsed.length === 0) {
+                      setMfpImportStatus({ type: 'error', msg: 'Geen geldige voedingsdata gevonden' });
+                    } else {
+                      const existing = getNutritionLogs().filter(
+                        n => !parsed.find(p => p.date === n.date)
+                      );
+                      saveNutritionLogs([...existing, ...parsed]);
+                      setLogs(getNutritionLogs().sort((a, b) => b.date.localeCompare(a.date)));
+                      setMfpImportStatus({ type: 'success', msg: `${parsed.length} dag(en) geïmporteerd!` });
+                    }
+                  } catch {
+                    setMfpImportStatus({ type: 'error', msg: 'Fout bij verwerken van het CSV-bestand.' });
+                  }
+                  setTimeout(() => setMfpImportStatus(null), 4000);
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+              }}
+            />
+            {mfpImportStatus && (
+              <div className={`text-sm p-3 rounded-xl ${
+                mfpImportStatus.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+              }`}>
+                {mfpImportStatus.msg}
+              </div>
+            )}
           </div>
         )}
       </div>
