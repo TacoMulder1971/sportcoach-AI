@@ -1,6 +1,11 @@
-const CACHE_NAME = 'tricoach-v1';
+// Bump CACHE_VERSION bij elke app-wijziging: de gewijzigde bytes zorgen dat de
+// browser een nieuwe service worker detecteert, die dankzij skipWaiting +
+// clients.claim de controle overneemt, waarna de client automatisch herlaadt
+// (zie PWARegister.tsx). Zo hoeft de gebruiker nooit handmatig te verversen.
+const CACHE_VERSION = 'v2';
+const CACHE_NAME = `sportcoach-${CACHE_VERSION}`;
 
-// Install event - cache shell
+// Install - cache shell en meteen activeren (niet wachten op sluiten van tabs)
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -16,7 +21,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate - clean old caches
+// Activate - oude caches opruimen en de controle over open clients overnemen
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
