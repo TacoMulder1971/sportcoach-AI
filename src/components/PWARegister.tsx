@@ -6,33 +6,20 @@ export default function PWARegister() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
 
-    let refreshing = false;
-    // Bestond er al een actieve service worker bij het laden? Zo ja, dan is een
-    // latere controllerchange een échte update → eenmalig herladen zodat de app
-    // meteen de nieuwe code draait. Bij de allereerste installatie (geen
-    // controller) niet herladen, anders ververst het eerste bezoek onnodig.
-    const hadController = !!navigator.serviceWorker.controller;
-
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing || !hadController) return;
-      refreshing = true;
-      window.location.reload();
-    });
-
+    // We registreren geen service worker meer: de vorige, cachende SW liet de
+    // PWA op oude code hangen. Ruim een eventueel nog geregistreerde SW + caches
+    // op zodat de app voortaan altijd de nieuwste versie van het netwerk laadt.
     navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        // Direct én telkens als de app weer op de voorgrond komt op updates checken,
-        // zodat een nieuwe deploy snel wordt opgepikt (iOS PWA start vaak "resumed").
-        registration.update().catch(() => {});
-        const onVisible = () => {
-          if (document.visibilityState === 'visible') registration.update().catch(() => {});
-        };
-        document.addEventListener('visibilitychange', onVisible);
-      })
-      .catch(() => {
-        // Service worker registration failed - not critical
-      });
+      .getRegistrations()
+      .then((regs) => regs.forEach((r) => r.unregister()))
+      .catch(() => {});
+
+    if ('caches' in window) {
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .catch(() => {});
+    }
   }, []);
 
   return null;
