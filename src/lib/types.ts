@@ -5,6 +5,11 @@ export interface GarminCredentials {
   password: string;
 }
 
+export interface YazioCredentials {
+  email: string;
+  password: string;
+}
+
 // Zwem-locatie varianten — onderscheiden binnen-/buitenbad en openwater per activiteit
 export type SwimVariant = 'zwembad_binnen' | 'zwembad_buiten' | 'openwater';
 
