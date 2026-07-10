@@ -432,23 +432,22 @@ export default function OnboardingWizard() {
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
                   />
                 </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label htmlFor="ob-goaldate" className="block text-sm text-gray-400 mb-2">Datum</label>
-                    <input
-                      id="ob-goaldate" type="date" value={goalDate}
-                      onChange={(e) => setGoalDate(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-white/30"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label htmlFor="ob-goaltime" className="block text-sm text-gray-400 mb-2">Streeftijd <span className="text-gray-600">(opt.)</span></label>
-                    <input
-                      id="ob-goaltime" type="text" value={goalTime}
-                      onChange={(e) => setGoalTime(e.target.value)} placeholder="hh:mm:ss"
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
-                    />
-                  </div>
+                <div>
+                  <label htmlFor="ob-goaldate" className="block text-sm text-gray-400 mb-2">Datum</label>
+                  <input
+                    id="ob-goaldate" type="date" value={goalDate}
+                    onChange={(e) => setGoalDate(e.target.value)}
+                    style={{ colorScheme: 'dark' }}
+                    className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-white/30"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="ob-goaltime" className="block text-sm text-gray-400 mb-2">Streeftijd <span className="text-gray-600">(opt.)</span></label>
+                  <input
+                    id="ob-goaltime" type="text" value={goalTime}
+                    onChange={(e) => setGoalTime(e.target.value)} placeholder="hh:mm:ss"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
+                  />
                 </div>
               </div>
             </>
