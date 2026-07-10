@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getProfile, saveProfile } from '@/lib/storage';
-import { TrainingSport, AthleteLevel } from '@/lib/types';
+import { TrainingSport, AthleteLevel, Gender } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 
 const SPORT_OPTIONS: { sport: TrainingSport; label: string }[] = [
@@ -18,6 +18,12 @@ const LEVELS: { level: AthleteLevel; label: string }[] = [
   { level: 'ervaren', label: 'Ervaren' },
 ];
 
+const GENDERS: { value: Gender; label: string }[] = [
+  { value: 'man', label: 'Man' },
+  { value: 'vrouw', label: 'Vrouw' },
+  { value: 'anders', label: 'Anders' },
+];
+
 /**
  * Profiel bewerken op Data → Instellingen: sporten, niveau, trainingsdagen,
  * krachttraining en coach-wensen. Wijzigingen werken door in alle AI-adviezen
@@ -26,6 +32,9 @@ const LEVELS: { level: AthleteLevel; label: string }[] = [
 export default function ProfileCard() {
   const [name, setName] = useState('');
   const [birthYear, setBirthYear] = useState('');
+  const [gender, setGender] = useState<Gender | null>(null);
+  const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
   const [sports, setSports] = useState<TrainingSport[]>([]);
   const [days, setDays] = useState(4);
   const [level, setLevel] = useState<AthleteLevel>('gevorderd');
@@ -38,6 +47,9 @@ export default function ProfileCard() {
     const p = getProfile();
     setName(p.name || '');
     setBirthYear(p.birthYear ? String(p.birthYear) : '');
+    setGender(p.gender ?? null);
+    setWeight(p.weightKg ? String(p.weightKg) : '');
+    setHeight(p.heightCm ? String(p.heightCm) : '');
     setSports(p.sports ?? []);
     setDays(p.trainingDaysPerWeek ?? 4);
     setLevel(p.level ?? 'gevorderd');
@@ -59,11 +71,18 @@ export default function ProfileCard() {
       setError('Vul een geldig geboortejaar in (of laat het leeg).');
       return;
     }
+    const w = weight ? parseFloat(weight) : undefined;
+    if (weight && (!w || w < 25 || w > 250)) { setError('Vul een geldig gewicht in (of laat het leeg).'); return; }
+    const h = height ? parseFloat(height) : undefined;
+    if (height && (!h || h < 100 || h > 250)) { setError('Vul een geldige lengte in (of laat het leeg).'); return; }
     const p = getProfile();
     saveProfile({
       ...p,
       name: name.trim() || p.name,
       birthYear: year,
+      gender: gender ?? undefined,
+      weightKg: w,
+      heightCm: h,
       sports,
       trainingDaysPerWeek: days,
       level,
@@ -101,6 +120,49 @@ export default function ProfileCard() {
             inputMode="numeric"
             value={birthYear}
             onChange={(e) => { setBirthYear(e.target.value); setSaved(false); }}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
+          />
+        </div>
+      </div>
+
+      <div className="mt-3">
+        <p className="text-xs text-gray-500 mb-1">Geslacht</p>
+        <div className="flex gap-1.5">
+          {GENDERS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => { setGender(value); setSaved(false); }}
+              className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition-colors ${
+                gender === value ? 'border-blue-500/60 bg-blue-500/10 text-white' : 'border-white/10 bg-white/5 text-gray-400'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-3">
+        <div>
+          <label htmlFor="pf-weight" className="block text-xs text-gray-500 mb-1">Gewicht (kg)</label>
+          <input
+            id="pf-weight"
+            type="number"
+            inputMode="decimal"
+            value={weight}
+            onChange={(e) => { setWeight(e.target.value); setSaved(false); }}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
+          />
+        </div>
+        <div>
+          <label htmlFor="pf-height" className="block text-xs text-gray-500 mb-1">Lengte (cm)</label>
+          <input
+            id="pf-height"
+            type="number"
+            inputMode="numeric"
+            value={height}
+            onChange={(e) => { setHeight(e.target.value); setSaved(false); }}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white/30"
           />
         </div>

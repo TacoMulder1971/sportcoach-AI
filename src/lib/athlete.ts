@@ -1,4 +1,4 @@
-import { UserProfile, TrainingSport, ALL_TRAINING_SPORTS, AthleteLevel } from './types';
+import { UserProfile, TrainingSport, ALL_TRAINING_SPORTS, AthleteLevel, Gender } from './types';
 
 /**
  * Atleet-profiel zoals de client het naar de AI-routes stuurt (subset van
@@ -7,6 +7,9 @@ import { UserProfile, TrainingSport, ALL_TRAINING_SPORTS, AthleteLevel } from '.
 export interface AthleteProfilePayload {
   name?: string;
   birthYear?: number;
+  gender?: Gender;
+  weightKg?: number;
+  heightCm?: number;
   sports?: TrainingSport[];
   level?: AthleteLevel;
   trainingDaysPerWeek?: number;
@@ -32,6 +35,9 @@ export function athleteProfilePayload(p: UserProfile): AthleteProfilePayload {
   return {
     name: p.name || undefined,
     birthYear: p.birthYear,
+    gender: p.gender,
+    weightKg: p.weightKg,
+    heightCm: p.heightCm,
     sports: p.sports,
     level: p.level,
     trainingDaysPerWeek: p.trainingDaysPerWeek,
@@ -83,6 +89,9 @@ export function buildAthleteProfileText(p?: AthleteProfilePayload | null): strin
   if (p.name) lines.push(`- Naam: ${p.name}`);
   const age = athleteAge(p);
   if (age) lines.push(`- Leeftijd: ${age} jaar`);
+  if (p.gender) lines.push(`- Geslacht: ${p.gender}`);
+  if (p.weightKg) lines.push(`- Gewicht: ${p.weightKg} kg`);
+  if (p.heightCm) lines.push(`- Lengte: ${p.heightCm} cm`);
   lines.push(`- Sporten: ${resolveSports(p).map((s) => SPORT_LABELS[s]).join(', ')}`);
   if (p.level) lines.push(`- Niveau: ${LEVEL_LABELS[p.level]}`);
   if (p.trainingDaysPerWeek) lines.push(`- Beschikbaar: ~${p.trainingDaysPerWeek} trainingsdagen per week`);

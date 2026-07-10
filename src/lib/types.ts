@@ -114,6 +114,7 @@ export type TrainingSport = 'zwemmen' | 'fietsen' | 'hardlopen' | 'mountainbike'
 export const ALL_TRAINING_SPORTS: TrainingSport[] = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike'];
 
 export type AthleteLevel = 'beginner' | 'gevorderd' | 'ervaren';
+export type Gender = 'man' | 'vrouw' | 'anders';
 
 export interface UserProfile {
   name: string;
@@ -129,6 +130,9 @@ export interface UserProfile {
   // een legacy-profiel → migratie in getProfile() vult de velden aan.
   sports?: TrainingSport[];         // welke sporten traint deze gebruiker
   birthYear?: number;               // → default max HR (220 − leeftijd)
+  gender?: Gender;
+  weightKg?: number;                // lichaamsgewicht in kg
+  heightCm?: number;                // lengte in cm
   level?: AthleteLevel;
   trainingDaysPerWeek?: number;     // 2..7
   strengthTraining?: boolean;       // 40-min krachttraining inplannen (core is altijd aan)
