@@ -259,6 +259,92 @@ export function getTrainingReadiness(
 }
 
 /**
+ * Nederlandse duiding van de HRV (hartslagvariabiliteit).
+ * Combineert Garmins status-label met de afwijking t.o.v. de persoonlijke
+ * 7-daagse basislijn. Geeft null als er geen bruikbare HRV-data is.
+ * Gebruikt in de gereedheid-kaart én in alle coach-prompts, zodat UI en
+ * AI dezelfde taal spreken.
+ */
+export interface HrvInsight {
+  value: number;               // HRV van afgelopen nacht (ms)
+  baseline?: number;           // 7-daags gemiddelde (ms), marker binnen de band
+  baselineLow?: number;        // ondergrens balans-bandbreedte (ms)
+  baselineHigh?: number;       // bovengrens balans-bandbreedte (ms)
+  diff?: number;               // value - baseline (ms), afgerond
+  statusLabel: string;         // Nederlands status-label
+  trend: 'boven' | 'binnen' | 'onder' | 'onbekend';
+  interpretation: string;      // één zin duiding
+}
+
+export function describeHrv(health: GarminHealthStats | null): HrvInsight | null {
+  if (!health) return null;
+  const value = health.avgOvernightHrv ?? 0;
+  const rawStatus = (health.hrvStatus || '').toLowerCase();
+  const hasStatus = !!rawStatus && rawStatus !== 'onbekend';
+  if (value <= 0 && !hasStatus) return null;
+
+  const baseline = (health.hrvBaseline ?? 0) > 0 ? health.hrvBaseline : undefined;
+  const baselineLow = (health.hrvBaselineLow ?? 0) > 0 ? health.hrvBaselineLow : undefined;
+  const baselineHigh = (health.hrvBaselineHigh ?? 0) > 0 ? health.hrvBaselineHigh : undefined;
+  const hasBand = baselineLow !== undefined && baselineHigh !== undefined;
+  const diff = baseline && value > 0 ? Math.round(value - baseline) : undefined;
+
+  // Trend: bij een echte balans-band vergelijken we tegen de onder/bovengrens;
+  // anders vallen we terug op ±5% rond het 7-daags gemiddelde.
+  let trend: HrvInsight['trend'] = 'onbekend';
+  if (hasBand && value > 0) {
+    if (value < baselineLow!) trend = 'onder';
+    else if (value > baselineHigh!) trend = 'boven';
+    else trend = 'binnen';
+  } else if (baseline && value > 0) {
+    const margin = Math.max(3, baseline * 0.05);
+    if (value > baseline + margin) trend = 'boven';
+    else if (value < baseline - margin) trend = 'onder';
+    else trend = 'binnen';
+  }
+
+  const statusLabel = (() => {
+    if (rawStatus === 'balanced') return 'Gebalanceerd';
+    if (rawStatus === 'good' || rawStatus === 'optimal') return 'Goed';
+    if (rawStatus === 'unbalanced') return 'Uit balans';
+    if (rawStatus === 'low') return 'Laag';
+    if (rawStatus === 'poor') return 'Slecht';
+    return hasStatus ? health.hrvStatus : 'Onbekend';
+  })();
+
+  const good = rawStatus === 'balanced' || rawStatus === 'good' || rawStatus === 'optimal' || trend === 'boven';
+  const bad = rawStatus === 'unbalanced' || rawStatus === 'low' || rawStatus === 'poor' || trend === 'onder';
+
+  const interpretation = good
+    ? 'HRV in of boven je normale bandbreedte — je zenuwstelsel is goed hersteld.'
+    : bad
+      ? 'HRV onder je normale bandbreedte — teken van vermoeidheid, stress of onvoldoende herstel; houd de intensiteit in de gaten.'
+      : 'HRV binnen je normale bandbreedte.';
+
+  return { value, baseline, baselineLow, baselineHigh, diff, statusLabel, trend, interpretation };
+}
+
+/**
+ * Compacte tekstregel voor coach-prompts, bijv.:
+ * "HRV: 45ms (basislijn 42ms, +3, boven bandbreedte) — Gebalanceerd: ..."
+ */
+export function buildHrvCoachText(health: GarminHealthStats | null): string | null {
+  const hrv = describeHrv(health);
+  if (!hrv) return null;
+  const parts: string[] = [`${hrv.value}ms`];
+  const hasBand = hrv.baselineLow !== undefined && hrv.baselineHigh !== undefined;
+  if (hasBand) {
+    const trendStr = hrv.trend !== 'onbekend' ? `, ${hrv.trend} bandbreedte` : '';
+    parts.push(`balansbereik ${hrv.baselineLow}–${hrv.baselineHigh}ms${trendStr}`);
+  } else if (hrv.baseline) {
+    const diffStr = hrv.diff !== undefined ? `, ${hrv.diff >= 0 ? '+' : ''}${hrv.diff}` : '';
+    const trendStr = hrv.trend !== 'onbekend' ? `, ${hrv.trend} bandbreedte` : '';
+    parts.push(`basislijn ${hrv.baseline}ms${diffStr}${trendStr}`);
+  }
+  return `HRV: ${parts.join(' (')}${hasBand || hrv.baseline ? ')' : ''} — ${hrv.statusLabel}: ${hrv.interpretation}`;
+}
+
+/**
  * Schat de TRIMP van een geplande training op basis van zones en duur
  */
 export function estimatePlannedTRIMP(sessions: TrainingSession[]): number {
@@ -448,7 +534,8 @@ export interface AdherenceDay {
 export interface WeekAdherence {
   plannedCount: number;
   completedCount: number;
-  completionPct: number;        // gedane sessies / geplande sessies
+  completionPct: number;        // gedane sessies / geplande sessies (puur aan/uit)
+  adherencePct: number;         // kwaliteit-gewogen: gemist=0, gedaan=uitvoeringsscore
   avgMatchScore: number | null; // gemiddelde uitvoeringsscore van de gedane sessies
   label: string;
   days: AdherenceDay[];
@@ -477,6 +564,8 @@ export function computeWeekAdherence(
   const days: AdherenceDay[] = [];
   let plannedCount = 0;
   let completedCount = 0;
+  let qualitySum = 0; // som van uitvoeringsscores (gemist = 0)
+  let restDayCount = 0; // geplande rustdagen — rusten telt als 100% volgens plan
   const matchScores: number[] = [];
 
   for (let offset = -7; offset <= -1; offset++) {
@@ -486,6 +575,8 @@ export function computeWeekAdherence(
     const dayLabel = d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
 
     const training = getTrainingForDayOffset(offset, plan, cycleStartDate);
+    const isRestDay = !!training && training.isRestDay;
+    if (isRestDay) restDayCount++;
     const sessions = training && !training.isRestDay
       ? training.sessions.filter((s) => s.sport !== 'kracht' && s.sport !== 'rust')
       : [];
@@ -500,6 +591,7 @@ export function computeWeekAdherence(
       const activity = dayActivities[idx];
       const match = computeActivityMatchScore(activity, session, zonesForSport(session.sport));
       matchScores.push(match.score);
+      qualitySum += match.score;
       return { session, done: true, matchScore: match.score };
     });
 
@@ -508,19 +600,29 @@ export function computeWeekAdherence(
     days.push({ date: dateStr, dayLabel, restDay: !training || training.isRestDay, planned });
   }
 
-  if (plannedCount === 0) return null;
+  // Geen enkele geplande dag (geen trainingen én geen rustdagen) → niets te tonen.
+  if (plannedCount === 0 && restDayCount === 0) return null;
 
-  const completionPct = Math.round((completedCount / plannedCount) * 100);
+  const completionPct = plannedCount > 0 ? Math.round((completedCount / plannedCount) * 100) : 100;
+  // Kwaliteit-gewogen adherentie: gemiste sessies tellen als 0, gedane sessies
+  // met hun eigen uitvoeringsscore, en een geplande rustdag als 100% (rusten =
+  // volgens plan). Een training weegt zwaarder dan een rustdag, zodat een
+  // gemiste training niet wordt weggemaskeerd door de rustdagen.
+  const TRAINING_WEIGHT = 3;
+  const REST_WEIGHT = 1;
+  const weightedSum = TRAINING_WEIGHT * qualitySum + REST_WEIGHT * restDayCount * 100;
+  const weightTotal = TRAINING_WEIGHT * plannedCount + REST_WEIGHT * restDayCount;
+  const adherencePct = Math.round(weightedSum / weightTotal);
   const avgMatchScore = matchScores.length > 0
     ? Math.round(matchScores.reduce((s, v) => s + v, 0) / matchScores.length)
     : null;
-  const label = completionPct >= 85
+  const label = adherencePct >= 85
     ? 'Sterk volgens plan'
-    : completionPct >= 60
+    : adherencePct >= 60
     ? 'Redelijk volgens plan'
     : 'Veel sessies gemist';
 
-  return { plannedCount, completedCount, completionPct, avgMatchScore, label, days };
+  return { plannedCount, completedCount, completionPct, adherencePct, avgMatchScore, label, days };
 }
 
 /**

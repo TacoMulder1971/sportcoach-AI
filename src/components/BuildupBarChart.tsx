@@ -12,6 +12,11 @@ interface BuildupBarChartProps {
   color: string;
   unit: string;
   title: string;
+  baseline?: number;        // optionele horizontale referentielijn (bijv. HRV-basislijn)
+  baselineLabel?: string;   // label bij de referentielijn (default "basislijn")
+  bandLow?: number;         // optionele gearceerde band: ondergrens (bijv. HRV-balansbereik)
+  bandHigh?: number;        // optionele gearceerde band: bovengrens
+  bandLabel?: string;       // label bij de band (default "balans")
 }
 
 interface Tooltip {
@@ -27,7 +32,7 @@ interface Tooltip {
  * gemarkeerd. Een leesbare verticale as (0 / midden / max) links.
  * Hover/touch toont een tooltip met de exacte waarde.
  */
-export default function BuildupBarChart({ data, color, title, unit }: BuildupBarChartProps) {
+export default function BuildupBarChart({ data, color, title, unit, baseline, baselineLabel, bandLow, bandHigh, bandLabel }: BuildupBarChartProps) {
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
 
   if (data.filter(d => d.value > 0).length < 2) return null;
@@ -41,7 +46,9 @@ export default function BuildupBarChart({ data, color, title, unit }: BuildupBar
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
-  const max = Math.max(...data.map(d => d.value), 1);
+  const hasBand = typeof bandLow === 'number' && bandLow > 0 && typeof bandHigh === 'number' && bandHigh > bandLow;
+  const hasBaseline = !hasBand && typeof baseline === 'number' && baseline > 0;
+  const max = Math.max(...data.map(d => d.value), hasBand ? bandHigh! : 0, hasBaseline ? baseline : 0, 1);
   const n = data.length;
   const gap = n > 14 ? 2 : 3;
   const barW = chartW / n - gap;
@@ -99,6 +106,19 @@ export default function BuildupBarChart({ data, color, title, unit }: BuildupBar
             );
           })}
 
+          {/* Balans-band (achter de staven): het persoonlijke HRV-balansbereik */}
+          {hasBand && (() => {
+            const yTop = padT + (1 - bandHigh! / max) * chartH;
+            const yBot = padT + (1 - bandLow! / max) * chartH;
+            return (
+              <g>
+                <rect x={padL} y={yTop} width={W - padR - padL} height={Math.max(1, yBot - yTop)} fill="#22c55e" opacity={0.14} />
+                <line x1={padL} y1={yTop} x2={W - padR} y2={yTop} stroke="#22c55e" strokeWidth={1} strokeDasharray="4 3" opacity={0.6} />
+                <line x1={padL} y1={yBot} x2={W - padR} y2={yBot} stroke="#22c55e" strokeWidth={1} strokeDasharray="4 3" opacity={0.6} />
+              </g>
+            );
+          })()}
+
           {data.map((d, i) => {
             const h = (d.value / max) * chartH;
             const x = padL + i * (barW + gap);
@@ -116,6 +136,29 @@ export default function BuildupBarChart({ data, color, title, unit }: BuildupBar
               />
             );
           })}
+
+          {/* Baseline-referentielijn (bijv. HRV-basislijn) */}
+          {hasBaseline && (() => {
+            const by = padT + (1 - baseline! / max) * chartH;
+            return (
+              <g>
+                <line x1={padL} y1={by} x2={W - padR} y2={by} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 3" opacity={0.9} />
+                <text x={W - padR} y={by - 4} textAnchor="end" fontSize={9} fill="#f59e0b">
+                  {baselineLabel || 'basislijn'} {baseline}
+                </text>
+              </g>
+            );
+          })()}
+
+          {/* Band-label (bovenop) */}
+          {hasBand && (() => {
+            const yTop = padT + (1 - bandHigh! / max) * chartH;
+            return (
+              <text x={W - padR} y={Math.max(padT + 8, yTop - 3)} textAnchor="end" fontSize={9} fill="#22c55e">
+                {bandLabel || 'balans'} {bandLow}–{bandHigh}
+              </text>
+            );
+          })()}
 
           {/* X-as labels */}
           {data.map((d, i) => {

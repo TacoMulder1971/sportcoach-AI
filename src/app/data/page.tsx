@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -277,6 +277,24 @@ export default function DataPage() {
     return { restingHRData, hrvData, hasHR, hasHRV };
   }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // HRV per dag over de afgelopen 7 dagen (uit health-archief) — voor het mini-grafiekje
+  // in het gereedheid-blok. 0 = geen meting die nacht.
+  const hrv7Days = useMemo(() => {
+    const archive = getHealthArchive();
+    if (archive.length === 0) return [];
+    const byDate = new Map(archive.map(h => [h.date, h.avgOvernightHrv || 0]));
+    const days: { label: string; value: number }[] = [];
+    const now = new Date();
+    const wd = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().split('T')[0];
+      days.push({ label: wd[d.getDay()], value: byDate.get(iso) || 0 });
+    }
+    return days;
+  }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (window.scrollY === 0) {
       touchStartY.current = e.touches[0].clientY;
@@ -433,7 +451,7 @@ export default function DataPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { label: readiness.factors.label1, val: readiness.factors.score1, max: readiness.factors.max1, detail: readiness.mode === 'full' ? `${garmin?.health?.avgOvernightHrv || 0}ms · ${garmin?.health?.hrvStatus || ''}` : `${garmin?.health?.restingHR || ''} bpm` },
+                    { label: readiness.factors.label1, val: readiness.factors.score1, max: readiness.factors.max1, detail: readiness.mode === 'full' ? (describeHrv(garmin?.health ?? null) ? `${describeHrv(garmin!.health)!.value}ms · ${describeHrv(garmin!.health)!.statusLabel}` : `${garmin?.health?.avgOvernightHrv || 0}ms`) : `${garmin?.health?.restingHR || ''} bpm` },
                     { label: readiness.factors.label2, val: readiness.factors.score2, max: readiness.factors.max2, detail: readiness.mode === 'full' ? `Score ${garmin?.health?.sleepScore || 0} · ${garmin?.health?.sleepDurationHours || 0}u` : 'TRIMP laatste 48u' },
                     { label: readiness.factors.label3, val: readiness.factors.score3, max: readiness.factors.max3, detail: readiness.mode === 'full' ? 'TRIMP laatste 48u' : garmin?.health ? `Battery ${garmin.health.bodyBatteryChange > 0 ? '+' : ''}${garmin.health.bodyBatteryChange} · Rust HR ${garmin.health.restingHR}` : '' },
                   ].map((f) => (
@@ -461,6 +479,52 @@ export default function DataPage() {
                     </div>
                   ))}
                 </div>
+                {(() => {
+                  const hrv = describeHrv(garmin?.health ?? null);
+                  if (!hrv) return null;
+                  const trendColor = hrv.trend === 'boven' ? 'text-green-400' : hrv.trend === 'onder' ? 'text-red-400' : 'text-gray-300';
+                  const trendArrow = hrv.trend === 'boven' ? '▲' : hrv.trend === 'onder' ? '▼' : '≈';
+                  const hasBand = hrv.baselineLow !== undefined && hrv.baselineHigh !== undefined;
+                  return (
+                    <div className="mt-3 pt-3 border-t border-white/5">
+                      <div className="flex items-baseline gap-2 mb-1">
+                        <span className="text-sm font-semibold text-cyan-400">HRV</span>
+                        <span className="text-sm text-white font-medium">{hrv.value} ms</span>
+                        <span className="text-xs text-gray-500">·</span>
+                        <span className="text-sm text-gray-200">{hrv.statusLabel}</span>
+                      </div>
+                      {hasBand ? (
+                        <p className="text-xs text-gray-400 mb-1">
+                          Balansbereik: {hrv.baselineLow}–{hrv.baselineHigh} ms{' '}
+                          <span className={trendColor}>{trendArrow} {hrv.trend} bandbreedte</span>
+                        </p>
+                      ) : hrv.baseline ? (
+                        <p className="text-xs text-gray-400 mb-1">
+                          Basislijn (7-daags): {hrv.baseline} ms{' '}
+                          <span className={trendColor}>
+                            {trendArrow} {hrv.diff !== undefined ? `${hrv.diff >= 0 ? '+' : ''}${hrv.diff} ms · ${hrv.trend} bandbreedte` : hrv.trend}
+                          </span>
+                        </p>
+                      ) : null}
+                      <p className="text-xs text-gray-400 leading-relaxed">{hrv.interpretation}</p>
+                      {hrv7Days.filter(d => d.value > 0).length >= 2 && (
+                        <div className="mt-3">
+                          <BuildupBarChart
+                            data={hrv7Days}
+                            color="#06b6d4"
+                            unit="ms"
+                            title="HRV — afgelopen 7 dagen"
+                            baseline={hrv.baseline}
+                            baselineLabel="basislijn"
+                            bandLow={hrv.baselineLow}
+                            bandHigh={hrv.baselineHigh}
+                            bandLabel="balans"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <p className="text-sm text-gray-300 mt-3 pt-3 border-t border-white/5">{readiness.advice}</p>
               </div>
             </section>
@@ -508,8 +572,8 @@ export default function DataPage() {
               <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <div className="flex items-baseline justify-between">
                   <div>
-                    <p className={`text-3xl font-bold ${adherence.completionPct >= 85 ? 'text-green-400' : adherence.completionPct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
-                      {adherence.completionPct}%
+                    <p className={`text-3xl font-bold ${adherence.adherencePct >= 85 ? 'text-green-400' : adherence.adherencePct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {adherence.adherencePct}%
                     </p>
                     <p className="text-sm font-semibold text-gray-200">{adherence.label}</p>
                   </div>
@@ -524,8 +588,8 @@ export default function DataPage() {
 
                 <div className="bg-white/10 rounded-full h-2 mt-3">
                   <div
-                    className={`h-2 rounded-full ${adherence.completionPct >= 85 ? 'bg-green-500' : adherence.completionPct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
-                    style={{ width: `${adherence.completionPct}%` }}
+                    className={`h-2 rounded-full ${adherence.adherencePct >= 85 ? 'bg-green-500' : adherence.adherencePct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
+                    style={{ width: `${adherence.adherencePct}%` }}
                   />
                 </div>
 
@@ -534,7 +598,9 @@ export default function DataPage() {
                   {adherence.days.map((d) => (
                     <div key={d.date} className="text-center">
                       <p className="text-[10px] text-gray-500 mb-1">{d.dayLabel.split(' ')[0]}</p>
-                      {d.restDay || d.planned.length === 0 ? (
+                      {d.restDay ? (
+                        <span className="text-xs text-green-500/70" title="rustdag · volgens plan">—</span>
+                      ) : d.planned.length === 0 ? (
                         <span className="text-xs text-gray-600">—</span>
                       ) : (
                         <div className="flex justify-center gap-0.5">

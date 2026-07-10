@@ -539,8 +539,8 @@ export default function HomeContent() {
             <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
               <div className="flex items-baseline justify-between">
                 <div>
-                  <p className={`text-3xl font-bold ${adherence.completionPct >= 85 ? 'text-green-400' : adherence.completionPct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
-                    {adherence.completionPct}%
+                  <p className={`text-3xl font-bold ${adherence.adherencePct >= 85 ? 'text-green-400' : adherence.adherencePct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {adherence.adherencePct}%
                   </p>
                   <p className="text-sm font-semibold text-gray-200">{adherence.label}</p>
                 </div>
@@ -555,8 +555,8 @@ export default function HomeContent() {
 
               <div className="bg-white/10 rounded-full h-2 mt-3">
                 <div
-                  className={`h-2 rounded-full ${adherence.completionPct >= 85 ? 'bg-green-500' : adherence.completionPct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
-                  style={{ width: `${adherence.completionPct}%` }}
+                  className={`h-2 rounded-full ${adherence.adherencePct >= 85 ? 'bg-green-500' : adherence.adherencePct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
+                  style={{ width: `${adherence.adherencePct}%` }}
                 />
               </div>
 
@@ -565,7 +565,9 @@ export default function HomeContent() {
                 {adherence.days.map((d) => (
                   <div key={d.date} className="text-center">
                     <p className="text-[10px] text-gray-500 mb-1">{d.dayLabel.split(' ')[0]}</p>
-                    {d.restDay || d.planned.length === 0 ? (
+                    {d.restDay ? (
+                      <span className="text-xs text-green-500/70" title="rustdag · volgens plan">—</span>
+                    ) : d.planned.length === 0 ? (
                       <span className="text-xs text-gray-600">—</span>
                     ) : (
                       <div className="flex justify-center gap-0.5">

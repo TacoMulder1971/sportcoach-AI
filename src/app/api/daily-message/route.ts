@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { getAmsterdamNow, relativeDayLabel } from '@/lib/coach-dates';
 import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
+import { buildHrvCoachText } from '@/lib/training-load';
 
 export async function POST(request: NextRequest) {
   try {
@@ -118,7 +119,7 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
       prompt += `\nGEZONDHEID:\n`;
       if (garminHealth.sleepScore > 0) prompt += `- Slaap: ${garminHealth.sleepDurationHours}u (score ${garminHealth.sleepScore}/100)\n`;
       prompt += `- Rust HR: ${garminHealth.restingHR} bpm\n`;
-      if (garminHealth.avgOvernightHrv > 0) prompt += `- HRV: ${garminHealth.avgOvernightHrv}ms\n`;
+      { const hrvText = buildHrvCoachText(garminHealth); if (hrvText) prompt += `- ${hrvText}\n`; }
       prompt += `- Body Battery: ${garminHealth.bodyBatteryChange > 0 ? '+' : ''}${garminHealth.bodyBatteryChange}\n`;
       if (garminHealth.avgRespirationRate) prompt += `- Ademhaling (slaap): ${garminHealth.avgRespirationRate}/min\n`;
       if (garminHealth.lactateThresholdHR || garminHealth.lactateThresholdPace) {
