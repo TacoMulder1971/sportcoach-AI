@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { getDaysUntilRace } from '@/lib/schedule';
-import { getActiveRaceDate, getActiveRaceLabel, formatRaceDateNL, getGoals, getUpcomingGoals, formatDuration } from '@/lib/storage';
-import { Goal } from '@/lib/types';
+import { getActiveRaceDate, getActiveRaceLabel, formatRaceDateNL, getGoals, getUpcomingGoals, formatDuration, getProfile } from '@/lib/storage';
+import { Goal, TrainingSport } from '@/lib/types';
+import { resolveSports } from '@/lib/athlete';
 import SportIcon from './SportIcon';
 import { TRAINING_PHASES, getCurrentPhase, getPhaseStatus, getPhaseProgress } from '@/lib/periodization';
 
@@ -23,8 +24,11 @@ export default function Countdown({ gradientClassName = 'bg-gradient-to-r from-b
   const [raceDateFmt, setRaceDateFmt] = useState<string>('');
   const [lastRace, setLastRace] = useState<Goal | null>(null);
   const [hasGoals, setHasGoals] = useState(true);
+  // Icoontjes op basis van de sporten van de atleet (client-only).
+  const [heroSports, setHeroSports] = useState<TrainingSport[]>([]);
 
   useEffect(() => {
+    setHeroSports(resolveSports(getProfile()));
     const d = getActiveRaceDate();
     setDays(getDaysUntilRace(d));
     setRaceLabel(getActiveRaceLabel());
@@ -98,9 +102,7 @@ export default function Countdown({ gradientClassName = 'bg-gradient-to-r from-b
           <p className="text-blue-50 text-base mt-1">tot {raceLabel}</p>
         </div>
         <div className="flex gap-2">
-          <SportIcon sport="zwemmen" size="xl" />
-          <SportIcon sport="fietsen" size="xl" />
-          <SportIcon sport="hardlopen" size="xl" />
+          {heroSports.map((s) => <SportIcon key={s} sport={s} size="xl" />)}
         </div>
       </div>
 
