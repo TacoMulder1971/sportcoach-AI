@@ -91,7 +91,11 @@ export function getTrainingForDayOffset(
   const dayIndex = dow === 0 ? 6 : dow - 1;
   const startDate = parseCycleStartUTC(cycleStartDate);
   const diffDays = Math.floor((target.getTime() - startDate.getTime()) / 86400000);
-  const weekNum: 1 | 2 = (diffDays < 0 || Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2) as 1 | 2;
+  // Doeldag ligt vóór de startdatum → dit plan was toen nog niet actief, dus
+  // geen geplande sessie. Voorkomt onzinnige gepland-vs-gedaan-vergelijkingen
+  // (bijv. een nieuw schema aangemaakt op zondag start pas aanstaande maandag).
+  if (diffDays < 0) return null;
+  const weekNum: 1 | 2 = (Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2) as 1 | 2;
   const week = p.find((w) => w.weekNumber === weekNum);
   return week?.days.find((d) => d.dayIndex === dayIndex) ?? null;
 }

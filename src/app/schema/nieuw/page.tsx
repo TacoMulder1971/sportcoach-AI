@@ -219,17 +219,17 @@ export default function NieuwSchemaPage() {
     return (
       <div className="px-4 pt-6 pb-24 space-y-6">
         <div>
-          <button onClick={() => router.push('/schema')} className="text-sm text-blue-600 mb-2">
+          <button onClick={() => router.push('/schema')} className="text-sm text-blue-400 mb-2">
             &larr; Terug naar schema
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Nieuw schema</h1>
-          <p className="text-gray-500 text-sm">Tik op dagen waarop je NIET kunt trainen</p>
+          <h1 className="text-2xl font-bold text-white">Nieuw schema</h1>
+          <p className="text-gray-400 text-sm">Tik op dagen waarop je NIET kunt trainen</p>
         </div>
 
         {/* 14-daags grid */}
         {([1, 2] as const).map((weekNum) => (
           <div key={weekNum}>
-            <p className="text-sm font-semibold text-gray-700 mb-2">Week {weekNum}</p>
+            <p className="text-sm font-semibold text-gray-300 mb-2">Week {weekNum}</p>
             <div className="grid grid-cols-7 gap-1.5">
               {DAY_NAMES.map((name, idx) => {
                 const key = `${weekNum}-${idx}`;
@@ -240,13 +240,13 @@ export default function NieuwSchemaPage() {
                     onClick={() => toggleDay(weekNum, idx)}
                     className={`py-3 rounded-lg text-center text-sm font-medium transition-all ${
                       isBlocked
-                        ? 'bg-red-100 text-red-700 border-2 border-red-300'
-                        : 'bg-white text-gray-700 border border-gray-200'
+                        ? 'bg-red-500/20 text-red-300 border-2 border-red-500/40'
+                        : 'bg-white/5 text-gray-200 border border-white/10'
                     }`}
                   >
                     {name}
                     {isBlocked && (
-                      <div className="text-[10px] text-red-500 mt-0.5">Niet</div>
+                      <div className="text-[10px] text-red-400 mt-0.5">Niet</div>
                     )}
                   </button>
                 );
@@ -257,10 +257,10 @@ export default function NieuwSchemaPage() {
 
         {/* Dagvoorkeuren */}
         <div>
-          <p className="text-sm font-semibold text-gray-700 mb-2">
+          <p className="text-sm font-semibold text-gray-300 mb-2">
             Heb je specifieke plannen per dag? (optioneel)
           </p>
-          <p className="text-xs text-gray-400 mb-3">
+          <p className="text-xs text-gray-500 mb-3">
             Bijv. &quot;ochtend zwemmen, avond hardlopen&quot; of &quot;alleen korte training&quot;
           </p>
           <div className="space-y-2">
@@ -279,13 +279,13 @@ export default function NieuwSchemaPage() {
                   <p className="text-xs font-medium text-gray-500 mb-1.5">Week {weekNum}</p>
                   {availableDays.map((d) => (
                     <div key={d.key} className="flex items-center gap-2 mb-1.5">
-                      <span className="text-sm font-medium text-gray-700 w-8 flex-shrink-0">{d.name}</span>
+                      <span className="text-sm font-medium text-gray-200 w-8 flex-shrink-0">{d.name}</span>
                       <input
                         type="text"
                         value={preferences[d.key] || ''}
                         onChange={(e) => setPreference(weekNum, d.idx, e.target.value)}
                         placeholder={`Voorkeur voor ${d.fullName.toLowerCase()}...`}
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   ))}
@@ -297,14 +297,14 @@ export default function NieuwSchemaPage() {
 
         {/* Extra opmerkingen */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
+          <label className="text-sm font-medium text-gray-300 mb-2 block">
             Extra opmerkingen (optioneel)
           </label>
           <textarea
             value={constraints}
             onChange={(e) => setConstraints(e.target.value)}
             placeholder="Bijv. 'reis naar Madrid di-do week 2', 'drukke werkweek, minder intensief'"
-            className="w-full border border-gray-300 rounded-xl p-3 text-sm resize-none h-20 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-xl p-3 text-sm resize-none h-20 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
@@ -327,7 +327,7 @@ export default function NieuwSchemaPage() {
           )}
         </button>
         {loading && (
-          <p className="text-center text-xs text-gray-500 -mt-2">
+          <p className="text-center text-xs text-gray-400 -mt-2">
             De coach analyseert je prestaties van de afgelopen weken — dit duurt ongeveer een halve minuut.
           </p>
         )}
@@ -346,26 +346,26 @@ export default function NieuwSchemaPage() {
     return (
       <div className="px-4 pt-6 pb-24 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Voorstel</h1>
-          <p className="text-gray-500 text-sm">Bekijk het schema en geef feedback</p>
+          <h1 className="text-2xl font-bold text-white">Voorstel</h1>
+          <p className="text-gray-400 text-sm">Bekijk het schema en geef feedback</p>
         </div>
 
         {/* Waarom dit schema — coachstrategie obv recente prestaties */}
         {strategy && (
-          <div className="bg-blue-50 border border-blue-100 rounded-xl overflow-hidden">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl overflow-hidden">
             <button
               onClick={() => setShowStrategy((v) => !v)}
               className="w-full flex items-center justify-between px-4 py-3 text-left"
             >
-              <span className="text-sm font-semibold text-blue-800">
+              <span className="text-sm font-semibold text-blue-300">
                 💡 Waarom dit schema
               </span>
-              <span className="text-blue-500 text-xs">
+              <span className="text-blue-400 text-xs">
                 {showStrategy ? 'Verbergen ▲' : 'Toon analyse ▼'}
               </span>
             </button>
             {showStrategy && (
-              <div className="px-4 pb-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed border-t border-blue-100 pt-3">
+              <div className="px-4 pb-4 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed border-t border-blue-500/20 pt-3">
                 {cleanStrategyText(strategy)}
               </div>
             )}
@@ -383,7 +383,7 @@ export default function NieuwSchemaPage() {
                 className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                   previewWeek === num
                     ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-white text-gray-700 border border-gray-200'
+                    : 'bg-white/5 text-gray-200 border border-white/10'
                 }`}
               >
                 {weekData?.label || `Week ${num}`}
@@ -395,23 +395,23 @@ export default function NieuwSchemaPage() {
         {/* Training days */}
         <div className="space-y-3">
           {week?.days.map((day) => (
-            <TrainingCard key={day.dayIndex} training={day} isToday={false} />
+            <TrainingCard key={day.dayIndex} training={day} isToday={false} dark />
           ))}
         </div>
 
         {/* Feedback voor verfijning */}
-        <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-semibold text-gray-700">Wat wil je aanpassen?</p>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-200">Wat wil je aanpassen?</p>
           <textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Bijv. 'Donderdag liever zwemmen i.p.v. hardlopen', 'Zondag iets korter', 'Meer interval trainingen'"
-            className="w-full border border-gray-200 rounded-lg p-3 text-sm resize-none h-20 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg p-3 text-sm resize-none h-20 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <button
             onClick={refinePlan}
             disabled={refining || !feedback.trim()}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition-colors"
+            className="w-full py-2.5 rounded-xl text-sm font-semibold text-blue-300 bg-blue-500/15 hover:bg-blue-500/25 disabled:opacity-50 transition-colors"
           >
             {refining ? (
               <span className="flex items-center justify-center gap-2">
@@ -441,7 +441,7 @@ export default function NieuwSchemaPage() {
               setFeedback('');
               setStep(1);
             }}
-            className="flex-1 py-3 rounded-xl font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="flex-1 py-3 rounded-xl font-semibold text-gray-200 bg-white/10 hover:bg-white/15 transition-colors"
           >
             Opnieuw
           </button>
@@ -463,8 +463,8 @@ export default function NieuwSchemaPage() {
         <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Schema opgeslagen!</h1>
-        <p className="text-gray-500 text-sm">
+        <h1 className="text-2xl font-bold text-white mb-2">Schema opgeslagen!</h1>
+        <p className="text-gray-400 text-sm">
           Je nieuwe trainingsschema is actief vanaf aanstaande maandag.
         </p>
       </div>
