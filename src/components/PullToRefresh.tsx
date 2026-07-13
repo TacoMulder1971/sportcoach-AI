@@ -58,8 +58,12 @@ export default function PullToRefresh({
     <div className={className} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
       {(pullDistance > 10 || refreshing) && (
         <div
-          className="fixed top-0 left-0 right-0 flex justify-center items-center z-50 pointer-events-none"
-          style={{ height: refreshing ? 56 : Math.min(pullDistance, 56) }}
+          className="fixed left-0 right-0 flex justify-center items-center z-[60] pointer-events-none"
+          style={{
+            // Onder de iPhone-notch/statusbalk beginnen, anders valt de pil erachter
+            top: 'env(safe-area-inset-top, 0px)',
+            height: refreshing ? 56 : Math.min(pullDistance, 56),
+          }}
         >
           <div className="bg-[#1c1c1e] border border-white/10 rounded-full shadow-lg px-4 py-2 flex items-center gap-2">
             <svg

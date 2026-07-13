@@ -361,8 +361,12 @@ export default function DataPage() {
     <>
       {(pullDistance > 10 || syncing) && (
         <div
-          className="fixed top-0 left-0 right-0 flex justify-center items-center z-50 pointer-events-none"
-          style={{ height: syncing ? 56 : Math.min(pullDistance, 56) }}
+          className="fixed left-0 right-0 flex justify-center items-center z-[60] pointer-events-none"
+          style={{
+            // Onder de iPhone-notch/statusbalk beginnen, anders valt de pil erachter
+            top: 'env(safe-area-inset-top, 0px)',
+            height: syncing ? 56 : Math.min(pullDistance, 56),
+          }}
         >
           <div className="bg-[#1c1c1e] border border-white/10 rounded-full shadow-lg px-4 py-2 flex items-center gap-2">
             <svg
