@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { getNutritionLogs, saveNutritionLogs, parseMFPCsv, getYazioCredentials, mergeNutritionLogs } from '@/lib/storage';
+import Link from 'next/link';
+import { getNutritionLogs, saveNutritionLogs, parseMFPCsv, getYazioCredentials, syncYazioNutrition } from '@/lib/storage';
 import { NutritionLog } from '@/lib/types';
-import YazioSetupCard from '@/components/YazioSetupCard';
+import PullToRefresh from '@/components/PullToRefresh';
 
 const DAY_ABBR = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 
@@ -28,35 +29,28 @@ export default function VoedingPage() {
   const [yazioStatus, setYazioStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [showCsv, setShowCsv] = useState(false);
+  const [yazioConnected, setYazioConnected] = useState(false);
   const mfpInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLogs(getNutritionLogs().sort((a, b) => b.date.localeCompare(a.date)));
+    setYazioConnected(!!getYazioCredentials());
   }, []);
 
   async function handleYazioSync() {
-    const creds = getYazioCredentials();
-    if (!creds) return;
+    if (syncing) return;
     setSyncing(true);
     setYazioStatus(null);
     try {
-      const res = await fetch('/api/yazio/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: creds.email, password: creds.password, days: 14 }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setYazioStatus({ type: 'error', msg: data.error || 'Synchroniseren mislukt.' });
-      } else if (!data.logs || data.logs.length === 0) {
+      const { logs: merged, syncedDays } = await syncYazioNutrition(14);
+      setLogs(merged);
+      if (syncedDays === 0) {
         setYazioStatus({ type: 'error', msg: 'Geen gelogde voeding gevonden in de afgelopen 14 dagen.' });
       } else {
-        const merged = mergeNutritionLogs(data.logs as NutritionLog[]);
-        setLogs(merged.sort((a, b) => b.date.localeCompare(a.date)));
-        setYazioStatus({ type: 'success', msg: `${data.logs.length} dag(en) gesynchroniseerd!` });
+        setYazioStatus({ type: 'success', msg: `${syncedDays} dag(en) gesynchroniseerd!` });
       }
-    } catch {
-      setYazioStatus({ type: 'error', msg: 'Kon geen verbinding maken met Yazio.' });
+    } catch (err) {
+      setYazioStatus({ type: 'error', msg: err instanceof Error ? err.message : 'Synchroniseren mislukt.' });
     } finally {
       setSyncing(false);
       setTimeout(() => setYazioStatus(null), 5000);
@@ -103,14 +97,23 @@ export default function VoedingPage() {
     <div className="bg-black min-h-screen">
       <div className="fixed top-0 inset-x-0 bg-black z-50" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
       <div className="fixed bottom-0 inset-x-0 bg-black z-40" style={{ height: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }} />
+      <PullToRefresh
+        onRefresh={handleYazioSync}
+        refreshing={syncing}
+        refreshingLabel="Yazio syncen..."
+        accentClassName="text-green-400"
+        className="min-h-screen"
+      >
       <div className="space-y-5 px-4 pt-6 pb-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Voeding</h1>
-        <p className="text-gray-400 text-sm">Gesynchroniseerd met Yazio</p>
+        <p className="text-gray-400 text-sm">
+          {yazioConnected ? 'Trek omlaag om met Yazio te synchroniseren' : 'Gesynchroniseerd met Yazio'}
+        </p>
       </div>
 
-      {/* Lege staat: uitleg vóór de koppelkaart */}
+      {/* Lege staat */}
       {logs.length === 0 && (
         <div className="text-center pt-1">
           <p className="text-3xl mb-2">🥗</p>
@@ -119,8 +122,25 @@ export default function VoedingPage() {
         </div>
       )}
 
-      {/* Yazio-koppeling (primair) */}
-      <YazioSetupCard onConnect={handleYazioSync} syncing={syncing} />
+      {/* Nog geen Yazio-koppeling → verwijs naar Instellingen */}
+      {!yazioConnected && (
+        <Link
+          href="/data?section=instellingen"
+          className="block bg-[#0d0d0f] rounded-3xl p-4 border border-white/5"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-lg">🥗</span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-100">Koppel je Yazio-account</p>
+                <p className="text-xs text-gray-500">Instellen bij Data → Instellingen</p>
+              </div>
+            </div>
+            <span className="text-green-400 text-sm font-semibold shrink-0">Instellen →</span>
+          </div>
+        </Link>
+      )}
+
       {yazioStatus && (
         <div className={`text-sm p-3 rounded-xl ${
           yazioStatus.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
@@ -283,6 +303,7 @@ export default function VoedingPage() {
 
       <div className="h-4" />
       </div>
+      </PullToRefresh>
     </div>
   );
 }

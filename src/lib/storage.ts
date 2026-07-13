@@ -655,6 +655,30 @@ export function mergeNutritionLogs(incoming: NutritionLog[]): NutritionLog[] {
   return getNutritionLogs().sort((a, b) => b.date.localeCompare(a.date));
 }
 
+// Canonieke Yazio-sync: haalt de laatste `days` dagen op via /api/yazio/sync en
+// merged ze in de opslag. Gebruikt door de Voeding-tab (pull-to-refresh) en de
+// koppelkaart op Data → Instellingen. Throwt met een Nederlandse melding bij
+// ontbrekende koppeling of een mislukte sync.
+export async function syncYazioNutrition(days = 14): Promise<{ logs: NutritionLog[]; syncedDays: number }> {
+  const creds = getYazioCredentials();
+  if (!creds) throw new Error('Geen Yazio-koppeling. Koppel je account via Data → Instellingen.');
+  let res: Response;
+  try {
+    res = await fetch('/api/yazio/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: creds.email, password: creds.password, days }),
+    });
+  } catch {
+    throw new Error('Kon geen verbinding maken met Yazio.');
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Synchroniseren mislukt.');
+  const incoming = (data.logs ?? []) as NutritionLog[];
+  const merged = mergeNutritionLogs(incoming);
+  return { logs: merged, syncedDays: incoming.length };
+}
+
 export function saveNutritionFeedback(date: string, feedback: string): void {
   const logs = getNutritionLogs();
   const idx = logs.findIndex(n => n.date === date);
