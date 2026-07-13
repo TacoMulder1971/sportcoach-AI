@@ -40,6 +40,7 @@ export default function DataPage() {
   const [swimVariants, setSwimVariants] = useState<ActivitySwimVariants>({});
   const [section, setSection] = useState<Section>('overzicht');
   const [expandedSplits, setExpandedSplits] = useState<Set<number>>(new Set());
+  const [hrvPeriod, setHrvPeriod] = useState<7 | 30>(7);
   const touchStartY = useRef(0);
   const PULL_THRESHOLD = 65;
 
@@ -53,9 +54,19 @@ export default function DataPage() {
     setGarmin(getGarminData());
     refreshEquipment();
     // Deep-link: /data?section=instellingen opent direct de juiste subtab
-    const q = new URLSearchParams(window.location.search).get('section');
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('section');
     const valid: Section[] = ['overzicht', 'trends', 'activiteiten', 'materiaal', 'instellingen'];
     if (q && (valid as string[]).includes(q)) setSection(q as Section);
+    // Deep-link vanuit de Home-tab: scroll naar het gereedheid- of training-load-blok
+    const focus = params.get('focus');
+    if (focus === 'gereedheid' || focus === 'load') {
+      const id = focus === 'gereedheid' ? 'gereedheid-section' : 'load-section';
+      // korte vertraging zodat de secties gerenderd zijn na het laden van de data
+      setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
   }, [refreshEquipment]);
 
   async function handleGarminSync() {
@@ -277,23 +288,25 @@ export default function DataPage() {
     return { restingHRData, hrvData, hasHR, hasHRV };
   }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // HRV per dag over de afgelopen 7 dagen (uit health-archief) — voor het mini-grafiekje
-  // in het gereedheid-blok. 0 = geen meting die nacht.
-  const hrv7Days = useMemo(() => {
+  // HRV per dag over de gekozen periode (7 of 30 dagen, uit health-archief) — voor
+  // het mini-grafiekje in het gereedheid-blok. 0 = geen meting die nacht.
+  const hrvDaily = useMemo(() => {
     const archive = getHealthArchive();
     if (archive.length === 0) return [];
     const byDate = new Map(archive.map(h => [h.date, h.avgOvernightHrv || 0]));
     const days: { label: string; value: number }[] = [];
     const now = new Date();
     const wd = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = hrvPeriod - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const iso = d.toISOString().split('T')[0];
-      days.push({ label: wd[d.getDay()], value: byDate.get(iso) || 0 });
+      // 7 dagen: weekdag-labels; langere periode: dag/maand voor leesbaarheid
+      const label = hrvPeriod <= 7 ? wd[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`;
+      days.push({ label, value: byDate.get(iso) || 0 });
     }
     return days;
-  }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [garmin, hrvPeriod]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (window.scrollY === 0) {
@@ -434,7 +447,7 @@ export default function DataPage() {
         <>
           {/* Trainingsgereedheid detail */}
           {readiness && (
-            <section>
+            <section id="gereedheid-section" className="scroll-mt-24">
               <h2 className="text-lg font-semibold text-white mb-3">Trainingsgereedheid</h2>
               <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <div className="flex items-center gap-3 mb-4">
@@ -507,13 +520,31 @@ export default function DataPage() {
                         </p>
                       ) : null}
                       <p className="text-xs text-gray-400 leading-relaxed">{hrv.interpretation}</p>
-                      {hrv7Days.filter(d => d.value > 0).length >= 2 && (
+                      {hrvDaily.filter(d => d.value > 0).length >= 2 && (
                         <div className="mt-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-semibold text-gray-300">
+                              HRV — afgelopen {hrvPeriod} dagen
+                            </p>
+                            <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
+                              {([7, 30] as const).map((p) => (
+                                <button
+                                  key={p}
+                                  onClick={() => setHrvPeriod(p)}
+                                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                                    hrvPeriod === p ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400'
+                                  }`}
+                                >
+                                  {p}d
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                           <BuildupBarChart
-                            data={hrv7Days}
+                            data={hrvDaily}
                             color="#06b6d4"
                             unit="ms"
-                            title="HRV — afgelopen 7 dagen"
+                            title=""
                             baseline={hrv.baseline}
                             baselineLabel="basislijn"
                             bandLow={hrv.baselineLow}
@@ -625,7 +656,7 @@ export default function DataPage() {
 
           {/* Training Load detail */}
           {trainingLoad && (
-            <section>
+            <section id="load-section" className="scroll-mt-24">
               <h2 className="text-lg font-semibold text-white mb-3">Training Load</h2>
               <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
                 <div className="flex items-center justify-between mb-3">

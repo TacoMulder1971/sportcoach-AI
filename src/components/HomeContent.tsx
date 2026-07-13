@@ -375,7 +375,10 @@ export default function HomeContent() {
 
         {/* Gereedheid + Training load naast elkaar (Whoop "Recovery" / "Strain") */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
+          <Link
+            href="/data?section=overzicht&focus=gereedheid"
+            className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 block transition-colors active:bg-white/5 hover:border-white/10"
+          >
             {readiness ? (
               <>
                 <ScoreRing
@@ -416,9 +419,12 @@ export default function HomeContent() {
             ) : (
               <p className="text-gray-400 text-sm text-center py-8">Sync voor gereedheid-data</p>
             )}
-          </div>
+          </Link>
 
-          <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 flex flex-col">
+          <Link
+            href="/data?section=overzicht&focus=load"
+            className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 flex flex-col transition-colors active:bg-white/5 hover:border-white/10"
+          >
             <p className="text-gray-300 text-sm font-semibold uppercase tracking-wide">Training load</p>
             {trainingLoad && (
               <span className={`${loadAccent(trainingLoad.statusColor).text} text-sm font-semibold capitalize`}>
@@ -448,7 +454,7 @@ export default function HomeContent() {
             ) : (
               <p className="text-gray-400 text-sm py-2">Sync voor data</p>
             )}
-          </div>
+          </Link>
         </div>
 
         {/* Dagelijks coach-bericht */}

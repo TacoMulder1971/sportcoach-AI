@@ -86,7 +86,7 @@ export default function BuildupBarChart({ data, color, title, unit, baseline, ba
 
   return (
     <div>
-      <p className="text-sm font-semibold text-gray-300 mb-1">{title}</p>
+      {title && <p className="text-sm font-semibold text-gray-300 mb-1">{title}</p>}
       <div
         className="relative"
         onMouseMove={handleMouseMove}

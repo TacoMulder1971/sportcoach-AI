@@ -82,23 +82,32 @@ function getRecentTRIMP(activities: GarminActivity[], restingHR: number, hours: 
 }
 
 /**
- * Belasting-score op basis van recente TRIMP (0-5)
- * Hoe zwaarder de recente training, hoe lager de score
- * Weegt zwaarder dan andere factoren (5 van 9 punten)
+ * Belasting-score 0-2 (volledige modus). Belasting is een dosis-signaal, geen
+ * herstel-signaal: hoe het lichaam de dosis verteerde zit al in HRV en slaap.
+ * Daarom weegt het bewust licht — alleen als proxy voor spiervermoeidheid
+ * (glycogeen/spierschade) die HRV kan missen.
  */
-function getLoadScore(recentTRIMP: number): number {
-  if (recentTRIMP < 30) return 5;
-  if (recentTRIMP < 60) return 4;
-  if (recentTRIMP < 100) return 3;
-  if (recentTRIMP < 150) return 2;
-  if (recentTRIMP < 200) return 1;
+function getLoadScore2(recentTRIMP: number): number {
+  if (recentTRIMP < 60) return 2;
+  if (recentTRIMP < 150) return 1;
+  return 0;
+}
+
+/** Belasting-score 0-3 (fallback-modus zonder slaapdata). */
+function getLoadScore3(recentTRIMP: number): number {
+  if (recentTRIMP < 40) return 3;
+  if (recentTRIMP < 90) return 2;
+  if (recentTRIMP < 160) return 1;
   return 0;
 }
 
 /**
  * Trainingsgereedheid: visueel groen/geel/rood systeem
- * Met slaapdata: HRV + Slaap + Lichaam (0-9)
- * Zonder slaapdata: RustHR + Hersteltijd + Lichaam (0-9)
+ * Gereedheid meet primair hoe het lichaam op de belasting gereageerd heeft
+ * (respons: HRV, slaap, rust-HR), niet hoeveel er getraind is (dosis) — de
+ * dosis heeft zijn eigen Training load-kaart en weegt in getTrainingAdvice mee.
+ * Met slaapdata: HRV (0-4) + Slaap (0-3) + Belasting (0-2)
+ * Zonder slaapdata: RustHR (0-4) + Belasting (0-3) + Lichaam (0-2)
  */
 export function getTrainingReadiness(
   health: GarminHealthStats | null,
@@ -124,53 +133,53 @@ export function getTrainingReadiness(
 
   if (hasSleepData) {
     // --- VOLLEDIGE MODUS: HRV + Slaap + Belasting ---
+    // HRV weegt het zwaarst (0-4) — de betrouwbaarste dagelijkse hersteldindicator.
+    // Slaap is de tweede pijler (0-3); belasting telt licht mee (0-2).
     mode = 'full';
-    max1 = 2; max2 = 2; max3 = 5;
+    max1 = 4; max2 = 3; max3 = 2;
 
-    // HRV (0-2) — null als geen HRV-data
+    // HRV (0-4) — null als geen HRV-data. Fijnmazige score via de balansband.
     label1 = 'HRV';
     if (hasHrv) {
-      const hrvStatus = (health.hrvStatus || '').toLowerCase();
-      if (hrvStatus === 'balanced' || hrvStatus === 'good' || hrvStatus === 'optimal') {
-        score1 = 2;
-      } else if ((health.avgOvernightHrv ?? 0) > 30) {
-        score1 = 1;
-      } else {
-        score1 = 0;
-      }
+      score1 = scoreHrvReadiness(health);
     }
 
-    // Slaap (0-2)
+    // Slaap (0-3) — tiers volgen Garmins eigen labels (80+ goed, 60-79 redelijk)
     label2 = 'Slaap';
-    if (health.sleepScore > 70) score2 = 2;
-    else if (health.sleepScore > 45) score2 = 1;
+    if (health.sleepScore > 79) score2 = 3;
+    else if (health.sleepScore > 59) score2 = 2;
+    else if (health.sleepScore > 40) score2 = 1;
     else score2 = 0;
 
-    // Belasting (0-5) — altijd berekenbaar uit activiteiten
+    // Belasting (0-2) — altijd berekenbaar uit activiteiten
     label3 = 'Belasting';
     const restingHR = health.restingHR || REST_HR;
     const recentTRIMP = getRecentTRIMP(activities, restingHR);
-    score3 = getLoadScore(recentTRIMP);
+    score3 = getLoadScore2(recentTRIMP);
   } else {
     // --- FALLBACK MODUS: RustHR + Belasting + Lichaam ---
     // Geen slaap-data betekent vaak dat horloge 's nachts uit was.
     // We tellen factoren met ontbrekende data niet mee als 0.
+    // Rust-HR is hier het primaire herstel-signaal (0-4); belasting blijft
+    // ook hier bewust ondergeschikt (0-3).
     mode = 'fallback';
-    max1 = 2; max2 = 5; max3 = 2;
+    max1 = 4; max2 = 3; max3 = 2;
 
-    // Rust-hartslag (0-2) — null als geen meting
+    // Rust-hartslag (0-4) — null als geen meting
     label1 = 'Rust HR';
     if (hasRestingHR) {
-      if (health.restingHR < 54) score1 = 2;
-      else if (health.restingHR < 60) score1 = 1;
+      if (health.restingHR < 50) score1 = 4;
+      else if (health.restingHR < 54) score1 = 3;
+      else if (health.restingHR < 58) score1 = 2;
+      else if (health.restingHR < 62) score1 = 1;
       else score1 = 0;
     }
 
-    // Belasting (0-5) — altijd berekenbaar
+    // Belasting (0-3) — altijd berekenbaar
     label2 = 'Belasting';
     const restingHR = health.restingHR || REST_HR;
     const recentTRIMP = getRecentTRIMP(activities, restingHR);
-    score2 = getLoadScore(recentTRIMP);
+    score2 = getLoadScore3(recentTRIMP);
 
     // Lichaam (0-2) — null als geen battery én geen rustHR
     label3 = 'Lichaam';
@@ -322,6 +331,45 @@ export function describeHrv(health: GarminHealthStats | null): HrvInsight | null
       : 'HRV binnen je normale bandbreedte.';
 
   return { value, baseline, baselineLow, baselineHigh, diff, statusLabel, trend, interpretation };
+}
+
+/**
+ * HRV-score voor de gereedheid (0-4). Weegt zwaarder dan slaap/belasting omdat
+ * HRV de betrouwbaarste dagelijkse hersteldindicator is. Combineert Garmins
+ * status-label met de trend t.o.v. de persoonlijke balansband:
+ *  - status goed/gebalanceerd → basis 3, boven de band → 4
+ *  - status uit balans/laag → basis 1, onder de band → 0
+ *  - geen status maar wel een band → binnen = 3, onder = 1, boven = 4
+ *  - geen status én geen band → absolute waarde als terugval
+ * Geeft null als er geen bruikbare HRV-data is (factor telt dan niet mee).
+ */
+function scoreHrvReadiness(health: GarminHealthStats | null): number | null {
+  const hrv = describeHrv(health);
+  if (!hrv) return null;
+
+  const good = hrv.statusLabel === 'Gebalanceerd' || hrv.statusLabel === 'Goed';
+  const bad = hrv.statusLabel === 'Uit balans' || hrv.statusLabel === 'Laag' || hrv.statusLabel === 'Slecht';
+
+  let s: number;
+  if (good) s = 3;
+  else if (bad) s = 1;
+  else s = 2; // neutraal / onbekende status
+
+  // Nuance op basis van de persoonlijke balansband. Let op: HRV bóven de band
+  // is alleen een plus bij een goede/onbekende status — bij een slechte status
+  // (unbalanced) kan abnormaal hoge HRV juist op overreaching duiden.
+  if (hrv.trend === 'boven' && !bad) s = Math.min(4, s + 1);
+  else if (hrv.trend === 'onder') s = Math.max(0, s - 1);
+  else if (hrv.trend === 'binnen' && !good && !bad) s = 3;
+
+  // Terugval: geen status en geen band → absolute HRV-waarde
+  if (!good && !bad && hrv.trend === 'onbekend') {
+    if (hrv.value >= 45) s = 3;
+    else if (hrv.value >= 30) s = 2;
+    else if (hrv.value > 0) s = 1;
+  }
+
+  return s;
 }
 
 /**
