@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones } from '@/lib/storage';
+import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
@@ -15,6 +15,7 @@ import SwimVariantChip from '@/components/SwimVariantChip';
 import { filterStatsActivities, equipmentForActivity } from '@/lib/equipment';
 import { swimVariantForActivity } from '@/lib/swim';
 import GarminSetupCard from '@/components/GarminSetupCard';
+import YazioSetupCard from '@/components/YazioSetupCard';
 import HeartRateZonesCard from '@/components/HeartRateZonesCard';
 import StrengthWorkoutsCard from '@/components/StrengthWorkoutsCard';
 import DataManagementCard from '@/components/DataManagementCard';
@@ -41,6 +42,8 @@ export default function DataPage() {
   const [section, setSection] = useState<Section>('overzicht');
   const [expandedSplits, setExpandedSplits] = useState<Set<number>>(new Set());
   const [hrvPeriod, setHrvPeriod] = useState<7 | 30>(7);
+  const [yazioSyncing, setYazioSyncing] = useState(false);
+  const [yazioStatus, setYazioStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const touchStartY = useRef(0);
   const PULL_THRESHOLD = 65;
 
@@ -106,6 +109,25 @@ export default function DataPage() {
       setSyncError(e instanceof Error ? e.message : 'Sync mislukt');
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleYazioSync() {
+    if (yazioSyncing) return;
+    setYazioSyncing(true);
+    setYazioStatus(null);
+    try {
+      const { syncedDays } = await syncYazioNutrition(14);
+      if (syncedDays === 0) {
+        setYazioStatus({ type: 'error', msg: 'Geen gelogde voeding gevonden in de afgelopen 14 dagen.' });
+      } else {
+        setYazioStatus({ type: 'success', msg: `${syncedDays} dag(en) gesynchroniseerd! Bekijk ze op het Voeding-tabblad.` });
+      }
+    } catch (e) {
+      setYazioStatus({ type: 'error', msg: e instanceof Error ? e.message : 'Synchroniseren mislukt.' });
+    } finally {
+      setYazioSyncing(false);
+      setTimeout(() => setYazioStatus(null), 6000);
     }
   }
 
@@ -1002,6 +1024,16 @@ export default function DataPage() {
 
           {/* Garmin-koppeling instellen */}
           <GarminSetupCard onConnect={handleGarminSync} />
+
+          {/* Yazio-koppeling (voeding) instellen */}
+          <YazioSetupCard onConnect={handleYazioSync} syncing={yazioSyncing} />
+          {yazioStatus && (
+            <div className={`text-sm p-3 rounded-xl ${
+              yazioStatus.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+            }`}>
+              {yazioStatus.msg}
+            </div>
+          )}
 
           <HeartRateZonesCard />
           <StrengthWorkoutsCard />
