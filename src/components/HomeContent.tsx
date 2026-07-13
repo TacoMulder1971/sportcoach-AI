@@ -333,9 +333,9 @@ export default function HomeContent() {
       {/* Hero — bij een openstaand resultaat direct naar het invulformulier */}
       <Link
         href={pendingResultGoal ? `/schema?tab=longterm&goal=${pendingResultGoal.id}` : '/schema?tab=longterm'}
-        className="px-5 pt-6 block"
+        className="px-5 pt-6 pb-5 block"
       >
-        <Countdown gradientClassName="bg-gradient-to-br from-teal-700 via-cyan-800 to-blue-900" />
+        <Countdown />
       </Link>
 
       <div className="px-5 space-y-5 pb-8">
