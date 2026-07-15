@@ -12,6 +12,13 @@ function amsterdamTodayUTC(): Date {
   return new Date(`${todayStr}T00:00:00Z`);
 }
 
+/** Amsterdamse kalenderdag (YYYY-MM-DD) op `offset` dagen van vandaag. */
+export function amsterdamDateForOffset(offset: number): string {
+  const d = amsterdamTodayUTC();
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString().split('T')[0];
+}
+
 function parseCycleStartUTC(cycleStartDate?: string): Date {
   const s = (cycleStartDate || DEFAULT_CYCLE_START).split('T')[0];
   return new Date(`${s}T00:00:00Z`);

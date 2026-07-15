@@ -1,5 +1,6 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, ALL_TRAINING_SPORTS, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, YazioCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, ALL_TRAINING_SPORTS, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, YazioCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession, PlannedDayRecord } from './types';
 import { trainingPlan } from '@/data/training-plan';
+import { getTrainingForDayOffset, amsterdamDateForOffset } from './schedule';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
 import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones } from './swim';
 
@@ -34,6 +35,7 @@ const KEYS = {
   SESSION_BREAKDOWN: 'tricoach_session_breakdown',
   STRENGTH_WORKOUTS: 'tricoach_strength_workouts',
   CYCLE_WEEK_FLIP: 'tricoach_cycle_week_flip',
+  PLANNED_DAY_ARCHIVE: 'tricoach_planned_day_archive',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -519,6 +521,41 @@ export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string;
     }
   }
   return { plan: trainingPlan, cycleStartDate: DEFAULT_CYCLE_START, id: 'default' };
+}
+
+// ─── Gepland-per-dag-archief (plan-adherentie) ───────────────────
+// Legt per kalenderdag vast wat er gepland stond onder het toen-actieve schema.
+// Vandaag wordt bij elk bezoek ververst (dag-aanpassingen tellen dus mee);
+// voorbije dagen zijn bevroren. Zo behoudt de "Volgens plan"-kaart het
+// resultaat per dag als het schema wijzigt.
+
+const PLANNED_DAY_KEEP = 60; // dagen historie
+
+export function getPlannedDayArchive(): PlannedDayRecord[] {
+  return getItem<PlannedDayRecord[]>(KEYS.PLANNED_DAY_ARCHIVE, []);
+}
+
+export function recordPlannedDays(): PlannedDayRecord[] {
+  const { plan, cycleStartDate } = getActivePlan();
+  const byDate = new Map(getPlannedDayArchive().map((r) => [r.date, r]));
+  // Vandaag altijd verversen; nog niet vastgelegde voorbije dagen (t/m 7 terug)
+  // backfillen vanuit het huidige schema (best effort, beter dan geen historie).
+  for (let offset = -7; offset <= 0; offset++) {
+    const date = amsterdamDateForOffset(offset);
+    if (offset < 0 && byDate.has(date)) continue;
+    const training = getTrainingForDayOffset(offset, plan, cycleStartDate);
+    byDate.set(date, {
+      date,
+      hasPlan: training !== null,
+      restDay: !!training?.isRestDay,
+      sessions: training && !training.isRestDay ? training.sessions : [],
+    });
+  }
+  const merged = [...byDate.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-PLANNED_DAY_KEEP);
+  setItem(KEYS.PLANNED_DAY_ARCHIVE, merged);
+  return merged;
 }
 
 export function updateActivePlan(updatedPlan: TrainingWeek[]): boolean {

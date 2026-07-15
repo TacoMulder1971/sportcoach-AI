@@ -1,5 +1,5 @@
-import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HeartRateZone, HeartRateZoneInfo, HEART_RATE_ZONES, Sport, TrainingWeek } from './types';
-import { getTrainingForDayOffset } from './schedule';
+import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HeartRateZone, HeartRateZoneInfo, HEART_RATE_ZONES, Sport, PlannedDayRecord } from './types';
+import { amsterdamDateForOffset } from './schedule';
 
 const DEFAULT_MAX_HR = 172;
 const REST_HR = 55; // geschatte rustHR, wordt overschreven door Garmin data
@@ -575,8 +575,10 @@ export interface AdherencePlannedSession {
 export interface AdherenceDay {
   date: string;      // ISO
   dayLabel: string;  // bv. "ma 29 jun"
+  hasPlan: boolean;  // false = geen schema actief op deze dag (niet meegeteld)
   restDay: boolean;
   planned: AdherencePlannedSession[];
+  dayScore: number | null; // 0–100: rustdag=100, anders gem. uitvoering (gemist=0); null = niets meetbaars
 }
 
 export interface WeekAdherence {
@@ -599,16 +601,18 @@ function sportsMatch(planned: Sport, actual: string): boolean {
 /**
  * Plan-adherentie over de laatste 7 volledige dagen (gisteren t/m 7 dagen terug):
  * hoeveel van de geplande sessies zijn uitgevoerd, en hoe goed (match-score).
+ * Rekent vanuit het gepland-per-dag-archief (recordPlannedDays in storage.ts)
+ * zodat het resultaat per dag behouden blijft als het schema wijzigt.
  * Kracht telt niet mee (geen betrouwbare Garmin-registratie); vandaag telt niet
  * mee omdat de training van vandaag nog kan komen. null als er in het venster
  * niets gepland stond.
  */
 export function computeWeekAdherence(
-  plan: TrainingWeek[],
-  cycleStartDate: string,
+  plannedDays: PlannedDayRecord[],
   activities: GarminActivity[],
   zonesForSport: (sport: Sport) => HeartRateZoneInfo[],
 ): WeekAdherence | null {
+  const byDate = new Map(plannedDays.map((r) => [r.date, r]));
   const days: AdherenceDay[] = [];
   let plannedCount = 0;
   let completedCount = 0;
@@ -617,16 +621,16 @@ export function computeWeekAdherence(
   const matchScores: number[] = [];
 
   for (let offset = -7; offset <= -1; offset++) {
-    const d = new Date();
-    d.setDate(d.getDate() + offset);
-    const dateStr = d.toISOString().split('T')[0];
-    const dayLabel = d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+    const dateStr = amsterdamDateForOffset(offset);
+    const dayLabel = new Date(`${dateStr}T00:00:00Z`)
+      .toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 
-    const training = getTrainingForDayOffset(offset, plan, cycleStartDate);
-    const isRestDay = !!training && training.isRestDay;
+    const record = byDate.get(dateStr);
+    const hasPlan = !!record && record.hasPlan;
+    const isRestDay = hasPlan && record.restDay;
     if (isRestDay) restDayCount++;
-    const sessions = training && !training.isRestDay
-      ? training.sessions.filter((s) => s.sport !== 'kracht' && s.sport !== 'rust')
+    const sessions = hasPlan && !record.restDay
+      ? record.sessions.filter((s) => s.sport !== 'kracht' && s.sport !== 'rust')
       : [];
 
     const dayActivities = activities.filter((a) => a.date === dateStr);
@@ -645,7 +649,16 @@ export function computeWeekAdherence(
 
     plannedCount += planned.length;
     completedCount += planned.filter((p) => p.done).length;
-    days.push({ date: dateStr, dayLabel, restDay: !training || training.isRestDay, planned });
+
+    // Score voor de dag-kleurenschaal: rustdag = 100, trainingsdag = gemiddelde
+    // uitvoering (gemiste sessie = 0). Geen plan of alleen kracht → null (grijs).
+    const dayScore = isRestDay
+      ? 100
+      : planned.length > 0
+      ? Math.round(planned.reduce((s, p) => s + (p.done ? p.matchScore ?? 0 : 0), 0) / planned.length)
+      : null;
+
+    days.push({ date: dateStr, dayLabel, hasPlan, restDay: isRestDay, planned, dayScore });
   }
 
   // Geen enkele geplande dag (geen trainingen én geen rustdagen) → niets te tonen.

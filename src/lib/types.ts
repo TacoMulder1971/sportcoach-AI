@@ -53,6 +53,17 @@ export interface TrainingWeek {
   days: TrainingDay[];
 }
 
+// Bevroren dagplanning voor de "Volgens plan"-kaart: wat stond er op deze
+// kalenderdag gepland onder het toen-actieve schema. Voorbije dagen worden
+// nooit overschreven, zodat een schemawissel de adherentie-historie niet
+// herschrijft. Zie recordPlannedDays() in storage.ts.
+export interface PlannedDayRecord {
+  date: string;                // Amsterdamse kalenderdag (YYYY-MM-DD)
+  hasPlan: boolean;            // false = geen actief schema op deze dag
+  restDay: boolean;
+  sessions: TrainingSession[]; // leeg bij rustdag of geen plan
+}
+
 // Gedetailleerde uitsplitsing van één trainingssessie (warming-up, blokken, cooldown).
 // AI-gegenereerd on-demand en per dag gecached — zie /api/session-breakdown.
 export type SegmentKind = 'warmup' | 'block' | 'cooldown';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition } from '@/lib/storage';
+import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
@@ -21,6 +21,7 @@ import StrengthWorkoutsCard from '@/components/StrengthWorkoutsCard';
 import DataManagementCard from '@/components/DataManagementCard';
 import ProfileCard from '@/components/ProfileCard';
 import WeeklyVolumeChart, { WeeklyVolumeData } from '@/components/WeeklyVolumeChart';
+import AdherenceCard from '@/components/AdherenceCard';
 
 type Section = 'overzicht' | 'trends' | 'activiteiten' | 'materiaal' | 'instellingen';
 
@@ -156,12 +157,14 @@ export default function DataPage() {
     return calculateTrainingLoad(statsActivities, garmin.health);
   }, [garmin, statsActivities]);
 
-  // Plan-adherentie: gepland vs. gedaan over de afgelopen 7 dagen (uit het archief)
+  // Plan-adherentie: gepland vs. gedaan over de afgelopen 7 dagen (uit het archief).
+  // recordPlannedDays bevriest de planning per dag, zodat het resultaat behouden
+  // blijft als het schema wijzigt.
   const adherence = useMemo(() => {
+    const plannedDays = recordPlannedDays();
     if (!garmin) return null;
-    const { plan, cycleStartDate } = getActivePlan();
     const archive = filterStatsActivities(getActivityArchive(), equipment, assignments);
-    return computeWeekAdherence(plan, cycleStartDate, archive, zonesForSport);
+    return computeWeekAdherence(plannedDays, archive, zonesForSport);
   }, [garmin, equipment, assignments]);
 
   const readiness: TrainingReadiness | null = useMemo(() => {
@@ -626,57 +629,7 @@ export default function DataPage() {
           {adherence && (
             <section>
               <h2 className="text-lg font-semibold text-white mb-3">Volgens plan</h2>
-              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <p className={`text-3xl font-bold ${adherence.adherencePct >= 85 ? 'text-green-400' : adherence.adherencePct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
-                      {adherence.adherencePct}%
-                    </p>
-                    <p className="text-sm font-semibold text-gray-200">{adherence.label}</p>
-                  </div>
-                  <div className="text-right text-xs text-gray-500">
-                    <p>{adherence.completedCount} van {adherence.plannedCount} sessies gedaan</p>
-                    <p>afgelopen 7 dagen</p>
-                    {adherence.avgMatchScore !== null && (
-                      <p className="mt-0.5 text-gray-400 font-medium">gem. uitvoering {adherence.avgMatchScore}%</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white/10 rounded-full h-2 mt-3">
-                  <div
-                    className={`h-2 rounded-full ${adherence.adherencePct >= 85 ? 'bg-green-500' : adherence.adherencePct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
-                    style={{ width: `${adherence.adherencePct}%` }}
-                  />
-                </div>
-
-                {/* Per dag: stip per geplande sessie (groen gedaan / rood gemist), — = rustdag */}
-                <div className="grid grid-cols-7 gap-1 mt-4">
-                  {adherence.days.map((d) => (
-                    <div key={d.date} className="text-center">
-                      <p className="text-[10px] text-gray-500 mb-1">{d.dayLabel.split(' ')[0]}</p>
-                      {d.restDay ? (
-                        <span className="text-xs text-green-500/70" title="rustdag · volgens plan">—</span>
-                      ) : d.planned.length === 0 ? (
-                        <span className="text-xs text-gray-600">—</span>
-                      ) : (
-                        <div className="flex justify-center gap-0.5">
-                          {d.planned.map((p, i) => (
-                            <span
-                              key={i}
-                              title={`${p.session.sport} ${p.session.type}${p.done ? ` · uitvoering ${p.matchScore}%` : ' · gemist'}`}
-                              className={`w-2.5 h-2.5 rounded-full ${p.done ? 'bg-green-500' : 'bg-red-400/70'}`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] text-gray-500 mt-2">
-                  Stip per geplande sessie: groen = gedaan, rood = gemist. Krachttraining telt niet mee.
-                </p>
-              </div>
+              <AdherenceCard adherence={adherence} />
             </section>
           )}
 

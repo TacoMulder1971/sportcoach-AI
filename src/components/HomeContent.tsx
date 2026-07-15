@@ -6,8 +6,9 @@ import Countdown from '@/components/Countdown';
 import SportIcon from '@/components/SportIcon';
 import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import LatestActivityCard from '@/components/LatestActivityCard';
+import AdherenceCard from '@/components/AdherenceCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile, getRunZones, getCyclingZones } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence } from '@/lib/training-load';
@@ -279,12 +280,14 @@ export default function HomeContent() {
     return days;
   }, [garmin, statsActivities]);
 
-  // Plan-adherentie: hoe goed hield ik me de afgelopen 7 dagen aan de geplande trainingen
+  // Plan-adherentie: hoe goed hield ik me de afgelopen 7 dagen aan de geplande trainingen.
+  // recordPlannedDays legt de planning van vandaag vast (en bevriest voorbije dagen),
+  // zodat het resultaat per dag behouden blijft als het schema wijzigt.
   const adherence = useMemo(() => {
+    const plannedDays = recordPlannedDays();
     if (!garmin) return null;
-    const { plan, cycleStartDate } = getActivePlan();
     const archive = filterStatsActivities(getActivityArchive(), getEquipment(), getActivityAssignments());
-    return computeWeekAdherence(plan, cycleStartDate, archive, zonesForSport);
+    return computeWeekAdherence(plannedDays, archive, zonesForSport);
   }, [garmin]);
 
   // Volume per sport deze week vs. vorige week, uit het archief (langere geschiedenis dan de live 40)
@@ -542,57 +545,7 @@ export default function HomeContent() {
         {adherence && (
           <div>
             <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Volgens plan</p>
-            <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <p className={`text-3xl font-bold ${adherence.adherencePct >= 85 ? 'text-green-400' : adherence.adherencePct >= 60 ? 'text-amber-400' : 'text-red-400'}`}>
-                    {adherence.adherencePct}%
-                  </p>
-                  <p className="text-sm font-semibold text-gray-200">{adherence.label}</p>
-                </div>
-                <div className="text-right text-xs text-gray-500">
-                  <p>{adherence.completedCount} van {adherence.plannedCount} sessies gedaan</p>
-                  <p>afgelopen 7 dagen</p>
-                  {adherence.avgMatchScore !== null && (
-                    <p className="mt-0.5 text-gray-400 font-medium">gem. uitvoering {adherence.avgMatchScore}%</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white/10 rounded-full h-2 mt-3">
-                <div
-                  className={`h-2 rounded-full ${adherence.adherencePct >= 85 ? 'bg-green-500' : adherence.adherencePct >= 60 ? 'bg-amber-400' : 'bg-red-400'}`}
-                  style={{ width: `${adherence.adherencePct}%` }}
-                />
-              </div>
-
-              {/* Per dag: stip per geplande sessie (groen gedaan / rood gemist), — = rustdag */}
-              <div className="grid grid-cols-7 gap-1 mt-4">
-                {adherence.days.map((d) => (
-                  <div key={d.date} className="text-center">
-                    <p className="text-[10px] text-gray-500 mb-1">{d.dayLabel.split(' ')[0]}</p>
-                    {d.restDay ? (
-                      <span className="text-xs text-green-500/70" title="rustdag · volgens plan">—</span>
-                    ) : d.planned.length === 0 ? (
-                      <span className="text-xs text-gray-600">—</span>
-                    ) : (
-                      <div className="flex justify-center gap-0.5">
-                        {d.planned.map((p, i) => (
-                          <span
-                            key={i}
-                            title={`${p.session.sport} ${p.session.type}${p.done ? ` · uitvoering ${p.matchScore}%` : ' · gemist'}`}
-                            className={`w-2.5 h-2.5 rounded-full ${p.done ? 'bg-green-500' : 'bg-red-400/70'}`}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p className="text-[10px] text-gray-500 mt-2">
-                Stip per geplande sessie: groen = gedaan, rood = gemist. Krachttraining telt niet mee.
-              </p>
-            </div>
+            <AdherenceCard adherence={adherence} />
           </div>
         )}
 

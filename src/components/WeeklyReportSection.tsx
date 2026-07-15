@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import SportIcon from '@/components/SportIcon';
-import { getGarminData, getEquipment, getActivityAssignments, getActiveRaceDate, buildRaceContextText, getRecentNutritionLogs, getWeeklyReport, saveWeeklyReport, getActivePlan, getActivityArchive, getRunZones, getCyclingZones } from '@/lib/storage';
+import { getGarminData, getEquipment, getActivityAssignments, getActiveRaceDate, buildRaceContextText, getRecentNutritionLogs, getWeeklyReport, saveWeeklyReport, getActivityArchive, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
 import { filterStatsActivities } from '@/lib/equipment';
 import { getWeeklyTRIMPTotals, computeWeekAdherence, calcTRIMP } from '@/lib/training-load';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
@@ -95,10 +95,10 @@ export default function WeeklyReportSection() {
       const totalVolumeMinutes = recent.reduce((s, a) => s + a.durationMinutes, 0);
       const totalVolumeKm = recent.reduce((s, a) => s + a.distanceKm, 0);
 
-      // Plan-adherentie over de afgelopen 7 dagen (archief = volledige historie)
-      const { plan, cycleStartDate } = getActivePlan();
+      // Plan-adherentie over de afgelopen 7 dagen (archief = volledige historie;
+      // gepland-per-dag bevroren zodat een schemawissel de historie niet herschrijft)
       const archiveStats = filterStatsActivities(getActivityArchive(), equipment, assignments);
-      const adherence = computeWeekAdherence(plan, cycleStartDate, archiveStats, zonesForSport);
+      const adherence = computeWeekAdherence(recordPlannedDays(), archiveStats, zonesForSport);
 
       const res = await fetch('/api/weekly-report', {
         method: 'POST',
