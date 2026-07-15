@@ -329,6 +329,8 @@ export interface StoredPlan {
   createdAt: string;
   agendaInput: AgendaInput;
   status: 'active' | 'archived';
+  strategy?: string;       // Opus-coachstrategie ("Waarom dit schema") uit de generatie
+  refinements?: string[];  // verfijnings-verzoeken van de atleet vóór goedkeuring
 }
 
 // Weersomstandigheden op een racedag (via Open-Meteo, gecached per goal)

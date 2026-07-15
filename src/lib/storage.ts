@@ -3,6 +3,7 @@ import { trainingPlan } from '@/data/training-plan';
 import { getTrainingForDayOffset, amsterdamDateForOffset } from './schedule';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
 import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones } from './swim';
+import { combineStrategyText } from './plan-strategy';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
 export function generateId(): string {
@@ -506,6 +507,21 @@ function shiftDateStr(dateStr: string, days: number): string {
   if (isNaN(d.getTime())) return dateStr;
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().split('T')[0];
+}
+
+// Het volledige actieve StoredPlan (incl. strategie); null bij het voorbeeldschema
+export function getActiveStoredPlan(): StoredPlan | null {
+  const activeId = getItem<string | null>(KEYS.ACTIVE_PLAN_ID, null);
+  if (!activeId) return null;
+  return getStoredPlans().find((p) => p.id === activeId) ?? null;
+}
+
+// Coachstrategie achter het actieve schema als tekstblok voor AI-context
+// (chat, adjust-day, volgende schema-generatie); '' als die er niet is.
+export function buildPlanStrategyText(): string {
+  const active = getActiveStoredPlan();
+  if (!active) return '';
+  return combineStrategyText(active.strategy, active.refinements);
 }
 
 export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string; id: string } {

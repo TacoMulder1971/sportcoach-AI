@@ -7,7 +7,7 @@ import CheckInContent from '@/app/coach/CheckInContent';
 import WeeklyReportSection from '@/components/WeeklyReportSection';
 import DailyCoachSection from '@/components/DailyCoachSection';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, generateId, getNutritionForDate, getActiveRaceLabel, getActiveRaceDate, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getUpcomingGoals, getEquipment, getActivityAssignments, buildHRZoneText, getProfile } from '@/lib/storage';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, buildPlanStrategyText, generateId, getNutritionForDate, getActiveRaceLabel, getActiveRaceDate, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getUpcomingGoals, getEquipment, getActivityAssignments, buildHRZoneText, getProfile } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
@@ -249,6 +249,7 @@ export default function CoachContent() {
           equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
           hrZoneText: buildHRZoneText(),
           athleteProfile: athleteProfilePayload(getProfile()),
+          planStrategy: buildPlanStrategyText(),
         }),
       });
 

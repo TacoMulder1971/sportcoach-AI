@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
       weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
-      raceContext, goalsHistory, equipmentAttention, hrZoneText, athleteProfile,
+      raceContext, goalsHistory, equipmentAttention, hrZoneText, athleteProfile, planStrategy,
     } = await request.json();
 
     // Bouw schema tekst dynamisch
@@ -93,6 +93,12 @@ Week 2:
 - Vr: Zwemmen duur (50min Z3)
 - Za: Mountainbike (60min Z3)
 - Zo: Zwemmen (40min Z3) + Hardlopen duur (50min Z3)\n`;
+    }
+
+    // Overwegingen van de coach achter het actieve schema — zo blijft advies
+    // consistent met de bedoeling van het schema (bv. bewust rustige week).
+    if (planStrategy && typeof planStrategy === 'string' && planStrategy.trim().length > 0) {
+      planText += `\nCOACHSTRATEGIE ACHTER DIT SCHEMA (de overwegingen waarmee dit schema is gemaakt — houd je advies hiermee consistent):\n${planStrategy}\n`;
     }
 
     // Add current date/time context — betrouwbaar via Intl in de Amsterdam-tijdzone

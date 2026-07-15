@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip } from '@/lib/storage';
+import { getActivePlan, getActiveStoredPlan, buildPlanStrategyText, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip } from '@/lib/storage';
+import { cleanStrategyText } from '@/lib/plan-strategy';
 import { athleteProfilePayload, resolveSports } from '@/lib/athlete';
 import { formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
 import { TrainingWeek, TrainingDay, GarminHealthStats, HEART_RATE_ZONES } from '@/lib/types';
@@ -21,6 +22,9 @@ export default function SchemaContent() {
   const [plan, setPlan] = useState<TrainingWeek[] | null>(null);
   const [cycleStartDate, setCycleStartDate] = useState<string>('');
   const [planId, setPlanId] = useState<string>('default');
+  const [strategy, setStrategy] = useState<string | null>(null);
+  const [refinements, setRefinements] = useState<string[]>([]);
+  const [showStrategy, setShowStrategy] = useState(false);
   const [selectedTab, setSelectedTab] = useState<TabSelection>(tabParam === 'longterm' ? 'longterm' : 1);
   const [cycleDay, setCycleDay] = useState(1);
   const todayDayIndex = getTodayDayIndex();
@@ -47,6 +51,9 @@ export default function SchemaContent() {
     setPlan(active.plan);
     setCycleStartDate(active.cycleStartDate);
     setPlanId(active.id);
+    const stored = getActiveStoredPlan();
+    setStrategy(stored?.strategy || null);
+    setRefinements(stored?.refinements || []);
     const currentWeek = getCurrentWeekNumber(active.cycleStartDate);
     if (tabParam !== 'longterm') setSelectedTab(currentWeek);
     setCycleDay(getDaysInCurrentCycle(active.cycleStartDate));
@@ -101,6 +108,7 @@ export default function SchemaContent() {
           raceContext: buildRaceContextText(),
           hrZoneText: buildHRZoneText(),
           athleteProfile: athleteProfilePayload(getProfile()),
+          planStrategy: buildPlanStrategyText(),
         }),
       });
 
@@ -234,6 +242,40 @@ export default function SchemaContent() {
             </svg>
             Klopt de huidige week niet? Wissel week 1 ↔ 2
           </button>
+        )}
+
+        {/* Waarom dit schema — bewaarde coachstrategie van de generatie */}
+        {strategy && planId !== 'default' && selectedWeek && (
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setShowStrategy((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+            >
+              <span className="text-sm font-semibold text-blue-300">
+                💡 Waarom dit schema
+              </span>
+              <span className="text-blue-400 text-xs">
+                {showStrategy ? 'Verbergen ▲' : 'Toon analyse ▼'}
+              </span>
+            </button>
+            {showStrategy && (
+              <div className="px-4 pb-4 border-t border-blue-500/20 pt-3 space-y-3">
+                <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  {cleanStrategyText(strategy)}
+                </p>
+                {refinements.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-blue-300 mb-1">Op jouw verzoek aangepast:</p>
+                    <ul className="text-sm text-gray-400 space-y-0.5">
+                      {refinements.map((r, i) => (
+                        <li key={i}>• {r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Week view — bij het voorbeeldschema (geen eigen plan) niet tonen */}

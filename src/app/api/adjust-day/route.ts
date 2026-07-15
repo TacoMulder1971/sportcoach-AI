@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace, raceContext, hrZoneText, athleteProfile } = await request.json();
+    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace, raceContext, hrZoneText, athleteProfile, planStrategy } = await request.json();
 
     if (!currentPlan || !adjustmentRequest) {
       return NextResponse.json({ error: 'Verplichte velden ontbreken' }, { status: 400 });
@@ -115,7 +115,7 @@ DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
 HUIDIG SCHEMA:
 ${currentPlanText}
-
+${planStrategy ? `\nCOACHSTRATEGIE ACHTER DIT SCHEMA (bewaak deze opzet — je aanpassing mag de bedoeling van het schema niet slopen):\n${planStrategy}\n` : ''}
 AANPASSING GEVRAAGD VOOR: Week ${weekNumber}, ${dayName}
 VERZOEK: ${adjustmentRequest}
 

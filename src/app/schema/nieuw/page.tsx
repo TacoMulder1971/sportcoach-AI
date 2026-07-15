@@ -11,7 +11,9 @@ import {
   getActivityArchive, getHealthArchive, getEquipment, getActivityAssignments, getArchivedGoals,
   buildHRZoneText,
   getProfile,
+  buildPlanStrategyText,
 } from '@/lib/storage';
+import { cleanStrategyText } from '@/lib/plan-strategy';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildPerformanceSummary } from '@/lib/performance-summary';
@@ -21,17 +23,6 @@ import { getCurrentPhase, getPhaseProgress, TRAINING_PHASES } from '@/lib/period
 
 const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
 const FULL_DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
-
-// Strip markdown-symbolen zodat de coachnotitie als nette platte tekst toont
-function cleanStrategyText(text: string): string {
-  return text
-    .replace(/^#{1,6}\s*/gm, '')   // kopjes: ## Titel → Titel
-    .replace(/\*\*(.+?)\*\*/g, '$1') // **vet** → vet
-    .replace(/^\s*[-*]\s+/gm, '• ')  // lijst-bullets uniform maken
-    .replace(/^---+$/gm, '')         // horizontale lijnen weg
-    .replace(/\n{3,}/g, '\n\n')      // overtollige lege regels
-    .trim();
-}
 
 export default function NieuwSchemaPage() {
   const router = useRouter();
@@ -47,6 +38,7 @@ export default function NieuwSchemaPage() {
   const [error, setError] = useState<string | null>(null);
   const [proposal, setProposal] = useState<TrainingWeek[] | null>(null);
   const [strategy, setStrategy] = useState<string | null>(null);
+  const [refinements, setRefinements] = useState<string[]>([]);
   const [showStrategy, setShowStrategy] = useState(false);
   const [previewWeek, setPreviewWeek] = useState<1 | 2>(1);
   const [feedback, setFeedback] = useState('');
@@ -141,6 +133,7 @@ export default function NieuwSchemaPage() {
           performanceSummary,
           hrZoneText: buildHRZoneText(),
           athleteProfile: athleteProfilePayload(getProfile()),
+          previousStrategy: buildPlanStrategyText(),
         }),
       });
 
@@ -149,6 +142,7 @@ export default function NieuwSchemaPage() {
 
       setProposal(data.plan);
       setStrategy(data.strategy || null);
+      setRefinements([]);
       setShowStrategy(false);
       setPreviewWeek(1);
       setFeedback('');
@@ -186,6 +180,7 @@ export default function NieuwSchemaPage() {
       if (!res.ok) throw new Error(data.error || 'Aanpassen mislukt');
 
       setProposal(data.plan);
+      setRefinements((prev) => [...prev, feedback.trim()]);
       setPreviewWeek(1);
       setFeedback('');
     } catch (e) {
@@ -209,6 +204,8 @@ export default function NieuwSchemaPage() {
       createdAt: new Date().toISOString(),
       agendaInput: agenda,
       status: 'active',
+      strategy: strategy || undefined,
+      refinements: refinements.length > 0 ? refinements : undefined,
     });
     setActivePlanId(id);
     setStep(3);
@@ -438,6 +435,7 @@ export default function NieuwSchemaPage() {
             onClick={() => {
               setProposal(null);
               setStrategy(null);
+              setRefinements([]);
               setFeedback('');
               setStep(1);
             }}

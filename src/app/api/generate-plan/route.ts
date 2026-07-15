@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
       performanceSummary,
       hrZoneText,
       athleteProfile,
+      previousStrategy,
     } = body;
 
     const client = new Anthropic({ apiKey });
@@ -245,6 +246,9 @@ ${JSON_FORMAT_SPEC}`;
     if (previousPlan && Array.isArray(previousPlan)) {
       previousPlanText = '\nVORIG SCHEMA (bouw hierop voort met geleidelijke progressie):\n';
       previousPlanText += planToText(previousPlan);
+    }
+    if (previousStrategy && typeof previousStrategy === 'string' && previousStrategy.trim().length > 0) {
+      previousPlanText += `\nOVERWEGINGEN ACHTER HET VORIGE SCHEMA (jouw eerdere coachnotitie — evalueer aan de hand van de prestaties of deze aanpak werkte en bouw er logisch op voort):\n${previousStrategy}\n`;
     }
 
     let performanceText = '';
