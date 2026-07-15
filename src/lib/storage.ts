@@ -36,6 +36,7 @@ const KEYS = {
   STRENGTH_WORKOUTS: 'tricoach_strength_workouts',
   CYCLE_WEEK_FLIP: 'tricoach_cycle_week_flip',
   PLANNED_DAY_ARCHIVE: 'tricoach_planned_day_archive',
+  NUTRITION_REPORT: 'tricoach_nutrition_report',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -654,6 +655,23 @@ export function getWeeklyReport(): WeeklyReport | null {
 
 export function saveWeeklyReport(report: Omit<WeeklyReport, 'weekKey'>): void {
   setItem(KEYS.WEEKLY_REPORT, { ...report, weekKey: getISOWeekKey() });
+}
+
+// Wekelijks voedingsrapport — zelfde week-cache-patroon als het trainings-weekrapport
+interface NutritionReport {
+  weekKey: string;
+  generatedAt: string;
+  summary: string;
+}
+
+export function getNutritionReport(): NutritionReport | null {
+  const stored = getItem<NutritionReport | null>(KEYS.NUTRITION_REPORT, null);
+  if (!stored) return null;
+  return stored.weekKey === getISOWeekKey() ? stored : null;
+}
+
+export function saveNutritionReport(report: Omit<NutritionReport, 'weekKey'>): void {
+  setItem(KEYS.NUTRITION_REPORT, { ...report, weekKey: getISOWeekKey() });
 }
 
 // Nutrition logs (MyFitnessPal import)

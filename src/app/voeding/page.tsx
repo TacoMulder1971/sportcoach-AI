@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getNutritionLogs, saveNutritionLogs, parseMFPCsv, getYazioCredentials, syncYazioNutrition } from '@/lib/storage';
 import { NutritionLog } from '@/lib/types';
 import PullToRefresh from '@/components/PullToRefresh';
+import NutritionReportSection from '@/components/NutritionReportSection';
 
 const DAY_ABBR = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 
@@ -275,6 +276,9 @@ export default function VoedingPage() {
           </div>
         </section>
       )}
+
+      {/* Wekelijks voedingsrapport */}
+      {logs.length > 0 && <NutritionReportSection />}
 
       {/* Recent logs */}
       {logs.length > 0 && (
