@@ -23,6 +23,7 @@ export default function CoachContent() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const lastMessageRef = useRef<HTMLDivElement>(null);
+  const didChatScrollRef = useRef(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -61,8 +62,19 @@ export default function CoachContent() {
     // 'nearest' vult de chat van boven naar beneden: een kort bericht dokt
     // onderaan (geen lege ruimte), een lang bericht (groter dan het scherm)
     // toont vanaf zijn bovenkant in plaats van het afgekapte einde.
-    lastMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [messages]);
+    // De berichtenlijst mount pas als de Chat-subtab opent (scrollpositie 0),
+    // dus bij het openen direct naar het laatste bericht springen; daarna smooth.
+    if (activeTab !== 'chat') {
+      didChatScrollRef.current = false;
+      return;
+    }
+    const firstOpen = !didChatScrollRef.current;
+    didChatScrollRef.current = true;
+    lastMessageRef.current?.scrollIntoView({
+      behavior: firstOpen ? 'auto' : 'smooth',
+      block: 'nearest',
+    });
+  }, [messages, activeTab]);
 
   const speakText = useCallback((text: string) => {
     if (!('speechSynthesis' in window)) return;
