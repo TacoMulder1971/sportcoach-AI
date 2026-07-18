@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from '@/app/coach/CheckInContent';
 import WeeklyReportSection from '@/components/WeeklyReportSection';
-import DailyCoachSection from '@/components/DailyCoachSection';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
 import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, buildPlanStrategyText, generateId, getNutritionForDate, getActiveRaceLabel, getActiveRaceDate, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getUpcomingGoals, getEquipment, getActivityAssignments, buildHRZoneText, getProfile } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
@@ -15,7 +14,7 @@ import { getCurrentPhase } from '@/lib/periodization';
 
 export default function CoachContent() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'daily' | 'checkin' | 'chat' | 'report'>('checkin');
+  const [activeTab, setActiveTab] = useState<'checkin' | 'chat' | 'report'>('checkin');
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -347,7 +346,6 @@ export default function CoachContent() {
       <div className="px-5 pt-1 flex-shrink-0">
         <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
           {([
-            { id: 'daily', label: 'Vandaag' },
             { id: 'checkin', label: 'Check-out' },
             { id: 'chat', label: 'Chat' },
             { id: 'report', label: 'Weekrapport' },
@@ -363,11 +361,7 @@ export default function CoachContent() {
         </div>
       </div>
 
-      {activeTab === 'daily' ? (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <DailyCoachSection />
-        </div>
-      ) : activeTab === 'checkin' ? (
+      {activeTab === 'checkin' ? (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <CheckInContent onComplete={() => router.push('/')} />
         </div>
