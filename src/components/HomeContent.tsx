@@ -11,7 +11,7 @@ import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurr
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
-import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, MultisportMatchScore } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
 import { TrainingDay, TrainingSession, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 
@@ -228,12 +228,22 @@ export default function HomeContent() {
   const latestActivity = statsActivities[0] || null;
 
   const latestActivityPlannedSession: TrainingSession | null = useMemo(() => {
-    if (!latestActivity) return null;
+    if (!latestActivity || latestActivity.isMultisport) return null;
     const { plan, cycleStartDate } = getActivePlan();
     const daysSince = daysBetween(latestActivity.date, isoDate(new Date()));
     const training = getTrainingForDayOffset(-daysSince, plan, cycleStartDate);
     if (!training || training.isRestDay) return null;
     return training.sessions.find((s) => s.sport === latestActivity.sport) || null;
+  }, [latestActivity]);
+
+  // Multisport (brick/triatlon): match de discipline-onderdelen tegen álle geplande sessies van die dag
+  const latestActivityMultisportMatch: MultisportMatchScore | null = useMemo(() => {
+    if (!latestActivity?.isMultisport) return null;
+    const { plan, cycleStartDate } = getActivePlan();
+    const daysSince = daysBetween(latestActivity.date, isoDate(new Date()));
+    const training = getTrainingForDayOffset(-daysSince, plan, cycleStartDate);
+    if (!training || training.isRestDay) return null;
+    return computeMultisportMatchScore(latestActivity, training.sessions, zonesForSport);
   }, [latestActivity]);
 
   const trainingLoad: TrainingLoadData | null = useMemo(() => {
@@ -290,9 +300,11 @@ export default function HomeContent() {
     return computeWeekAdherence(plannedDays, archive, zonesForSport);
   }, [garmin]);
 
-  // Volume per sport deze week vs. vorige week, uit het archief (langere geschiedenis dan de live 40)
+  // Volume per sport deze week vs. vorige week, uit het archief (langere geschiedenis dan de live 40).
+  // Multisport (brick/triatlon) wordt uitgeklapt zodat de fiets-/loop-/zwem-km per sport meetellen.
   const volumeComparison = useMemo(() => {
-    const archive = filterStatsActivities(getActivityArchive(), getEquipment(), getActivityAssignments());
+    const archive = filterStatsActivities(getActivityArchive(), getEquipment(), getActivityAssignments())
+      .flatMap(expandMultisportActivity);
     const today = new Date();
     const thisMonday = mondayOf(today);
     const thisMondayStr = isoDate(thisMonday);
@@ -591,7 +603,7 @@ export default function HomeContent() {
         {latestActivity && (
           <div>
             <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Laatste activiteit</p>
-            <LatestActivityCard activity={latestActivity} plannedSession={latestActivityPlannedSession} />
+            <LatestActivityCard activity={latestActivity} plannedSession={latestActivityPlannedSession} multisportMatch={latestActivityMultisportMatch} />
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import SportIcon from '@/components/SportIcon';
 import { getGarminData, getEquipment, getActivityAssignments, getActiveRaceDate, buildRaceContextText, getRecentNutritionLogs, getWeeklyReport, saveWeeklyReport, getActivityArchive, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
 import { filterStatsActivities } from '@/lib/equipment';
-import { getWeeklyTRIMPTotals, computeWeekAdherence, calcTRIMP } from '@/lib/training-load';
+import { getWeeklyTRIMPTotals, computeWeekAdherence, calcTRIMP, expandMultisportActivity } from '@/lib/training-load';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import { formatDuration } from '@/lib/schedule';
 import { Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
@@ -53,7 +53,8 @@ export default function WeeklyReportSection() {
 
     const restingHR = garmin.health?.restingHR || 55;
     const bySport = new Map<Sport, { km: number; minutes: number }>();
-    for (const a of recent) {
+    // Multisport (brick/triatlon) uitklappen zodat de km/minuten per discipline tellen
+    for (const a of recent.flatMap(expandMultisportActivity)) {
       const cur = bySport.get(a.sport as Sport) || { km: 0, minutes: 0 };
       cur.km += a.distanceKm || 0;
       cur.minutes += a.durationMinutes || 0;

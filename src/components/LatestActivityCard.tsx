@@ -4,7 +4,7 @@ import { useState } from 'react';
 import SportIcon from '@/components/SportIcon';
 import { GarminActivity, TrainingSession, HEART_RATE_ZONES } from '@/lib/types';
 import { getRunZones, getCyclingZones } from '@/lib/storage';
-import { computeActivityMatchScore, getHRZone } from '@/lib/training-load';
+import { computeActivityMatchScore, getHRZone, MultisportMatchScore } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
 
 const DAY_NAMES = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
@@ -39,13 +39,17 @@ function scoreColor(score: number): string {
 export default function LatestActivityCard({
   activity,
   plannedSession,
+  multisportMatch = null,
 }: {
   activity: GarminActivity;
   plannedSession: TrainingSession | null;
+  multisportMatch?: MultisportMatchScore | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const zones = zonesForSport(activity.sport);
-  const matchScore = plannedSession ? computeActivityMatchScore(activity, plannedSession, zones) : null;
+  const singleMatch = plannedSession ? computeActivityMatchScore(activity, plannedSession, zones) : null;
+  // Multisport (brick/triatlon): gecombineerde score over de discipline-onderdelen
+  const matchScore = multisportMatch ?? singleMatch;
   const actualZone = getHRZone(activity.avgHR, zones);
   const actualZoneInfo = actualZone ? zones.find((z) => z.zone === actualZone) : null;
   const totalZoneMin = activity.hrZones?.reduce((s, z) => s + z.minutes, 0) || 0;
@@ -118,7 +122,25 @@ export default function LatestActivityCard({
       )}
 
       <div className="mt-3 pt-3 border-t border-white/5">
-        {plannedSession ? (
+        {multisportMatch ? (
+          <>
+            <p className="text-sm text-gray-300">
+              Gepland: {multisportMatch.parts
+                .filter((p) => p.session)
+                .map((p) => `${p.session!.durationMinutes ? `${p.session!.durationMinutes} min` : ''}${p.session!.zone ? ` ${p.session!.zone}` : ''} ${(SPORT_LABEL[p.sport] || p.sport).toLowerCase()}`.trim())
+                .join(' + ')}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {multisportMatch.parts
+                .filter((p) => p.match)
+                .map((p) => `${SPORT_LABEL[p.sport] || p.sport} ${p.match!.score}%`)
+                .join(' · ')}
+            </p>
+            <p className="text-sm font-medium mt-1" style={{ color: scoreColor(multisportMatch.score) }}>
+              {multisportMatch.label}
+            </p>
+          </>
+        ) : plannedSession ? (
           <>
             <p className="text-sm text-gray-300">
               Gepland: {plannedSession.durationMinutes ? `${plannedSession.durationMinutes} min` : ''}
@@ -200,6 +222,11 @@ export default function LatestActivityCard({
                       return (
                         <div key={i} className="flex items-center gap-2 text-xs text-gray-400">
                           <span className="w-4 text-right text-gray-600">{i + 1}.</span>
+                          {s.sport && (
+                            <span className="text-gray-300 font-medium">
+                              {s.sport === 'transitie' ? 'Wissel' : SPORT_LABEL[s.sport] || s.sport}
+                            </span>
+                          )}
                           {s.distance > 0 && <span>{s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance}km`}</span>}
                           <span className="text-gray-300">{mins}:{secs.toString().padStart(2, '0')}</span>
                           {s.avgHR > 0 && <span className="text-red-400">HR {s.avgHR}</span>}

@@ -1,5 +1,5 @@
 import { GarminActivity, GarminHealthStats, Goal, GOAL_TYPES } from './types';
-import { calcTRIMP } from './training-load';
+import { calcTRIMP, expandMultisportActivity } from './training-load';
 
 /**
  * Bouwt een prestatie-samenvatting van de afgelopen weken voor de AI-planmaker.
@@ -110,6 +110,10 @@ export function buildPerformanceSummary(
     let weekTrimp = 0;
     for (const a of weekActs) {
       weekTrimp += calcTRIMP(a, restingHR);
+    }
+    // Per-sport-uitsplitsing: multisport (brick/triatlon) uitklappen zodat de
+    // fiets-/loop-/zwem-minuten bij hun eigen sport tellen (TRIMP blijft op de parent).
+    for (const a of weekActs.flatMap(expandMultisportActivity)) {
       const key = TRAIN_SPORTS.includes(a.sport as typeof TRAIN_SPORTS[number])
         ? a.sport
         : 'overig';

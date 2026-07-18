@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -255,9 +255,11 @@ export default function DataPage() {
     return { hrData, runTempoData, raceSpeedData, mtbSpeedData, powerData, swimPaceData };
   }, [garmin, statsActivities]);
 
-  // Wekelijks volume per sport (8 weken) — uit activiteiten-archief
+  // Wekelijks volume per sport (8 weken) — uit activiteiten-archief.
+  // Multisport (brick/triatlon) uitgeklapt zodat elke discipline meetelt.
   const volumeData = useMemo((): WeeklyVolumeData[] => {
-    const archive = filterStatsActivities(getActivityArchive(), equipment, assignments);
+    const archive = filterStatsActivities(getActivityArchive(), equipment, assignments)
+      .flatMap(expandMultisportActivity);
     if (archive.length === 0) return [];
     const now = new Date();
     const result: WeeklyVolumeData[] = [];

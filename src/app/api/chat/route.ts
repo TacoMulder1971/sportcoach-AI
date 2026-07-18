@@ -165,11 +165,12 @@ Week 2:
             contextMessage += ` | zones: ${a.hrZones.map((z: { zone: string; minutes: number }) => `${z.zone}: ${z.minutes}min`).join(', ')}`;
           }
           if (a.splits && a.splits.length > 1) {
-            const splitStr = a.splits.map((s: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number }, i: number) => {
+            const splitStr = a.splits.map((s: { distance: number; durationSeconds: number; avgHR: number; avgPower?: number; sport?: string }, i: number) => {
               const m = Math.floor(s.durationSeconds / 60);
               const sec = s.durationSeconds % 60;
               const dist = s.distance > 0 ? (s.distance < 1 ? `${Math.round(s.distance * 1000)}m` : `${s.distance}km`) : '';
-              return `${i + 1}) ${dist} ${m}:${sec.toString().padStart(2, '0')}${s.avgHR > 0 ? ` HR${s.avgHR}` : ''}${(s.avgPower || 0) > 0 ? ` ${s.avgPower}W` : ''}`;
+              const sportLabel = s.sport ? `${s.sport} ` : '';
+              return `${i + 1}) ${sportLabel}${dist} ${m}:${sec.toString().padStart(2, '0')}${s.avgHR > 0 ? ` HR${s.avgHR}` : ''}${(s.avgPower || 0) > 0 ? ` ${s.avgPower}W` : ''}`;
             }).join(', ');
             contextMessage += ` | blokken: ${splitStr}`;
           }

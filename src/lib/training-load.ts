@@ -599,6 +599,97 @@ function sportsMatch(planned: Sport, actual: string): boolean {
 }
 
 /**
+ * Klap een multisport-activiteit (brick/triatlon/duatlon) uit naar virtuele
+ * per-discipline-activiteiten op basis van de discipline-splits uit de sync.
+ * Zo kunnen matching (adherentie, match-score) en volume-tellingen per sport
+ * werken: één Garmin-brick dekt dan de geplande fiets- én loopsessie.
+ * Transitie-splits vervallen. Niet-multisport activiteiten (of multisport
+ * zonder discipline-splits) komen ongewijzigd als [activiteit] terug.
+ * De virtuele delen houden het id van de parent — niet gebruiken op plekken
+ * waar het id uniek moet zijn (bv. materiaal-toewijzing).
+ */
+export function expandMultisportActivity(activity: GarminActivity): GarminActivity[] {
+  if (!activity.isMultisport || !activity.splits?.length) return [activity];
+  const parts = activity.splits.filter(
+    (s) => s.sport && s.sport !== 'transitie' && s.durationSeconds > 0,
+  );
+  if (parts.length === 0) return [activity];
+  return parts.map((part) => {
+    const durationMinutes = Math.round(part.durationSeconds / 60);
+    return {
+      ...activity,
+      sport: part.sport as Sport,
+      activityName: `${activity.activityName} — ${part.sport}`,
+      durationMinutes,
+      distanceKm: part.distance,
+      avgHR: part.avgHR,
+      avgPower: part.avgPower,
+      avgSpeed: part.durationSeconds > 0 ? Math.round((part.distance / (part.durationSeconds / 3600)) * 10) / 10 : 0,
+      // Additieve en parent-brede velden niet dupliceren over de delen
+      calories: 0,
+      elevationGain: 0,
+      elevationLoss: 0,
+      hrZones: undefined,
+      splits: undefined,
+      isMultisport: undefined,
+    };
+  });
+}
+
+/** Weergave-samenvatting van de geplande sessies die één multisport-activiteit dekt. */
+export interface MultisportMatchPart {
+  sport: Sport;
+  session: TrainingSession | null;   // null = discipline zonder geplande sessie die dag
+  match: ActivityMatchScore | null;
+  durationMinutes: number;           // werkelijke duur van dit onderdeel
+  distanceKm: number;
+}
+
+export interface MultisportMatchScore {
+  score: number;  // gewogen naar geplande duur per onderdeel
+  label: string;
+  parts: MultisportMatchPart[];
+}
+
+/**
+ * Match één multisport-activiteit tegen de geplande sessies van die dag:
+ * elk discipline-onderdeel wordt (in volgorde) aan een nog vrije geplande
+ * sessie met dezelfde sport gekoppeld en apart gescoord; de totaalscore is
+ * het naar (geplande) duur gewogen gemiddelde. null als er niets te matchen
+ * valt (geen discipline-splits of geen enkele passende geplande sessie).
+ */
+export function computeMultisportMatchScore(
+  activity: GarminActivity,
+  sessions: TrainingSession[],
+  zonesForSport: (sport: Sport) => HeartRateZoneInfo[],
+): MultisportMatchScore | null {
+  if (!activity.isMultisport) return null;
+  const children = expandMultisportActivity(activity);
+  if (children.length === 1 && children[0] === activity) return null;
+
+  const used = new Set<number>();
+  const parts: MultisportMatchPart[] = children.map((child) => {
+    const idx = sessions.findIndex((s, i) => !used.has(i) && sportsMatch(s.sport, child.sport));
+    if (idx === -1) {
+      return { sport: child.sport as Sport, session: null, match: null, durationMinutes: child.durationMinutes, distanceKm: child.distanceKm };
+    }
+    used.add(idx);
+    const session = sessions[idx];
+    const match = computeActivityMatchScore(child, session, zonesForSport(session.sport));
+    return { sport: child.sport as Sport, session, match, durationMinutes: child.durationMinutes, distanceKm: child.distanceKm };
+  });
+
+  const matched = parts.filter((p) => p.match);
+  if (matched.length === 0) return null;
+
+  const weight = (p: MultisportMatchPart) => p.session?.durationMinutes || p.durationMinutes || 1;
+  const totalWeight = matched.reduce((s, p) => s + weight(p), 0);
+  const score = Math.round(matched.reduce((s, p) => s + p.match!.score * weight(p), 0) / totalWeight);
+  const label = score >= 85 ? 'Precies volgens plan' : score >= 60 ? 'Redelijk uitgevoerd' : 'Flink afgeweken';
+  return { score, label, parts };
+}
+
+/**
  * Plan-adherentie over de laatste 7 volledige dagen (gisteren t/m 7 dagen terug):
  * hoeveel van de geplande sessies zijn uitgevoerd, en hoe goed (match-score).
  * Rekent vanuit het gepland-per-dag-archief (recordPlannedDays in storage.ts)
@@ -613,6 +704,9 @@ export function computeWeekAdherence(
   zonesForSport: (sport: Sport) => HeartRateZoneInfo[],
 ): WeekAdherence | null {
   const byDate = new Map(plannedDays.map((r) => [r.date, r]));
+  // Multisport (brick/triatlon) uitklappen naar per-discipline-delen, zodat
+  // één Garmin-brick de geplande fiets- én loopsessie kan afdekken.
+  const expanded = activities.flatMap(expandMultisportActivity);
   const days: AdherenceDay[] = [];
   let plannedCount = 0;
   let completedCount = 0;
@@ -633,7 +727,7 @@ export function computeWeekAdherence(
       ? record.sessions.filter((s) => s.sport !== 'kracht' && s.sport !== 'rust')
       : [];
 
-    const dayActivities = activities.filter((a) => a.date === dateStr);
+    const dayActivities = expanded.filter((a) => a.date === dateStr);
     const used = new Set<number>();
 
     const planned: AdherencePlannedSession[] = sessions.map((session) => {
