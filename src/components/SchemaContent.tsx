@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, getActiveStoredPlan, buildPlanStrategyText, updateActivePlan, shouldAutoBackup, markBackupDone, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip } from '@/lib/storage';
+import { getActivePlan, getActiveStoredPlan, buildPlanStrategyText, updateActivePlan, shouldAutoBackup, markBackupDone, downloadExport, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip } from '@/lib/storage';
 import { cleanStrategyText } from '@/lib/plan-strategy';
 import { athleteProfilePayload, resolveSports } from '@/lib/athlete';
 import { formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
@@ -165,9 +164,9 @@ export default function SchemaContent() {
                 <p className="text-xs text-gray-400 mt-0.5">Exporteer je data zodat je niets kwijtraakt.</p>
               </div>
               <div className="flex gap-2">
-                <Link href="/data" className="text-xs bg-amber-500 text-black px-2.5 py-1.5 rounded-lg font-semibold">
-                  Data
-                </Link>
+                <button onClick={() => { downloadExport(); setShowBackupReminder(false); }} className="text-xs bg-amber-500 text-black px-2.5 py-1.5 rounded-lg font-semibold">
+                  Exporteer
+                </button>
                 <button onClick={() => { markBackupDone(); setShowBackupReminder(false); }} className="text-xs text-gray-500 px-1.5 py-1.5">
                   Later
                 </button>
