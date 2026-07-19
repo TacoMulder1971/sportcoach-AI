@@ -328,7 +328,14 @@ export function getActivityArchive(): GarminActivity[] {
 function richerActivity(a: GarminActivity, b: GarminActivity): GarminActivity {
   const scoreOf = (x: GarminActivity) =>
     (x.hrZones?.length ? 2 : 0) + (x.splits?.length ? 2 : 0) + (x.avgHR > 0 ? 1 : 0);
-  return scoreOf(b) > scoreOf(a) ? b : a;
+  const richer = scoreOf(b) > scoreOf(a) ? b : a;
+  const other = richer === a ? b : a;
+  // Een bekende sport wint altijd van 'overig' — zo werkt een verbeterde
+  // sport-mapping (bijv. strength_training → kracht) door in oude archief-entries.
+  if (richer.sport === 'overig' && other.sport !== 'overig') {
+    return { ...richer, sport: other.sport };
+  }
+  return richer;
 }
 
 export function mergeActivitiesIntoArchive(activities: GarminActivity[]): void {

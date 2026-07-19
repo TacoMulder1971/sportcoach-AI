@@ -30,6 +30,10 @@ function mapGarminSport(typeKey: string): Sport | 'overig' {
     swimrun: 'multisport',
     aquabike: 'multisport',
     brick: 'multisport',
+    strength_training: 'kracht',
+    fitness_equipment: 'kracht',
+    indoor_cardio: 'kracht',
+    hiit: 'kracht',
   };
   return map[typeKey] || 'overig';
 }
