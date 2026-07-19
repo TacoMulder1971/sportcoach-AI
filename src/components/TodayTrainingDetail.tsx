@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { Fragment, useEffect, useState, useMemo } from 'react';
 import SportIcon from '@/components/SportIcon';
 import { TrainingDay, SessionBreakdown, SessionSegment, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import {
@@ -16,7 +16,7 @@ import {
 } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { SwimPaceTargets, formatSwimPaceRange } from '@/lib/swim';
-import { formatDuration } from '@/lib/schedule';
+import { findBrickPair, formatDuration } from '@/lib/schedule';
 import StrengthWorkoutDetail from '@/components/StrengthWorkoutDetail';
 
 function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
@@ -152,15 +152,23 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
     s.sport === 'kracht' ? undefined : breakdowns?.[breakdownCursor++]
   );
 
+  // Brick-dag: loop direct na het fietsen — wissel-connector tussen de kaarten,
+  // en de brick-run krijgt geen eigen warming-up (je komt warm van de fiets).
+  const brick = findBrickPair(training.sessions);
+
   return (
     <div className="space-y-3">
       {training.sessions.map((session, idx) => {
         const zoneInfo = session.zone ? zonesForSport(session.sport).find((z) => z.zone === session.zone) : null;
         const isStrength = session.sport === 'kracht';
-        const breakdown = breakdownForIdx[idx];
+        const isBrickRun = brick?.runIndex === idx;
+        let breakdown = breakdownForIdx[idx];
+        if (breakdown && isBrickRun) {
+          breakdown = { ...breakdown, segments: breakdown.segments.filter((seg) => seg.kind !== 'warmup') };
+        }
         const workout = isStrength ? getStrengthWorkoutForSession(session) : null;
-        return (
-          <div key={idx} className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4">
+        const card = (
+          <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4">
             {/* Kop: sport + samenvatting */}
             <div className="flex items-start gap-3">
               <SportIcon sport={session.sport} size="lg" />
@@ -203,6 +211,11 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
                 <StrengthWorkoutDetail workout={workout} />
               ) : breakdown ? (
                 <div className="space-y-3">
+                  {isBrickRun && (
+                    <p className="text-xs text-gray-500">
+                      Geen aparte warming-up — je komt warm van de fiets, start direct in je doelzone.
+                    </p>
+                  )}
                   {breakdown.segments.map((seg, si) => (
                     <SegmentRow key={si} segment={seg} sport={session.sport} swimPaces={swimPaces} />
                   ))}
@@ -221,6 +234,19 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
               ) : null}
             </div>
           </div>
+        );
+
+        return (
+          <Fragment key={idx}>
+            {isBrickRun && (
+              <div className="flex items-center justify-center -my-1 relative z-10">
+                <span className="text-[11px] font-bold uppercase tracking-wide text-amber-400 bg-amber-500/10 border border-amber-500/25 px-3 py-1 rounded-full">
+                  Snelle wissel — direct door
+                </span>
+              </div>
+            )}
+            {card}
+          </Fragment>
         );
       })}
     </div>

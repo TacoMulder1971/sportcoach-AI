@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { TrainingDay, TrainingSession, HEART_RATE_ZONES, Sport, HeartRateZoneInfo } from '@/lib/types';
-import { formatDuration } from '@/lib/schedule';
+import { findBrickPair, formatDuration } from '@/lib/schedule';
 import { getRunZones, getCyclingZones, getSwimPaceTargets } from '@/lib/storage';
 import { SwimPaceTargets, formatSwimPaceRange } from '@/lib/swim';
 import SportIcon from './SportIcon';
@@ -40,6 +40,8 @@ function capitalize(s: string): string {
 export default function TrainingCard({ training, isToday = false, compact = false, dark = false }: TrainingCardProps) {
   const hasSwim = training.sessions.some((s) => s.sport === 'zwemmen');
   const swimPaces = useMemo(() => (hasSwim ? getSwimPaceTargets() : null), [hasSwim]);
+  // Brick-dag: wissel-connector tussen de fiets- en loopsessie
+  const brick = findBrickPair(training.sessions);
 
   if (dark) {
     return (
@@ -77,7 +79,15 @@ export default function TrainingCard({ training, isToday = false, compact = fals
                 ? zonesForSport(session.sport).find((z) => z.zone === session.zone)
                 : null;
               return (
-                <div key={idx} className="flex items-start gap-3">
+                <Fragment key={idx}>
+                {brick?.runIndex === idx && (
+                  <div className="flex items-center justify-center">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2.5 py-0.5 rounded-full">
+                      Snelle wissel — direct door
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-start gap-3">
                   <SportIcon sport={session.sport} size="xl" />
                   <div className="flex-1 min-w-0">
                     {training.sessions.length > 1 && (
@@ -108,6 +118,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
                     </div>
                   </div>
                 </div>
+                </Fragment>
               );
             })}
           </div>
@@ -144,7 +155,15 @@ export default function TrainingCard({ training, isToday = false, compact = fals
 
       <div className="space-y-2">
         {training.sessions.map((session, idx) => (
-          <div key={idx} className="flex items-start gap-3">
+          <Fragment key={idx}>
+          {brick?.runIndex === idx && (
+            <div className="flex items-center justify-center">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                Snelle wissel — direct door
+              </span>
+            </div>
+          )}
+          <div className="flex items-start gap-3">
             <SportIcon sport={session.sport} size="lg" />
             <div className="flex-1 min-w-0">
               <p className={`${isToday ? 'text-base font-semibold' : 'text-sm font-medium'} text-gray-900`}>
@@ -171,6 +190,7 @@ export default function TrainingCard({ training, isToday = false, compact = fals
               </div>
             </div>
           </div>
+          </Fragment>
         ))}
       </div>
     </div>

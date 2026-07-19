@@ -1,5 +1,5 @@
 import { trainingPlan } from '@/data/training-plan';
-import { TrainingDay, TrainingWeek } from './types';
+import { TrainingDay, TrainingSession, TrainingWeek } from './types';
 
 const DEFAULT_CYCLE_START = '2026-02-23';
 
@@ -22,6 +22,23 @@ export function amsterdamDateForOffset(offset: number): string {
 function parseCycleStartUTC(cycleStartDate?: string): Date {
   const s = (cycleStartDate || DEFAULT_CYCLE_START).split('T')[0];
   return new Date(`${s}T00:00:00Z`);
+}
+
+/**
+ * Brick-dag: een loopsessie die als "brick" gepland staat (type of omschrijving)
+ * ná een fietssessie op dezelfde dag. De loop hoort direct op het fietsen te
+ * volgen (snelle wissel, geen eigen warming-up). null als de dag geen brick is.
+ */
+export function findBrickPair(sessions: TrainingSession[]): { bikeIndex: number; runIndex: number } | null {
+  const runIndex = sessions.findIndex(
+    (s) => s.sport === 'hardlopen' && (/brick/i.test(s.type) || /brick/i.test(s.description))
+  );
+  if (runIndex === -1) return null;
+  const bikeIndex = sessions.findIndex(
+    (s, i) => i < runIndex && (s.sport === 'fietsen' || s.sport === 'mountainbike')
+  );
+  if (bikeIndex === -1) return null;
+  return { bikeIndex, runIndex };
 }
 
 export function getTodayDayIndex(): number {

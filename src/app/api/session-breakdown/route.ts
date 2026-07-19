@@ -50,6 +50,7 @@ Splits elke sessie op in opeenvolgende segmenten:
 
 REGELS:
 - De som van de minuten per sessie moet ongeveer gelijk zijn aan de opgegeven duur.
+- BRICK: is een loopsessie een brick (type/omschrijving "brick", direct na een fietssessie op dezelfde dag)? Dan GEEN warming-up-segment — de atleet komt warm van de fiets en start direct in de doelzone. Benoem in het eerste hoofdblok dat de benen de eerste minuten zwaar aanvoelen en dat de pas kort en snel moet blijven.
 - Kies per segment een passende hartslagzone (Z1–Z5). Warming-up/cooldown meestal Z1–Z2; hoofdblokken volgens het sessietype en de opgegeven hoofdzone.
 - "detail": concreet en kort, in het Nederlands (wat doe je, intensiteit, eventuele herhalingen).
 - "technique": één korte techniekfocus passend bij de sport (optioneel — laat weg als niet relevant). Bijv. hardlopen: cadans/landing; zwemmen: catch/rotatie; fietsen: souplesse/trapfrequentie.
