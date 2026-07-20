@@ -3,7 +3,7 @@
 import { Sport } from '@/lib/types';
 
 interface SportIconProps {
-  sport: Sport | 'overig';
+  sport: Sport | 'overig' | 'transitie';
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
@@ -17,6 +17,7 @@ const NEON_COLORS: Record<string, { stroke: string; glow: string }> = {
   multisport:   { stroke: '#a855f7', glow: 'drop-shadow(0 0 6px #a855f7) drop-shadow(0 0 14px rgba(168,85,247,0.4))' },
   kracht:       { stroke: '#f43f5e', glow: 'drop-shadow(0 0 6px #f43f5e) drop-shadow(0 0 14px rgba(244,63,94,0.4))' },
   rust:         { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
+  transitie:    { stroke: '#94a3b8', glow: 'drop-shadow(0 0 4px #94a3b8) drop-shadow(0 0 10px rgba(148,163,184,0.3))' },
   overig:       { stroke: '#6b7280', glow: 'drop-shadow(0 0 4px #6b7280) drop-shadow(0 0 10px rgba(107,114,128,0.3))' },
 };
 
@@ -120,6 +121,18 @@ function StrengthIcon({ color }: { color: string }) {
   );
 }
 
+function TransitionIcon({ color }: { color: string }) {
+  // Wisselzone: pijlen heen en weer
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 9h13" />
+      <path d="M14 5.5L17.5 9 14 12.5" />
+      <path d="M20 15H7" />
+      <path d="M10 11.5L6.5 15l3.5 3.5" />
+    </svg>
+  );
+}
+
 function UnknownIcon({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -160,6 +173,7 @@ const ICON_MAP: Record<string, React.FC<{ color: string }>> = {
   multisport: MultisportIcon,
   kracht: StrengthIcon,
   rust: RestIcon,
+  transitie: TransitionIcon,
   overig: UnknownIcon,
 };
 

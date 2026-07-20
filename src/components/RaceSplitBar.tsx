@@ -2,10 +2,15 @@
 
 import { RaceSplit } from '@/lib/races';
 import { formatDuration } from '@/lib/storage';
+import SportIcon from '@/components/SportIcon';
 
-const EMOJI: Record<string, string> = {
-  zwemmen: '🏊', fietsen: '🚴', hardlopen: '🏃', transitie: '↔️',
-};
+const KNOWN_DISCIPLINES = ['zwemmen', 'fietsen', 'hardlopen', 'transitie'] as const;
+
+function disciplineIcon(discipline: string): (typeof KNOWN_DISCIPLINES)[number] | 'overig' {
+  return (KNOWN_DISCIPLINES as readonly string[]).includes(discipline)
+    ? (discipline as (typeof KNOWN_DISCIPLINES)[number])
+    : 'overig';
+}
 
 export default function RaceSplitBar({ splits }: { splits: RaceSplit[] }) {
   if (splits.length === 0) return null;
@@ -32,7 +37,7 @@ export default function RaceSplitBar({ splits }: { splits: RaceSplit[] }) {
               className="w-1.5 h-8 rounded-full flex-shrink-0"
               style={{ backgroundColor: s.color }}
             />
-            <span className="w-5 text-center">{EMOJI[s.discipline] || '•'}</span>
+            <SportIcon sport={disciplineIcon(s.discipline)} size="sm" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-100">{s.label}</p>
               <p className="text-xs text-gray-500">
