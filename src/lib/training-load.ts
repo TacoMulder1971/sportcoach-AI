@@ -593,7 +593,7 @@ export interface WeekAdherence {
 }
 
 /** Sport-match voor adherentie: fietsen en mountainbike zijn uitwisselbaar. */
-function sportsMatch(planned: Sport, actual: string): boolean {
+export function sportsMatch(planned: Sport, actual: string): boolean {
   if (planned === actual) return true;
   const bike = (s: string) => s === 'fietsen' || s === 'mountainbike';
   return bike(planned) && bike(actual);

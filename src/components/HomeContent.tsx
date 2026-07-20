@@ -7,11 +7,11 @@ import SportIcon from '@/components/SportIcon';
 import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import LatestActivityCard from '@/components/LatestActivityCard';
 import AdherenceCard from '@/components/AdherenceCard';
-import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset } from '@/lib/schedule';
+import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset, amsterdamDateForOffset } from '@/lib/schedule';
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
-import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, MultisportMatchScore } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
 import { TrainingDay, TrainingSession, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 
@@ -253,6 +253,31 @@ export default function HomeContent() {
       return { activity, plannedSession: session, multisportMatch: null };
     });
   }, [statsActivities]);
+
+  // Is de geplande training van vandaag al (helemaal) gedaan? Dan hoeft het
+  // volledige trainingsdetail niet meer op de Home-tab — de gedane activiteit
+  // staat onderaan bij "Laatste activiteit". Kracht/core telt niet mee in de
+  // check (niet betrouwbaar via Garmin te meten), tenzij de dag alléén uit
+  // kracht bestaat — dan pas weg bij een geregistreerde krachtactiviteit.
+  const todayTrainingDone = useMemo(() => {
+    if (!todayTraining || todayTraining.isRestDay) return false;
+    const today = amsterdamDateForOffset(0);
+    const doneToday = statsActivities
+      .filter((a) => a.date === today)
+      .flatMap(expandMultisportActivity);
+    if (doneToday.length === 0) return false;
+    const sessions = todayTraining.sessions.filter((s) => s.sport !== 'kracht');
+    if (sessions.length === 0) {
+      return doneToday.some((a) => a.sport === 'kracht');
+    }
+    const used = new Set<number>();
+    return sessions.every((session) => {
+      const idx = doneToday.findIndex((a, i) => !used.has(i) && sportsMatch(session.sport, a.sport));
+      if (idx === -1) return false;
+      used.add(idx);
+      return true;
+    });
+  }, [todayTraining, statsActivities]);
 
   const trainingLoad: TrainingLoadData | null = useMemo(() => {
     if (!garmin) return null;
@@ -523,7 +548,7 @@ export default function HomeContent() {
         {/* Training vandaag */}
         <div>
           <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Training vandaag</p>
-          {trainingAdvice && (
+          {trainingAdvice && !todayTrainingDone && (
             <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5 mb-3">
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-xl bg-gray-900 flex items-center justify-center flex-shrink-0">
@@ -543,7 +568,21 @@ export default function HomeContent() {
             </div>
           )}
           {hasOwnPlan ? (
-            <TodayTrainingDetail training={todayTraining} />
+            todayTrainingDone ? (
+              <div className="bg-[#0d0d0f] rounded-3xl p-4 border border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-green-500/15 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-green-400">Training gedaan</p>
+                    <p className="text-sm text-gray-300 mt-0.5">Lekker bezig! Je activiteit staat hieronder bij &ldquo;Laatste activiteit&rdquo;.</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <TodayTrainingDetail training={todayTraining} />
+            )
           ) : (
             /* Nog geen eigen (AI-gegenereerd) schema — geen voorbeeldschema tonen,
                maar de weg wijzen naar doel + schema-generatie. */
