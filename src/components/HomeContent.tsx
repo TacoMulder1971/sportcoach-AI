@@ -224,27 +224,35 @@ export default function HomeContent() {
     return filterStatsActivities(garmin.activities, getEquipment(), getActivityAssignments());
   }, [garmin]);
 
-  // Meest recente activiteit + de geplande sessie van die dag (voor de match-score)
-  const latestActivity = statsActivities[0] || null;
+  // Alle activiteiten van de meest recente trainingsdag + per activiteit de geplande
+  // sessie (voor de match-score). Kracht/core wordt niet getoond, tenzij dat de enige
+  // activiteit van die dag is.
+  const latestActivityEntries = useMemo(() => {
+    const latest = statsActivities[0];
+    if (!latest) return [];
+    const sameDay = statsActivities.filter((a) => a.date === latest.date);
+    const nonStrength = sameDay.filter((a) => a.sport !== 'kracht');
+    const dayActivities = nonStrength.length > 0 ? nonStrength : sameDay;
 
-  const latestActivityPlannedSession: TrainingSession | null = useMemo(() => {
-    if (!latestActivity || latestActivity.isMultisport) return null;
     const { plan, cycleStartDate } = getActivePlan();
-    const daysSince = daysBetween(latestActivity.date, isoDate(new Date()));
+    const daysSince = daysBetween(latest.date, isoDate(new Date()));
     const training = getTrainingForDayOffset(-daysSince, plan, cycleStartDate);
-    if (!training || training.isRestDay) return null;
-    return training.sessions.find((s) => s.sport === latestActivity.sport) || null;
-  }, [latestActivity]);
+    const sessions = training && !training.isRestDay ? training.sessions : [];
+    const usedSessions = new Set<TrainingSession>();
 
-  // Multisport (brick/triatlon): match de discipline-onderdelen tegen álle geplande sessies van die dag
-  const latestActivityMultisportMatch: MultisportMatchScore | null = useMemo(() => {
-    if (!latestActivity?.isMultisport) return null;
-    const { plan, cycleStartDate } = getActivePlan();
-    const daysSince = daysBetween(latestActivity.date, isoDate(new Date()));
-    const training = getTrainingForDayOffset(-daysSince, plan, cycleStartDate);
-    if (!training || training.isRestDay) return null;
-    return computeMultisportMatchScore(latestActivity, training.sessions, zonesForSport);
-  }, [latestActivity]);
+    return dayActivities.map((activity) => {
+      if (activity.isMultisport) {
+        return {
+          activity,
+          plannedSession: null,
+          multisportMatch: sessions.length > 0 ? computeMultisportMatchScore(activity, sessions, zonesForSport) : null,
+        };
+      }
+      const session = sessions.find((s) => s.sport === activity.sport && !usedSessions.has(s)) || null;
+      if (session) usedSessions.add(session);
+      return { activity, plannedSession: session, multisportMatch: null };
+    });
+  }, [statsActivities]);
 
   const trainingLoad: TrainingLoadData | null = useMemo(() => {
     if (!garmin) return null;
@@ -599,11 +607,22 @@ export default function HomeContent() {
           </div>
         </div>
 
-        {/* Laatste activiteit vs. geplande training */}
-        {latestActivity && (
+        {/* Laatste activiteit(en) vs. geplande training */}
+        {latestActivityEntries.length > 0 && (
           <div>
-            <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">Laatste activiteit</p>
-            <LatestActivityCard activity={latestActivity} plannedSession={latestActivityPlannedSession} multisportMatch={latestActivityMultisportMatch} />
+            <p className="text-gray-400 text-sm font-semibold uppercase tracking-wide mb-2 px-1">
+              {latestActivityEntries.length > 1 ? 'Laatste activiteiten' : 'Laatste activiteit'}
+            </p>
+            <div className="space-y-3">
+              {latestActivityEntries.map((entry) => (
+                <LatestActivityCard
+                  key={entry.activity.id}
+                  activity={entry.activity}
+                  plannedSession={entry.plannedSession}
+                  multisportMatch={entry.multisportMatch}
+                />
+              ))}
+            </div>
           </div>
         )}
 
