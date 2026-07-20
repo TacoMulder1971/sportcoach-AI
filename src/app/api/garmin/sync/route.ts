@@ -201,6 +201,26 @@ export async function POST(request: Request) {
                   sport: splitSport,
                 };
               });
+
+            // Garmin levert bij een multisport-parent niet altijd averageHR/maxHR
+            // mee in de activiteitenlijst; zonder avgHR telt de sessie voor 0 mee
+            // in de TRIMP. Val terug op de duur-gewogen HR van de onderdelen.
+            if (!activity.avgHR && activity.splits.length > 0) {
+              const withHR = activity.splits.filter(s => s.avgHR > 0 && s.durationSeconds > 0);
+              const totalSecs = withHR.reduce((sum, s) => sum + s.durationSeconds, 0);
+              if (totalSecs > 0) {
+                activity.avgHR = Math.round(
+                  withHR.reduce((sum, s) => sum + s.avgHR * s.durationSeconds, 0) / totalSecs,
+                );
+              }
+            }
+            if (!activity.maxHR) {
+              const childMax = Math.max(
+                0,
+                ...children.map(c => Math.round(Number(c?.summaryDTO?.maxHR) || 0)),
+              );
+              if (childMax > 0) activity.maxHR = childMax;
+            }
           }
         } else {
           // Gewone activiteit: laps zijn intervallen/ronden (geen discipline-split)
