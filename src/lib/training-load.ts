@@ -469,8 +469,14 @@ export function getHrvTrend(
 /**
  * Compacte tekstregel voor coach-prompts, bijv.:
  * "HRV: 45ms (basislijn 42ms, +3, boven bandbreedte) — Gebalanceerd: ..."
+ * Met een optioneel health-archief (`history`) wordt bij een duidelijke
+ * meerdaagse trend één zin toegevoegd; zonder trend of te weinig data gedraagt
+ * de functie zich exact als voorheen (backwards compatible).
  */
-export function buildHrvCoachText(health: GarminHealthStats | null): string | null {
+export function buildHrvCoachText(
+  health: GarminHealthStats | null,
+  history: GarminHealthStats[] = [],
+): string | null {
   const hrv = describeHrv(health);
   if (!hrv) return null;
   const parts: string[] = [`${hrv.value}ms`];
@@ -483,7 +489,18 @@ export function buildHrvCoachText(health: GarminHealthStats | null): string | nu
     const trendStr = hrv.trend !== 'onbekend' ? `, ${hrv.trend} bandbreedte` : '';
     parts.push(`basislijn ${hrv.baseline}ms${diffStr}${trendStr}`);
   }
-  return `HRV: ${parts.join(' (')}${hasBand || hrv.baseline ? ')' : ''} — ${hrv.statusLabel}: ${hrv.interpretation}`;
+  let text = `HRV: ${parts.join(' (')}${hasBand || hrv.baseline ? ')' : ''} — ${hrv.statusLabel}: ${hrv.interpretation}`;
+
+  // Meerdaagse trend als vroeg herstelsignaal, alleen bij een duidelijke richting.
+  const ref = health?.date ? new Date(health.date) : new Date();
+  const trend = getHrvTrend(history, ref);
+  if (trend && trend.dir === 'dalend') {
+    text += ` HRV-trend: ${trend.daysDeclining} dagen dalend (${trend.deltaMs} ms)`
+      + `${trend.restingHrRising ? ', rust-HR loopt op' : ''} — vroeg teken van onderherstel, overweeg een lichtere dag.`;
+  } else if (trend && trend.dir === 'stijgend') {
+    text += ` HRV-trend: meerdere dagen stijgend (+${trend.deltaMs} ms) — herstel gaat de goede kant op.`;
+  }
+  return text;
 }
 
 /**

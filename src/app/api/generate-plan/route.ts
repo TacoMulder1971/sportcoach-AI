@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
       hrZoneText,
       athleteProfile,
       previousStrategy,
+      garminHealthArchive,
     } = body;
 
     const client = new Anthropic({ apiKey });
@@ -275,7 +276,7 @@ ${JSON_FORMAT_SPEC}`;
     if (garminData?.health) {
       const h = garminData.health;
       performanceText += `\nHERSTEL: Slaap ${h.sleepDurationHours}u (score ${h.sleepScore}), rust HR ${h.restingHR}\n`;
-      performanceText += `${buildHrvCoachText(h) || `HRV ${h.avgOvernightHrv}ms (${h.hrvStatus})`}\n`;
+      performanceText += `${buildHrvCoachText(h, Array.isArray(garminHealthArchive) ? garminHealthArchive : []) || `HRV ${h.avgOvernightHrv}ms (${h.hrvStatus})`}\n`;
     }
     if (trainingLoad) {
       performanceText += `\nTRAINING LOAD: ${trainingLoad.weekLoad} TRIMP (${trainingLoad.status})\n`;

@@ -129,6 +129,7 @@ export default function HomeContent() {
           goalsHistory: buildGoalsHistoryText(),
           equipmentAttention,
           athleteProfile: athleteProfilePayload(getProfile()),
+          garminHealthArchive: getHealthArchive(),
         }),
       });
 

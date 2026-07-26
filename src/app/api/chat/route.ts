@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
       weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
       raceContext, goalsHistory, equipmentAttention, hrZoneText, athleteProfile, planStrategy,
+      garminHealthArchive,
     } = await request.json();
 
     // Bouw schema tekst dynamisch
@@ -141,7 +142,7 @@ Week 2:
         contextMessage += `\nGARMIN GEZONDHEIDSDATA [${relativeDayLabel(h.date, todayIso)}] (${h.date}):\n`;
         contextMessage += `- Slaap: ${h.sleepDurationHours} uur (score: ${h.sleepScore}/100)\n`;
         contextMessage += `- Diepe slaap: ${h.deepSleepMinutes} min, REM: ${h.remSleepMinutes} min\n`;
-        contextMessage += `- ${buildHrvCoachText(h) || `HRV: ${h.avgOvernightHrv} ms (status: ${h.hrvStatus})`}\n`;
+        contextMessage += `- ${buildHrvCoachText(h, Array.isArray(garminHealthArchive) ? garminHealthArchive : []) || `HRV: ${h.avgOvernightHrv} ms (status: ${h.hrvStatus})`}\n`;
         contextMessage += `- Rust hartslag: ${h.restingHR} bpm\n`;
         contextMessage += `- Body Battery verandering: ${h.bodyBatteryChange > 0 ? '+' : ''}${h.bodyBatteryChange}\n`;
         contextMessage += `- Stappen: ${h.steps}\n`;
