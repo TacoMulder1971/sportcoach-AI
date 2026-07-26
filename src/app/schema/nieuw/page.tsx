@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
-import { getDaysUntilRace, getNextMonday } from '@/lib/schedule';
+import { getDaysUntilRace, getNextMonday, mondayOfWeekUTC, amsterdamDateForOffset } from '@/lib/schedule';
 import {
   getActivePlan, getGarminData, getRecentCheckIns,
   saveStoredPlan, setActivePlanId, generateId,
@@ -25,6 +25,13 @@ import { getCurrentPhase, getPhaseProgress, TRAINING_PHASES } from '@/lib/period
 const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
 const FULL_DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
+// 'YYYY-MM-DD' → bv. "maandag 27 juli" (UTC, zodat de datum niet wegglijdt)
+function formatStartDate(iso: string): string {
+  const d = new Date(`${iso.split('T')[0]}T00:00:00Z`);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+}
+
 export default function NieuwSchemaPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -44,6 +51,7 @@ export default function NieuwSchemaPage() {
   const [previewWeek, setPreviewWeek] = useState<1 | 2>(1);
   const [feedback, setFeedback] = useState('');
   const [refining, setRefining] = useState(false);
+  const [startChoice, setStartChoice] = useState<'monday' | 'tomorrow'>('monday');
 
   function toggleDay(weekNum: 1 | 2, dayIndex: number) {
     const key = `${weekNum}-${dayIndex}`;
@@ -196,7 +204,12 @@ export default function NieuwSchemaPage() {
 
     const agenda = buildAgenda();
     const id = generateId();
-    const cycleStartDate = getNextMonday();
+    // Startdag (altijd ná vandaag): aanstaande maandag of morgen. De cyclus-anker
+    // blijft maandag-uitgelijnd (weeknummering intact); activeFrom bepaalt vanaf
+    // wanneer het schema zichtbaar is, zodat er op de aanmaakdag geen nieuwe
+    // training verschijnt en een "morgen"-start midden in de week netjes werkt.
+    const activeFrom = startChoice === 'monday' ? getNextMonday() : amsterdamDateForOffset(1);
+    const cycleStartDate = mondayOfWeekUTC(activeFrom);
 
     // Een verse cyclus heeft z'n eigen ankerdatum; een achtergebleven handmatige
     // week-flip van een vorig schema zou die anders stilzwijgend een week
@@ -207,6 +220,7 @@ export default function NieuwSchemaPage() {
       id,
       plan: proposal,
       cycleStartDate,
+      activeFrom,
       createdAt: new Date().toISOString(),
       agendaInput: agenda,
       status: 'active',
@@ -435,6 +449,33 @@ export default function NieuwSchemaPage() {
           <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">{error}</div>
         )}
 
+        {/* Startdag-keuze */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-200">Vanaf welke dag start dit schema?</p>
+          <div className="flex gap-2">
+            {([['monday', 'Aanstaande maandag'], ['tomorrow', 'Morgen']] as const).map(([val, label]) => {
+              const date = val === 'monday' ? getNextMonday() : amsterdamDateForOffset(1);
+              return (
+                <button
+                  key={val}
+                  onClick={() => setStartChoice(val)}
+                  className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-semibold transition-all ${
+                    startChoice === val
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white/5 text-gray-200 border border-white/10'
+                  }`}
+                >
+                  <span className="block">{label}</span>
+                  <span className="block text-[11px] font-normal opacity-70 mt-0.5">{formatStartDate(date)}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-gray-500">
+            Vandaag komt er geen nieuwe training bij — het schema begint op de gekozen dag.
+          </p>
+        </div>
+
         {/* Actieknoppen */}
         <div className="flex gap-3">
           <button
@@ -469,7 +510,7 @@ export default function NieuwSchemaPage() {
         </div>
         <h1 className="text-2xl font-bold text-white mb-2">Schema opgeslagen!</h1>
         <p className="text-gray-400 text-sm">
-          Je nieuwe trainingsschema is actief vanaf aanstaande maandag.
+          Je nieuwe trainingsschema is actief vanaf {startChoice === 'monday' ? 'aanstaande maandag' : 'morgen'}.
         </p>
       </div>
 

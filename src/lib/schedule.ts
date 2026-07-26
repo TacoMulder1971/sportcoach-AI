@@ -61,13 +61,26 @@ export function getCurrentWeekNumber(cycleStartDate?: string): 1 | 2 {
 
 export function getTodayTraining(
   plan?: TrainingWeek[],
-  cycleStartDate?: string
+  cycleStartDate?: string,
+  activeFrom?: string
 ): TrainingDay | null {
+  // Schema nog niet actief (bv. net aangemaakt, start pas morgen/maandag) → geen
+  // training vandaag. Zo verschijnt er geen nieuwe training op de aanmaakdag.
+  if (activeFrom && amsterdamTodayUTC().getTime() < parseCycleStartUTC(activeFrom).getTime()) return null;
   const p = plan || trainingPlan;
   const weekNum = getCurrentWeekNumber(cycleStartDate);
   const dayIndex = getTodayDayIndex();
   const week = p.find((w) => w.weekNumber === weekNum);
   return week?.days.find((d) => d.dayIndex === dayIndex) ?? null;
+}
+
+/** Maandag (UTC-middernacht, YYYY-MM-DD) van de week waarin `dateStr` valt. */
+export function mondayOfWeekUTC(dateStr: string): string {
+  const d = new Date(`${dateStr.split('T')[0]}T00:00:00Z`);
+  if (isNaN(d.getTime())) return dateStr;
+  const dow = d.getUTCDay(); // 0=zondag
+  d.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  return d.toISOString().split('T')[0];
 }
 
 export function getWeekTrainings(
@@ -106,7 +119,8 @@ export function getDaysInCurrentCycle(cycleStartDate?: string): number {
 export function getTrainingForDayOffset(
   offset: number,
   plan?: TrainingWeek[],
-  cycleStartDate?: string
+  cycleStartDate?: string,
+  activeFrom?: string
 ): TrainingDay | null {
   const p = plan || trainingPlan;
   const target = amsterdamTodayUTC();
@@ -114,10 +128,14 @@ export function getTrainingForDayOffset(
   const dow = target.getUTCDay();
   const dayIndex = dow === 0 ? 6 : dow - 1;
   const startDate = parseCycleStartUTC(cycleStartDate);
-  const diffDays = Math.floor((target.getTime() - startDate.getTime()) / 86400000);
   // Doeldag ligt vóór de startdatum → dit plan was toen nog niet actief, dus
   // geen geplande sessie. Voorkomt onzinnige gepland-vs-gedaan-vergelijkingen
   // (bijv. een nieuw schema aangemaakt op zondag start pas aanstaande maandag).
+  // `activeFrom` (indien gezet) wint: het schema kan maandag-uitgelijnd zijn maar
+  // pas later in die week actief worden (start "morgen" midden in de week).
+  const effectiveStart = parseCycleStartUTC(activeFrom || cycleStartDate);
+  if (target.getTime() < effectiveStart.getTime()) return null;
+  const diffDays = Math.floor((target.getTime() - startDate.getTime()) / 86400000);
   if (diffDays < 0) return null;
   const weekNum: 1 | 2 = (Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2) as 1 | 2;
   const week = p.find((w) => w.weekNumber === weekNum);
