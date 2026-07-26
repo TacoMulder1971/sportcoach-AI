@@ -509,6 +509,15 @@ export function toggleCycleWeekFlip(): boolean {
   return next;
 }
 
+/**
+ * Zet de handmatige week-correctie terug op uit. Aangeroepen bij het goedkeuren
+ * van een nieuw schema: de flip is een globale correctie op een oude cyclus en
+ * moet niet stilzwijgend een verse cyclus (met eigen ankerdatum) verschuiven.
+ */
+export function clearCycleWeekFlip(): void {
+  setItem(KEYS.CYCLE_WEEK_FLIP, false);
+}
+
 function shiftDateStr(dateStr: string, days: number): string {
   const d = new Date(`${dateStr.split('T')[0]}T00:00:00Z`);
   if (isNaN(d.getTime())) return dateStr;

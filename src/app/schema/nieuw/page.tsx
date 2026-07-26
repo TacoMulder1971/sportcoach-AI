@@ -12,6 +12,7 @@ import {
   buildHRZoneText,
   getProfile,
   buildPlanStrategyText,
+  clearCycleWeekFlip,
 } from '@/lib/storage';
 import { cleanStrategyText } from '@/lib/plan-strategy';
 import { athleteProfilePayload } from '@/lib/athlete';
@@ -196,6 +197,11 @@ export default function NieuwSchemaPage() {
     const agenda = buildAgenda();
     const id = generateId();
     const cycleStartDate = getNextMonday();
+
+    // Een verse cyclus heeft z'n eigen ankerdatum; een achtergebleven handmatige
+    // week-flip van een vorig schema zou die anders stilzwijgend een week
+    // verschuiven. Reset de flip zodat het nieuwe schema onverschoven begint.
+    clearCycleWeekFlip();
 
     saveStoredPlan({
       id,
