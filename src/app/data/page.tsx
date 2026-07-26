@@ -7,6 +7,7 @@ import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, Acti
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
 import BuildupBarChart from '@/components/BuildupBarChart';
+import TrendLineChart from '@/components/TrendLineChart';
 import MaterialSection from '@/components/MaterialSection';
 import EquipmentAssignChip from '@/components/EquipmentAssignChip';
 import EquipmentIcon from '@/components/EquipmentIcon';
@@ -42,7 +43,7 @@ export default function DataPage() {
   const [swimVariants, setSwimVariants] = useState<ActivitySwimVariants>({});
   const [section, setSection] = useState<Section>('overzicht');
   const [expandedSplits, setExpandedSplits] = useState<Set<number>>(new Set());
-  const [hrvPeriod, setHrvPeriod] = useState<7 | 30>(7);
+  const [hrvView, setHrvView] = useState<'7' | '30' | 'avg'>('avg');
   const [yazioSyncing, setYazioSyncing] = useState(false);
   const [yazioStatus, setYazioStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const touchStartY = useRef(0);
@@ -315,25 +316,47 @@ export default function DataPage() {
     return { restingHRData, hrvData, hasHR, hasHRV };
   }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // HRV per dag over de gekozen periode (7 of 30 dagen, uit health-archief) — voor
-  // het mini-grafiekje in het gereedheid-blok. 0 = geen meting die nacht.
+  // HRV-grafiek voor het gereedheid-blok. Drie weergaven:
+  //  '7'/'30' = ruwe HRV per dag (0 = geen meting die nacht);
+  //  'avg'    = 7-daags voortschrijdend gemiddelde over de laatste 30 dagen —
+  //             vlakt de nacht-op-nacht-ruis af zodat de meerdaagse trend zichtbaar wordt.
   const hrvDaily = useMemo(() => {
     const archive = getHealthArchive();
     if (archive.length === 0) return [];
     const byDate = new Map(archive.map(h => [h.date, h.avgOvernightHrv || 0]));
-    const days: { label: string; value: number }[] = [];
     const now = new Date();
     const wd = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
-    for (let i = hrvPeriod - 1; i >= 0; i--) {
+    const isoOf = (d: Date) => d.toISOString().split('T')[0];
+    const days: { label: string; value: number }[] = [];
+
+    if (hrvView === 'avg') {
+      // Per dag het gemiddelde van die dag + de 6 voorgaande dagen met een meting.
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const vals: number[] = [];
+        for (let k = 0; k < 7; k++) {
+          const e = new Date(d);
+          e.setDate(e.getDate() - k);
+          const v = byDate.get(isoOf(e)) || 0;
+          if (v > 0) vals.push(v);
+        }
+        const avgVal = vals.length ? Math.round(vals.reduce((s, x) => s + x, 0) / vals.length) : 0;
+        days.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, value: avgVal });
+      }
+      return days;
+    }
+
+    const period = hrvView === '30' ? 30 : 7;
+    for (let i = period - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const iso = d.toISOString().split('T')[0];
       // 7 dagen: weekdag-labels; langere periode: dag/maand voor leesbaarheid
-      const label = hrvPeriod <= 7 ? wd[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`;
-      days.push({ label, value: byDate.get(iso) || 0 });
+      const label = period <= 7 ? wd[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`;
+      days.push({ label, value: byDate.get(isoOf(d)) || 0 });
     }
     return days;
-  }, [garmin, hrvPeriod]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [garmin, hrvView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (window.scrollY === 0) {
@@ -561,23 +584,23 @@ export default function DataPage() {
                         <div className="mt-3">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-sm font-semibold text-gray-300">
-                              HRV — afgelopen {hrvPeriod} dagen
+                              {hrvView === 'avg' ? 'HRV — 7-daags gemiddelde' : `HRV — afgelopen ${hrvView === '30' ? 30 : 7} dagen`}
                             </p>
                             <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-                              {([7, 30] as const).map((p) => (
+                              {([['7', '7d'], ['30', '30d'], ['avg', '7d gem.']] as const).map(([v, lbl]) => (
                                 <button
-                                  key={p}
-                                  onClick={() => setHrvPeriod(p)}
-                                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                                    hrvPeriod === p ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400'
+                                  key={v}
+                                  onClick={() => setHrvView(v)}
+                                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                                    hrvView === v ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400'
                                   }`}
                                 >
-                                  {p}d
+                                  {lbl}
                                 </button>
                               ))}
                             </div>
                           </div>
-                          <BuildupBarChart
+                          <TrendLineChart
                             data={hrvDaily}
                             color="#06b6d4"
                             unit="ms"
