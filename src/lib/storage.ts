@@ -509,6 +509,15 @@ export function toggleCycleWeekFlip(): boolean {
   return next;
 }
 
+/**
+ * Zet de handmatige week-correctie terug op uit. Aangeroepen bij het goedkeuren
+ * van een nieuw schema: de flip is een globale correctie op een oude cyclus en
+ * moet niet stilzwijgend een verse cyclus (met eigen ankerdatum) verschuiven.
+ */
+export function clearCycleWeekFlip(): void {
+  setItem(KEYS.CYCLE_WEEK_FLIP, false);
+}
+
 function shiftDateStr(dateStr: string, days: number): string {
   const d = new Date(`${dateStr.split('T')[0]}T00:00:00Z`);
   if (isNaN(d.getTime())) return dateStr;
@@ -531,7 +540,7 @@ export function buildPlanStrategyText(): string {
   return combineStrategyText(active.strategy, active.refinements);
 }
 
-export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string; id: string } {
+export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string; activeFrom: string; id: string } {
   runZoneMigration();
   const activeId = getItem<string | null>(KEYS.ACTIVE_PLAN_ID, null);
   if (activeId) {
@@ -541,10 +550,11 @@ export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string;
       let cycleStartDate = alignCycleStartToRace(active.cycleStartDate, active.plan.length, getActiveRaceDate());
       // Handmatige week-correctie wint altijd (ook over de race-uitlijning)
       if (getCycleWeekFlip()) cycleStartDate = shiftDateStr(cycleStartDate, -7);
-      return { plan: active.plan, cycleStartDate, id: active.id };
+      // Oude plannen zonder activeFrom → val terug op cycleStartDate (geen gedragswijziging)
+      return { plan: active.plan, cycleStartDate, activeFrom: active.activeFrom ?? cycleStartDate, id: active.id };
     }
   }
-  return { plan: trainingPlan, cycleStartDate: DEFAULT_CYCLE_START, id: 'default' };
+  return { plan: trainingPlan, cycleStartDate: DEFAULT_CYCLE_START, activeFrom: DEFAULT_CYCLE_START, id: 'default' };
 }
 
 // ─── Gepland-per-dag-archief (plan-adherentie) ───────────────────
@@ -560,14 +570,14 @@ export function getPlannedDayArchive(): PlannedDayRecord[] {
 }
 
 export function recordPlannedDays(): PlannedDayRecord[] {
-  const { plan, cycleStartDate } = getActivePlan();
+  const { plan, cycleStartDate, activeFrom } = getActivePlan();
   const byDate = new Map(getPlannedDayArchive().map((r) => [r.date, r]));
   // Vandaag altijd verversen; nog niet vastgelegde voorbije dagen (t/m 7 terug)
   // backfillen vanuit het huidige schema (best effort, beter dan geen historie).
   for (let offset = -7; offset <= 0; offset++) {
     const date = amsterdamDateForOffset(offset);
     if (offset < 0 && byDate.has(date)) continue;
-    const training = getTrainingForDayOffset(offset, plan, cycleStartDate);
+    const training = getTrainingForDayOffset(offset, plan, cycleStartDate, activeFrom);
     byDate.set(date, {
       date,
       hasPlan: training !== null,
