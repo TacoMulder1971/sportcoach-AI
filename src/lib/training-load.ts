@@ -466,6 +466,35 @@ export function getHrvTrend(
   return { dir, daysDeclining, deltaMs, restingHrRising };
 }
 
+export interface FatigueAssessment {
+  hrvDeclining: boolean;         // meerdaagse HRV-trend is dalend
+  restingHrRising: boolean;      // rust-HR loopt tegelijk op
+  hrvBelowBand: boolean;         // HRV van vannacht onder de balansband
+  loadHigh: boolean;             // trainingsbelasting hoog/overbelast
+  signalCount: number;           // aantal actieve herstel-alarmsignalen (0-3)
+  loadRecoveryConflict: boolean; // hoge belasting terwijl herstel achterblijft
+}
+
+/**
+ * Beoordeelt vroege vermoeidheids-/overreaching-signalen door de meerdaagse
+ * HRV-trend, de rust-HR, de balansband en de trainingsbelasting te combineren.
+ * Gebruikt door de Home-vroegwaarschuwing (#5) en de belasting-vs-herstel-notitie
+ * op de Training load-kaart (#6). Puur, geen side effects.
+ */
+export function assessFatigue(
+  health: GarminHealthStats | null,
+  hrvTrend: HrvTrend | undefined,
+  trainingLoad: TrainingLoadData | null,
+): FatigueAssessment {
+  const hrvDeclining = hrvTrend?.dir === 'dalend';
+  const restingHrRising = !!hrvTrend?.restingHrRising;
+  const hrvBelowBand = describeHrv(health)?.trend === 'onder';
+  const loadHigh = trainingLoad?.status === 'hoog' || trainingLoad?.status === 'overbelast';
+  const signalCount = [hrvDeclining, restingHrRising, hrvBelowBand].filter(Boolean).length;
+  const loadRecoveryConflict = loadHigh && (hrvDeclining || hrvBelowBand);
+  return { hrvDeclining, restingHrRising, hrvBelowBand, loadHigh, signalCount, loadRecoveryConflict };
+}
+
 export interface GarminReadinessInsight {
   score: number;          // Garmin-score 0-100
   levelLabel: string;     // Nederlands niveau-label

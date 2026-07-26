@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity, describeGarminReadiness } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity, describeGarminReadiness, assessFatigue } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -172,6 +172,12 @@ export default function DataPage() {
     if (!garmin) return null;
     return getTrainingReadiness(garmin.health, true, statsActivities, getHealthArchive());
   }, [garmin, statsActivities]);
+
+  // Belasting-vs-herstel-ontkoppeling (#6): hoge belasting terwijl HRV daalt.
+  const fatigue = useMemo(
+    () => assessFatigue(garmin?.health ?? null, readiness?.hrvTrend, trainingLoad),
+    [garmin, readiness, trainingLoad]
+  );
 
   // Weekly totals
   const weekStats = useMemo(() => {
@@ -716,6 +722,11 @@ export default function DataPage() {
                   <span>Over</span>
                 </div>
                 <p className="text-sm text-gray-300 mt-3">{trainingLoad.advice}</p>
+                {fatigue.loadRecoveryConflict && (
+                  <p className="text-sm text-amber-400 mt-2 pt-2 border-t border-white/5 leading-relaxed">
+                    ⚠ Je belasting is {trainingLoad.status} terwijl je HRV{fatigue.hrvBelowBand ? ' onder de balansband zit' : ' meerdere dagen daalt'}. Dat wijst op opgestapelde vermoeidheid — plan bewust herstel in.
+                  </p>
+                )}
               </div>
             </section>
           )}
