@@ -169,7 +169,7 @@ export default function DataPage() {
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getTrainingReadiness(garmin.health, true, statsActivities);
+    return getTrainingReadiness(garmin.health, true, statsActivities, getHealthArchive());
   }, [garmin, statsActivities]);
 
   // Weekly totals
@@ -551,6 +551,12 @@ export default function DataPage() {
                         </p>
                       ) : null}
                       <p className="text-xs text-gray-400 leading-relaxed">{hrv.interpretation}</p>
+                      {readiness?.hrvTrend?.dir === 'dalend' && (
+                        <p className="text-xs text-amber-400 mt-1 leading-relaxed">
+                          ▼ HRV {readiness.hrvTrend.daysDeclining} dagen dalend ({readiness.hrvTrend.deltaMs} ms)
+                          {readiness.hrvTrend.restingHrRising ? ' · rust-HR loopt op' : ''} — vroeg signaal van onderherstel.
+                        </p>
+                      )}
                       {hrvDaily.filter(d => d.value > 0).length >= 2 && (
                         <div className="mt-3">
                           <div className="flex items-center justify-between mb-2">

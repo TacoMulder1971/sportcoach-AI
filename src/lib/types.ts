@@ -282,6 +282,18 @@ export interface GarminSyncData {
   syncedAt: string;
 }
 
+// Meerdaagse HRV-trend: het vroegste teken van onderherstel/naderende ziekte is
+// een dalende HRV over 3-5 dagen — vaak vóór het voelbaar is. Afgeleid uit het
+// health-archief, geen extra Garmin-calls.
+export type HrvTrendDir = 'dalend' | 'stabiel' | 'stijgend' | 'onbekend';
+
+export interface HrvTrend {
+  dir: HrvTrendDir;
+  daysDeclining: number; // opeenvolgende dagen dag-op-dag omlaag (t/m vandaag)
+  deltaMs: number;       // laatste dag − eerste dag in het venster (afgerond)
+  restingHrRising: boolean; // rust-HR loopt tegelijk op → sterker fatigue-signaal
+}
+
 export interface TrainingReadiness {
   level: 'klaar' | 'matig' | 'rust_nodig';
   label: string;
@@ -297,6 +309,7 @@ export interface TrainingReadiness {
     label2: string; score2: number | null; max2: number;
     label3: string; score3: number | null; max3: number;
   };
+  hrvTrend?: HrvTrend; // meerdaagse HRV-trend (alleen volledige modus, als het archief genoeg data heeft)
 }
 
 export interface TrainingAdvice {

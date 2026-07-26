@@ -1,4 +1,4 @@
-import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HeartRateZone, HeartRateZoneInfo, HEART_RATE_ZONES, Sport, PlannedDayRecord } from './types';
+import { GarminActivity, GarminHealthStats, TrainingLoadData, TrainingReadiness, TrainingSession, TrainingAdvice, HeartRateZone, HeartRateZoneInfo, HEART_RATE_ZONES, Sport, PlannedDayRecord, HrvTrend, HrvTrendDir } from './types';
 import { amsterdamDateForOffset } from './schedule';
 
 const DEFAULT_MAX_HR = 172;
@@ -112,7 +112,8 @@ function getLoadScore3(recentTRIMP: number): number {
 export function getTrainingReadiness(
   health: GarminHealthStats | null,
   hasTrainingToday: boolean,
-  activities: GarminActivity[] = []
+  activities: GarminActivity[] = [],
+  healthHistory: GarminHealthStats[] = []
 ): TrainingReadiness | null {
   if (!health) return null;
 
@@ -125,6 +126,7 @@ export function getTrainingReadiness(
   let score1: number | null = null;
   let score2: number | null = null;
   let score3: number | null = null;
+  let hrvTrend: HrvTrend | undefined;
   let max1 = 2, max2 = 2, max3 = 5;
   let label1: string;
   let label2: string;
@@ -142,6 +144,16 @@ export function getTrainingReadiness(
     label1 = 'HRV';
     if (hasHrv) {
       score1 = scoreHrvReadiness(health);
+
+      // Meerdaagse trend als vroeg herstelsignaal. Een sluipende daling over
+      // 3-5 dagen verlaagt de HRV-score ook als de dagstatus nog "Gebalanceerd"
+      // is — de trend stuurt, niet één losse mindere nacht. Een tegelijk
+      // oplopende rust-HR versterkt het vermoeidheidssignaal (extra −1).
+      hrvTrend = getHrvTrend(healthHistory, new Date(health.date)) ?? undefined;
+      if (hrvTrend?.dir === 'dalend' && score1 !== null) {
+        score1 = Math.max(0, score1 - 1);
+        if (hrvTrend.restingHrRising) score1 = Math.max(0, score1 - 1);
+      }
     }
 
     // Slaap (0-3) — tiers volgen Garmins eigen labels (80+ goed, 60-79 redelijk)
@@ -230,6 +242,7 @@ export function getTrainingReadiness(
         '', ''
       ),
       factors,
+      hrvTrend,
     };
   }
   if (ratio >= 4 / 9) {
@@ -248,6 +261,7 @@ export function getTrainingReadiness(
         ''
       ),
       factors,
+      hrvTrend,
     };
   }
   return {
@@ -264,6 +278,7 @@ export function getTrainingReadiness(
       hasTrainingToday ? 'Neem het rustig aan of kies voor een lichte hersteltraining.' : 'Focus op herstel: rust, voeding en slaap.'
     ),
     factors,
+    hrvTrend,
   };
 }
 
@@ -370,6 +385,85 @@ function scoreHrvReadiness(health: GarminHealthStats | null): number | null {
   }
 
   return s;
+}
+
+/**
+ * Eenvoudige lineaire helling (least squares) over gelijk-gespreide waarden
+ * (x = 0..n-1). Robuuster tegen één losse uitschieter dan eerste-vs-laatste.
+ */
+function linTrend(ys: number[]): number {
+  const n = ys.length;
+  if (n < 2) return 0;
+  const xMean = (n - 1) / 2;
+  const yMean = ys.reduce((s, v) => s + v, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (i - xMean) * (ys[i] - yMean);
+    den += (i - xMean) * (i - xMean);
+  }
+  return den === 0 ? 0 : num / den;
+}
+
+/**
+ * Meerdaagse HRV-trend als vroeg herstelsignaal. Een dalende HRV over 3-5 dagen
+ * is vaak het eerste teken van onderherstel of naderende ziekte — dikwijls vóór
+ * het voelbaar is. Afgeleid uit het bestaande health-archief (geen extra
+ * Garmin-calls). Puur functie zonder side effects; `ref` is injecteerbaar voor
+ * scenario's/tests.
+ *
+ * Regels:
+ *  - laatste 5 dagen met avgOvernightHrv > 0 (t/m ref), oplopend op datum;
+ *    < 3 datapunten → null (niet raden bij te weinig data).
+ *  - richting via opeenvolgende dag-op-dag-verschillen, niet alleen eerste
+ *    vs. laatste dag.
+ *  - dalend: >= 3 opeenvolgende dagen dag-op-dag omlaag én de cumulatieve daling
+ *    overschrijdt de ruis (|deltaMs| > max(3, 5% van de basislijn)). Analoog voor
+ *    stijgend. Anders stabiel.
+ *  - restingHrRising: rust-HR loopt over hetzelfde venster netto ~2 bpm op
+ *    (via de helling, zodat losse ruis niet meetelt).
+ */
+export function getHrvTrend(
+  health: GarminHealthStats[],
+  ref: Date = new Date(),
+): HrvTrend | null {
+  const refStr = ref.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
+  const window = health
+    .filter(h => h.date <= refStr && (h.avgOvernightHrv ?? 0) > 0)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-5);
+  if (window.length < 3) return null;
+
+  const values = window.map(h => h.avgOvernightHrv);
+  const deltaMs = Math.round(values[values.length - 1] - values[0]);
+
+  // Opeenvolgende dag-op-dag-daling/-stijging vanaf het einde (t/m vandaag).
+  let daysDeclining = 0;
+  for (let i = values.length - 1; i > 0; i--) {
+    if (values[i] < values[i - 1]) daysDeclining++;
+    else break;
+  }
+  let daysRising = 0;
+  for (let i = values.length - 1; i > 0; i--) {
+    if (values[i] > values[i - 1]) daysRising++;
+    else break;
+  }
+
+  // Ruisdrempel: 5% van de persoonlijke HRV-basislijn, minimaal 3 ms. Zonder
+  // basislijn vallen we terug op het gemiddelde van het venster.
+  const baseline = window.map(h => h.hrvBaseline ?? 0).find(b => b > 0)
+    ?? values.reduce((s, v) => s + v, 0) / values.length;
+  const noise = Math.max(3, baseline * 0.05);
+
+  let dir: HrvTrendDir = 'stabiel';
+  if (daysDeclining >= 3 && -deltaMs > noise) dir = 'dalend';
+  else if (daysRising >= 3 && deltaMs > noise) dir = 'stijgend';
+
+  // Rust-HR over hetzelfde venster: netto stijging via de helling, zodat één
+  // losse uitschieter de trend niet bepaalt. Drempel ~2 bpm over het venster.
+  const rhr = window.map(h => h.restingHR ?? 0).filter(v => v > 0);
+  const restingHrRising = rhr.length >= 3 && linTrend(rhr) * (rhr.length - 1) >= 2;
+
+  return { dir, daysDeclining, deltaMs, restingHrRising };
 }
 
 /**
