@@ -277,6 +277,7 @@ ${JSON_FORMAT_SPEC}`;
       const h = garminData.health;
       performanceText += `\nHERSTEL: Slaap ${h.sleepDurationHours}u (score ${h.sleepScore}), rust HR ${h.restingHR}\n`;
       performanceText += `${buildHrvCoachText(h, Array.isArray(garminHealthArchive) ? garminHealthArchive : []) || `HRV ${h.avgOvernightHrv}ms (${h.hrvStatus})`}\n`;
+      if (h.garminReadiness) performanceText += `Garmin Readiness ${h.garminReadiness}/100${h.recoveryHours ? `, herstel ${h.recoveryHours}u` : ''}\n`;
     }
     if (trainingLoad) {
       performanceText += `\nTRAINING LOAD: ${trainingLoad.weekLoad} TRIMP (${trainingLoad.status})\n`;

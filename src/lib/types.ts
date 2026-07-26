@@ -267,6 +267,11 @@ export interface GarminHealthStats {
   avgRespirationRate?: number;   // ademhalingen/minuut tijdens slaap
   lactateThresholdHR?: number;   // lactaatdrempel hartslag (bpm)
   lactateThresholdPace?: string; // lactaatdrempel tempo (bijv. "4:35/km")
+  // Garmins eigen Training Readiness (metrics-service/trainingreadiness) — al
+  // opgehaald in de sync; hier bewaard als kruischeck naast onze eigen gereedheid.
+  garminReadiness?: number;      // Garmin-score 0-100
+  garminReadinessLevel?: string; // Garmin-niveau (ruwe key, bv. "READY"/"MODERATE"/"LOW")
+  recoveryHours?: number;        // uren tot volledig hersteld (Garmin recoveryTime)
 }
 
 export interface TrainingLoadData {

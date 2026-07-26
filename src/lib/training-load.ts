@@ -466,6 +466,31 @@ export function getHrvTrend(
   return { dir, daysDeclining, deltaMs, restingHrRising };
 }
 
+export interface GarminReadinessInsight {
+  score: number;          // Garmin-score 0-100
+  levelLabel: string;     // Nederlands niveau-label
+  recoveryHours?: number; // uren tot volledig hersteld
+}
+
+/**
+ * Duiding van Garmins eigen Training Readiness (0-100) — bewust náást onze eigen
+ * 9-punts-gereedheid als kruischeck. Geeft null als Garmin geen score gaf.
+ */
+export function describeGarminReadiness(health: GarminHealthStats | null): GarminReadinessInsight | null {
+  if (!health || typeof health.garminReadiness !== 'number' || health.garminReadiness <= 0) return null;
+  const raw = (health.garminReadinessLevel || '').toUpperCase();
+  const map: Record<string, string> = {
+    MAXIMUM: 'Maximaal', HIGH: 'Hoog', MODERATE: 'Gemiddeld', MODERATELY_HIGH: 'Redelijk hoog',
+    MODERATELY_LOW: 'Redelijk laag', LOW: 'Laag', VERY_LOW: 'Zeer laag', POOR: 'Slecht', READY: 'Klaar',
+  };
+  const levelLabel = map[raw] || (raw ? raw.charAt(0) + raw.slice(1).toLowerCase().replace(/_/g, ' ') : '');
+  return {
+    score: health.garminReadiness,
+    levelLabel,
+    recoveryHours: typeof health.recoveryHours === 'number' && health.recoveryHours > 0 ? health.recoveryHours : undefined,
+  };
+}
+
 /**
  * Compacte tekstregel voor coach-prompts, bijv.:
  * "HRV: 45ms (basislijn 42ms, +3, boven bandbreedte) — Gebalanceerd: ..."

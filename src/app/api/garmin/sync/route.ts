@@ -326,7 +326,7 @@ export async function POST(request: Request) {
       bodyBatteryDrainedValue?: number;
       bodyBatteryMostRecentValue?: number;
     };
-    type ReadinessResp = { score?: number; hrvWeeklyAverage?: number; sleepScore?: number; restingHeartRate?: number };
+    type ReadinessResp = { score?: number; level?: string; feedbackShort?: string; recoveryTime?: number; hrvWeeklyAverage?: number; sleepScore?: number; restingHeartRate?: number };
 
     // HRV (val terug op gisteren als vannacht nog leeg is)
     let hrv = await fetchJson<HrvResp>(`${API_BASE}/hrv-service/hrv/${isoDay}`, `hrv(${isoDay})`);
@@ -383,6 +383,12 @@ export async function POST(request: Request) {
     const hrvStatus = hrv?.hrvSummary?.status || sleepData?.hrvStatus || 'onbekend';
     const restingHR = Math.round(daily?.restingHeartRate || sleepData?.restingHeartRate || readiness?.restingHeartRate || 0);
     const sleepScore = sleepData?.dailySleepDTO?.sleepScores?.overall?.value || readiness?.sleepScore || 0;
+    // Garmins eigen Training Readiness — kruischeck naast onze 9-punts-gereedheid.
+    const garminReadiness = typeof readiness?.score === 'number' && readiness.score > 0 ? Math.round(readiness.score) : undefined;
+    const garminReadinessLevel = readiness?.level || undefined;
+    // recoveryTime is in Garmins trainingreadiness-payload in UREN.
+    const recoveryHours = typeof readiness?.recoveryTime === 'number' && readiness.recoveryTime > 0 ? Math.round(readiness.recoveryTime) : undefined;
+    console.log('[readiness] garmin-readiness →', 'score:', garminReadiness, '| level:', garminReadinessLevel, '| recoveryTime(raw):', readiness?.recoveryTime);
     const respiration = Math.round(
       (sleepData as unknown as Record<string, number>)?.avgWakingRespirationValue
       || (sleepData as unknown as Record<string, number>)?.averageRespirationValue
@@ -428,6 +434,9 @@ export async function POST(request: Request) {
         avgRespirationRate: respiration,
         lactateThresholdHR: Math.round(Number(userData?.lactateThresholdHeartRate) || 0) || undefined,
         lactateThresholdPace,
+        garminReadiness,
+        garminReadinessLevel,
+        recoveryHours,
       };
       console.log('[readiness] health opgebouwd →', JSON.stringify(health));
     } else {

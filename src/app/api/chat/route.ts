@@ -143,6 +143,7 @@ Week 2:
         contextMessage += `- Slaap: ${h.sleepDurationHours} uur (score: ${h.sleepScore}/100)\n`;
         contextMessage += `- Diepe slaap: ${h.deepSleepMinutes} min, REM: ${h.remSleepMinutes} min\n`;
         contextMessage += `- ${buildHrvCoachText(h, Array.isArray(garminHealthArchive) ? garminHealthArchive : []) || `HRV: ${h.avgOvernightHrv} ms (status: ${h.hrvStatus})`}\n`;
+        if (h.garminReadiness) contextMessage += `- Garmin Training Readiness: ${h.garminReadiness}/100${h.garminReadinessLevel ? ` (${h.garminReadinessLevel})` : ''}${h.recoveryHours ? `, herstel nog ~${h.recoveryHours}u` : ''}\n`;
         contextMessage += `- Rust hartslag: ${h.restingHR} bpm\n`;
         contextMessage += `- Body Battery verandering: ${h.bodyBatteryChange > 0 ? '+' : ''}${h.bodyBatteryChange}\n`;
         contextMessage += `- Stappen: ${h.steps}\n`;

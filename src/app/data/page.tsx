@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity, describeGarminReadiness } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -546,6 +546,22 @@ export default function DataPage() {
                     </div>
                   ))}
                 </div>
+                {(() => {
+                  const gr = describeGarminReadiness(garmin?.health ?? null);
+                  if (!gr) return null;
+                  return (
+                    <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs text-gray-500">Garmin Readiness</span>
+                        <span className="text-sm font-semibold text-white">{gr.score}</span>
+                        {gr.levelLabel && <span className="text-xs text-gray-400">· {gr.levelLabel}</span>}
+                      </div>
+                      {gr.recoveryHours !== undefined && (
+                        <span className="text-xs text-gray-400">herstel nog ~{gr.recoveryHours}u</span>
+                      )}
+                    </div>
+                  );
+                })()}
                 {(() => {
                   const hrv = describeHrv(garmin?.health ?? null);
                   if (!hrv) return null;
