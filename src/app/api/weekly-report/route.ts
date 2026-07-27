@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
       totalVolumeKm,
       weeklyNutrition,
       adherence,
+      hrvWeek,
       raceContext,
     } = await request.json();
 
@@ -59,6 +60,20 @@ HUIDIGE FASE: ${currentPhase}\n`;
       prompt += '\n';
     }
 
+    if (hrvWeek && hrvWeek.daysWithData >= 2) {
+      prompt += `\nHRV DEZE WEEK (hartslagvariabiliteit = herstelsignaal):
+- ${hrvWeek.daysInBand} dagen in de balansband, ${hrvWeek.daysBelowBand} eronder, ${hrvWeek.daysAboveBand} erboven (van ${hrvWeek.daysWithData} nachten met meting)
+- Meerdaagse HRV-trend: ${hrvWeek.trendDir}`;
+      if (hrvWeek.baselineNow && hrvWeek.baselinePrev) {
+        const drift = hrvWeek.baselineNow - hrvWeek.baselinePrev;
+        prompt += `\n- Basislijn-drift: ${hrvWeek.baselinePrev} → ${hrvWeek.baselineNow} ms t.o.v. ~4 weken geleden (${drift >= 0 ? '+' : ''}${drift} ms)`;
+      }
+      if (hrvWeek.reboundLabel) {
+        prompt += `\n- Herstel na zware dagen: ${hrvWeek.reboundLabel}${hrvWeek.reboundDetail ? ` (${hrvWeek.reboundDetail})` : ''}`;
+      }
+      prompt += '\n';
+    }
+
     if (checkIns && checkIns.length > 0) {
       prompt += `\nCHECK-INS DEZE WEEK:\n`;
       for (const ci of checkIns.slice(-7)) {
@@ -83,7 +98,7 @@ ${lowCalDays > 0 ? `- Waarschuwing: ${lowCalDays} dag(en) met minder dan 1500 kc
     prompt += `
 STRUCTUUR VAN HET RAPPORT:
 1. Kort overzicht van het trainingsvolume en de belasting (TRIMP)${adherence && adherence.plannedCount > 0 ? ', inclusief de plan-adherentie (hoeveel van het schema is uitgevoerd en hoe goed)' : ''}
-2. Bespreek de belastingtrend (stijgend/dalend/stabiel) en wat dat betekent
+2. Bespreek de belastingtrend (stijgend/dalend/stabiel)${hrvWeek && hrvWeek.daysWithData >= 2 ? ' én het herstel (HRV-trend/balans, basislijn-drift, rebound na zware dagen) — benoem het expliciet als de belasting stijgt terwijl de HRV daalt' : ''} en wat dat betekent
 3. Noem 1-2 concrete hoogtepunten of aandachtspunten uit de check-ins
 ${weeklyNutrition && weeklyNutrition.length > 0 ? '4. Geef 1-2 zinnen voedingsfeedback: zijn calorieën/koolhydraten/eiwit passend bij het trainingsvolume? Geef een concreet verbeterpunt.\n5.' : '4.'} Sluit af met één concrete focus voor de komende week, passend bij de ${currentPhase}
 Houd het bij 7-9 zinnen totaal. Geen opsommingstekens, gewone tekst.`;

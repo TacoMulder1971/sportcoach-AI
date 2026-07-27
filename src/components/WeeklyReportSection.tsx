@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import SportIcon from '@/components/SportIcon';
-import { getGarminData, getEquipment, getActivityAssignments, getActiveRaceDate, buildRaceContextText, getRecentNutritionLogs, getWeeklyReport, saveWeeklyReport, getActivityArchive, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
+import { getGarminData, getEquipment, getActivityAssignments, getActiveRaceDate, buildRaceContextText, getRecentNutritionLogs, getWeeklyReport, saveWeeklyReport, getActivityArchive, getHealthArchive, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
 import { filterStatsActivities } from '@/lib/equipment';
-import { getWeeklyTRIMPTotals, computeWeekAdherence, calcTRIMP, expandMultisportActivity } from '@/lib/training-load';
+import { getWeeklyTRIMPTotals, computeWeekAdherence, calcTRIMP, expandMultisportActivity, buildHrvWeekSummary } from '@/lib/training-load';
 import { getCurrentPhase, getDaysUntilRace } from '@/lib/periodization';
 import { formatDuration } from '@/lib/schedule';
 import { Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
@@ -123,6 +123,7 @@ export default function WeeklyReportSection() {
                 ),
               }
             : null,
+          hrvWeek: buildHrvWeekSummary(getHealthArchive(), archiveStats, restingHR),
           raceContext: buildRaceContextText(),
         }),
       });

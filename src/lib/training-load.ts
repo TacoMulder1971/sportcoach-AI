@@ -495,6 +495,105 @@ export function assessFatigue(
   return { hrvDeclining, restingHrRising, hrvBelowBand, loadHigh, signalCount, loadRecoveryConflict };
 }
 
+export interface HrvWeekSummary {
+  daysWithData: number;
+  daysInBand: number;
+  daysBelowBand: number;
+  daysAboveBand: number;
+  trendDir: HrvTrendDir;
+  baselineNow?: number;                    // laatst bekende HRV-basislijn (ms)
+  baselinePrev?: number;                   // basislijn ~4 weken eerder (ms) → drift
+  reboundLabel?: 'snel' | 'gemiddeld' | 'traag'; // #7: hoe snel HRV terugveert na zware dagen
+  reboundDetail?: string;
+}
+
+const dateStrPlus = (dateStr: string, k: number): string => {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + k);
+  return d.toISOString().split('T')[0];
+};
+
+/**
+ * #7 — Rebound: veert de HRV na zware dagen (TRIMP >= 50) binnen 1-2 nachten terug
+ * naar de balansband? Snel herstel = goed geadapteerd; traag = onderherstel.
+ * Vereist >=2 zware dagen met bruikbare vervolgdata, anders null (geen valse duiding).
+ */
+function computeHrvRebound(
+  archive: GarminHealthStats[],
+  activities: GarminActivity[],
+  restingHR: number,
+  ref: Date,
+): { label: 'snel' | 'gemiddeld' | 'traag'; detail: string } | null {
+  const refStr = ref.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
+  const byDate = new Map(archive.map(h => [h.date, h]));
+  const daily = getDailyTRIMPHistory(activities, restingHR, 21).filter(d => d.date <= refStr);
+  const HARD = 50;
+  const reboundDays: number[] = [];
+  for (const d of daily) {
+    if (d.trimp < HARD) continue;
+    const base = byDate.get(d.date)?.hrvBaseline;
+    if (!base || base <= 0) continue;
+    let recoveredOffset: number | null = null;
+    for (let k = 1; k <= 2; k++) {
+      const h = byDate.get(dateStrPlus(d.date, k));
+      if (h && (h.avgOvernightHrv ?? 0) > 0) {
+        const ins = describeHrv(h);
+        if (ins && (ins.trend === 'binnen' || ins.trend === 'boven')) { recoveredOffset = k; break; }
+      }
+    }
+    reboundDays.push(recoveredOffset ?? 3); // niet hersteld binnen 2 dagen → 3 (traag)
+  }
+  if (reboundDays.length < 2) return null;
+  const avg = reboundDays.reduce((s, x) => s + x, 0) / reboundDays.length;
+  const label = avg <= 1.4 ? 'snel' : avg <= 2.2 ? 'gemiddeld' : 'traag';
+  const detail = `na ${reboundDays.length} zware dagen veert je HRV gemiddeld in ~${avg.toFixed(1)} dag terug binnen je balansband`;
+  return { label, detail };
+}
+
+/**
+ * #9 — Weeksamenvatting van de HRV voor het weekrapport: hoeveel dagen in/onder/
+ * boven de balansband, de meerdaagse trend, de basislijn-drift (nu vs ~4 weken
+ * eerder) en de rebound na zware dagen (#7). Geeft null bij < 2 dagen data.
+ */
+export function buildHrvWeekSummary(
+  archive: GarminHealthStats[],
+  activities: GarminActivity[],
+  restingHR: number,
+  ref: Date = new Date(),
+): HrvWeekSummary | null {
+  const refStr = ref.toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' });
+  const cutoff7 = dateStrPlus(refStr, -6);
+  const week = archive.filter(h => h.date <= refStr && h.date >= cutoff7 && (h.avgOvernightHrv ?? 0) > 0);
+  if (week.length < 2) return null;
+
+  let daysInBand = 0, daysBelowBand = 0, daysAboveBand = 0;
+  for (const h of week) {
+    const ins = describeHrv(h);
+    if (!ins) continue;
+    if (ins.trend === 'onder') daysBelowBand++;
+    else if (ins.trend === 'boven') daysAboveBand++;
+    else if (ins.trend === 'binnen') daysInBand++;
+  }
+
+  const trendDir: HrvTrendDir = getHrvTrend(archive, ref)?.dir ?? 'onbekend';
+
+  const withBase = archive
+    .filter(h => h.date <= refStr && (h.hrvBaseline ?? 0) > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const baselineNow = withBase.length ? withBase[withBase.length - 1].hrvBaseline : undefined;
+  const prevCut = dateStrPlus(refStr, -28);
+  const prevCandidates = withBase.filter(h => h.date <= prevCut);
+  const baselinePrev = prevCandidates.length ? prevCandidates[prevCandidates.length - 1].hrvBaseline : undefined;
+
+  const rebound = computeHrvRebound(archive, activities, restingHR, ref);
+
+  return {
+    daysWithData: week.length, daysInBand, daysBelowBand, daysAboveBand, trendDir,
+    baselineNow, baselinePrev,
+    reboundLabel: rebound?.label, reboundDetail: rebound?.detail,
+  };
+}
+
 export interface GarminReadinessInsight {
   score: number;          // Garmin-score 0-100
   levelLabel: string;     // Nederlands niveau-label
