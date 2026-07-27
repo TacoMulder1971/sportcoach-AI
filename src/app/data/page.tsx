@@ -299,6 +299,7 @@ export default function DataPage() {
     const now = new Date();
     const restingHRData: { label: string; value: number }[] = [];
     const hrvData: { label: string; value: number }[] = [];
+    const baselineData: { label: string; value: number }[] = [];
     for (let i = 7; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i * 7);
@@ -313,13 +314,16 @@ export default function DataPage() {
       const week = archive.filter(h => h.date >= weekStart && h.date <= weekEndStr);
       const withHR = week.filter(h => (h.restingHR || 0) > 0);
       const withHRV = week.filter(h => (h.avgOvernightHrv || 0) > 0);
+      const withBase = week.filter(h => (h.hrvBaseline || 0) > 0);
       restingHRData.push({ label, value: withHR.length > 0 ? Math.round(withHR.reduce((s, h) => s + (h.restingHR || 0), 0) / withHR.length) : 0 });
       hrvData.push({ label, value: withHRV.length > 0 ? Math.round(withHRV.reduce((s, h) => s + (h.avgOvernightHrv || 0), 0) / withHRV.length) : 0 });
+      baselineData.push({ label, value: withBase.length > 0 ? Math.round(withBase.reduce((s, h) => s + (h.hrvBaseline || 0), 0) / withBase.length) : 0 });
     }
     const hasHR = restingHRData.some(d => d.value > 0);
     const hasHRV = hrvData.some(d => d.value > 0);
+    const hasBaseline = baselineData.filter(d => d.value > 0).length >= 2;
     if (!hasHR && !hasHRV) return null;
-    return { restingHRData, hrvData, hasHR, hasHRV };
+    return { restingHRData, hrvData, baselineData, hasHR, hasHRV, hasBaseline };
   }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // HRV-grafiek voor het gereedheid-blok. Drie weergaven:
@@ -863,6 +867,13 @@ export default function DataPage() {
                 )}
                 {healthTrends?.hasHRV && (
                   <BuildupBarChart data={healthTrends.hrvData} color="#06b6d4" unit="ms" title="HRV per week (nacht)" />
+                )}
+                {healthTrends?.hasBaseline && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">HRV-basislijn (drift over 8 weken)</p>
+                    <TrendLineChart data={healthTrends.baselineData} color="#22d3ee" unit="ms" title="" />
+                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">Stijgt de basislijn, dan verbetert je autonome herstel/fitheid; een aanhoudende daling wijst op chronische stress of vermoeidheid.</p>
+                  </div>
                 )}
 
                 {/* Prestatiemetrieken */}
