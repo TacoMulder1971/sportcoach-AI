@@ -594,6 +594,26 @@ export function buildHrvWeekSummary(
   };
 }
 
+/**
+ * #4 — Herstel-context voor de intensiteit-gate in adjust-day. Vat de actieve
+ * herstel-signalen samen tot één regel; geeft null als er geen zorg is (dan geen
+ * gate). Puur, geen side effects.
+ */
+export function buildRecoveryAdjustText(
+  health: GarminHealthStats | null,
+  healthHistory: GarminHealthStats[],
+  trainingLoad: TrainingLoadData | null = null,
+): string | null {
+  const trend = getHrvTrend(healthHistory, health?.date ? new Date(health.date) : new Date());
+  const fatigue = assessFatigue(health, trend ?? undefined, trainingLoad);
+  const bits: string[] = [];
+  if (fatigue.hrvDeclining && trend) bits.push(`HRV ${trend.daysDeclining} dagen dalend (${trend.deltaMs} ms)`);
+  if (fatigue.hrvBelowBand) bits.push('HRV onder de balansband');
+  if (fatigue.restingHrRising) bits.push('rust-HR loopt op');
+  if (fatigue.loadHigh && trainingLoad) bits.push(`trainingsbelasting ${trainingLoad.status}`);
+  return bits.length ? bits.join(', ') : null;
+}
+
 export interface GarminReadinessInsight {
   score: number;          // Garmin-score 0-100
   levelLabel: string;     // Nederlands niveau-label

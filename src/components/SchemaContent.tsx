@@ -5,7 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
 import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, getActiveStoredPlan, buildPlanStrategyText, updateActivePlan, shouldAutoBackup, markBackupDone, downloadExport, getGarminData, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip } from '@/lib/storage';
+import { getActivePlan, getActiveStoredPlan, buildPlanStrategyText, updateActivePlan, shouldAutoBackup, markBackupDone, downloadExport, getGarminData, getHealthArchive, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip } from '@/lib/storage';
+import { buildRecoveryAdjustText } from '@/lib/training-load';
 import { cleanStrategyText } from '@/lib/plan-strategy';
 import { athleteProfilePayload, resolveSports } from '@/lib/athlete';
 import { formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
@@ -89,6 +90,14 @@ export default function SchemaContent() {
     loadPlan();
   }
 
+  // #4 — Intensiteit-gate: herstel-zorg (dalende HRV e.d.) → proactief voorstel
+  // om een zware sessie te verlichten bij het aanpassen van die dag.
+  const recoveryHint = useMemo(() => buildRecoveryAdjustText(health, getHealthArchive()), [health]);
+  const HARD_SESSION = /interval|tempo|drempel|vo2|snelheid|hard/i;
+  const dayHasHardSession = adjustDay
+    ? adjustDay.day.sessions.some(s => s.zone === 'Z4' || s.zone === 'Z5' || HARD_SESSION.test(s.type || '') || HARD_SESSION.test(s.description || ''))
+    : false;
+
   async function handleAdjust() {
     if (!adjustDay || !adjustText.trim() || !plan) return;
     setAdjusting(true);
@@ -108,6 +117,7 @@ export default function SchemaContent() {
           hrZoneText: buildHRZoneText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           planStrategy: buildPlanStrategyText(),
+          recoveryContext: buildRecoveryAdjustText(health, getHealthArchive()),
         }),
       });
 
@@ -329,6 +339,17 @@ export default function SchemaContent() {
                     <p className="text-sm text-gray-400">
                       Wat wil je veranderen? De AI past het schema aan (ook de rest van de week als nodig).
                     </p>
+
+                    {recoveryHint && dayHasHardSession && (
+                      <button
+                        type="button"
+                        onClick={() => setAdjustText(`Mijn herstel blijft achter (${recoveryHint}). Verlicht de zware sessie van deze dag: schakel naar Z2/duurwerk of verkort, of verplaats het intensieve blok naar later in de week.`)}
+                        className="w-full text-left bg-amber-500/10 border border-amber-500/30 rounded-xl p-3"
+                      >
+                        <p className="text-sm font-semibold text-amber-400">⚠ Je herstel blijft achter</p>
+                        <p className="text-xs text-gray-300 mt-0.5">{recoveryHint}. Tik om deze zware dag te verlichten.</p>
+                      </button>
+                    )}
 
                     <textarea
                       value={adjustText}

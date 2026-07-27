@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace, raceContext, hrZoneText, athleteProfile, planStrategy } = await request.json();
+    const { currentPlan, weekNumber, dayIndex, adjustmentRequest, daysUntilRace, raceContext, hrZoneText, athleteProfile, planStrategy, recoveryContext } = await request.json();
 
     if (!currentPlan || !adjustmentRequest) {
       return NextResponse.json({ error: 'Verplichte velden ontbreken' }, { status: 400 });
@@ -115,7 +115,8 @@ DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 
 HUIDIG SCHEMA:
 ${currentPlanText}
-${planStrategy ? `\nCOACHSTRATEGIE ACHTER DIT SCHEMA (bewaak deze opzet — je aanpassing mag de bedoeling van het schema niet slopen):\n${planStrategy}\n` : ''}
+${planStrategy ? `\nCOACHSTRATEGIE ACHTER DIT SCHEMA (bewaak deze opzet — je aanpassing mag de bedoeling van het schema niet slopen):\n${planStrategy}\n` : ''}${recoveryContext ? `\nHERSTELSTATUS VAN DE ATLEET (belangrijk): ${recoveryContext}.
+INTENSITEIT-GATE: bevat de aan te passen dag een zware sessie (type interval/tempo/drempel/VO2 of zone Z4/Z5) én blijft het herstel achter (zie hierboven)? Verlaag dan proactief de intensiteit — schakel naar Z2/duurwerk, verkort de sessie, of verplaats het intensieve blok naar later in de week wanneer het herstel weer op orde is — en leg dat in één zin uit in de description. Doe dit óók als de atleet er niet expliciet om vraagt, tenzij de atleet nadrukkelijk om behoud van de intensiteit vraagt.\n` : ''}
 AANPASSING GEVRAAGD VOOR: Week ${weekNumber}, ${dayName}
 VERZOEK: ${adjustmentRequest}
 
