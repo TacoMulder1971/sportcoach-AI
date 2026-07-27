@@ -620,6 +620,26 @@ export function describeGarminReadiness(health: GarminHealthStats | null): Garmi
 }
 
 /**
+ * #3 — Garmins readiness-factor-uitsplitsing als coach-context. Toont per factor
+ * de bijdrage (%) plus de acute load, zodat de coach ziet wat het herstel stuurt.
+ * Geeft null als Garmin geen factoren gaf.
+ */
+export function buildReadinessFactorText(health: GarminHealthStats | null): string | null {
+  const f = health?.readinessFactors;
+  if (!f) return null;
+  const parts: string[] = [];
+  if (f.sleep !== undefined) parts.push(`slaap ${f.sleep}%`);
+  if (f.sleepHistory !== undefined) parts.push(`slaaphistorie ${f.sleepHistory}%`);
+  if (f.recovery !== undefined) parts.push(`hersteltijd ${f.recovery}%`);
+  if (f.hrv !== undefined) parts.push(`HRV ${f.hrv}%`);
+  if (f.stress !== undefined) parts.push(`stresshistorie ${f.stress}%`);
+  if (parts.length === 0 && f.acuteLoad === undefined) return null;
+  let text = parts.length ? `Garmin readiness-factoren: ${parts.join(', ')}` : 'Garmin readiness';
+  if (f.acuteLoad !== undefined) text += `${parts.length ? ' · ' : ': '}acute load ${f.acuteLoad}`;
+  return text;
+}
+
+/**
  * Compacte tekstregel voor coach-prompts, bijv.:
  * "HRV: 45ms (basislijn 42ms, +3, boven bandbreedte) — Gebalanceerd: ..."
  * Met een optioneel health-archief (`history`) wordt bij een duidelijke

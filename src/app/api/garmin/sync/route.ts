@@ -326,7 +326,12 @@ export async function POST(request: Request) {
       bodyBatteryDrainedValue?: number;
       bodyBatteryMostRecentValue?: number;
     };
-    type ReadinessResp = { score?: number; level?: string; feedbackShort?: string; recoveryTime?: number; hrvWeeklyAverage?: number; sleepScore?: number; restingHeartRate?: number };
+    type ReadinessResp = {
+      score?: number; level?: string; feedbackShort?: string; recoveryTime?: number;
+      hrvWeeklyAverage?: number; sleepScore?: number; restingHeartRate?: number;
+      sleepScoreFactorPercent?: number; sleepHistoryFactorPercent?: number; recoveryTimeFactorPercent?: number;
+      hrvFactorPercent?: number; stressHistoryFactorPercent?: number; acuteLoad?: number;
+    };
 
     // HRV (val terug op gisteren als vannacht nog leeg is)
     let hrv = await fetchJson<HrvResp>(`${API_BASE}/hrv-service/hrv/${isoDay}`, `hrv(${isoDay})`);
@@ -388,7 +393,18 @@ export async function POST(request: Request) {
     const garminReadinessLevel = readiness?.level || undefined;
     // recoveryTime is in Garmins trainingreadiness-payload in UREN.
     const recoveryHours = typeof readiness?.recoveryTime === 'number' && readiness.recoveryTime > 0 ? Math.round(readiness.recoveryTime) : undefined;
-    console.log('[readiness] garmin-readiness →', 'score:', garminReadiness, '| level:', garminReadinessLevel, '| recoveryTime(raw):', readiness?.recoveryTime);
+    // #3 — Garmins factor-uitsplitsing (wat stuurt de readiness): alleen ingevulde velden bewaren.
+    const factorPct = (v: number | undefined) => typeof v === 'number' && v > 0 ? Math.round(v) : undefined;
+    const readinessFactors = {
+      sleep: factorPct(readiness?.sleepScoreFactorPercent),
+      sleepHistory: factorPct(readiness?.sleepHistoryFactorPercent),
+      recovery: factorPct(readiness?.recoveryTimeFactorPercent),
+      hrv: factorPct(readiness?.hrvFactorPercent),
+      stress: factorPct(readiness?.stressHistoryFactorPercent),
+      acuteLoad: typeof readiness?.acuteLoad === 'number' && readiness.acuteLoad > 0 ? Math.round(readiness.acuteLoad) : undefined,
+    };
+    const hasReadinessFactors = Object.values(readinessFactors).some(v => v !== undefined);
+    console.log('[readiness] garmin-readiness →', 'score:', garminReadiness, '| level:', garminReadinessLevel, '| recoveryTime(raw):', readiness?.recoveryTime, '| factors:', hasReadinessFactors ? JSON.stringify(readinessFactors) : 'none');
     const respiration = Math.round(
       (sleepData as unknown as Record<string, number>)?.avgWakingRespirationValue
       || (sleepData as unknown as Record<string, number>)?.averageRespirationValue
@@ -437,6 +453,8 @@ export async function POST(request: Request) {
         garminReadiness,
         garminReadinessLevel,
         recoveryHours,
+        garminReadinessFeedback: readiness?.feedbackShort || undefined,
+        readinessFactors: hasReadinessFactors ? readinessFactors : undefined,
       };
       console.log('[readiness] health opgebouwd →', JSON.stringify(health));
     } else {
