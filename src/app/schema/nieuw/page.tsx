@@ -134,6 +134,7 @@ export default function NieuwSchemaPage() {
           hrZoneText: buildHRZoneText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           previousStrategy: buildPlanStrategyText(),
+          garminHealthArchive: getHealthArchive(),
         }),
       });
 

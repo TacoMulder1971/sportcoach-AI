@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { getAmsterdamNow, relativeDayLabel } from '@/lib/coach-dates';
 import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
-import { buildHrvCoachText } from '@/lib/training-load';
+import { buildHrvCoachText, buildReadinessFactorText } from '@/lib/training-load';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention, athleteProfile } = await request.json();
+    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention, athleteProfile, garminHealthArchive } = await request.json();
     const profileText = buildAthleteProfileText((athleteProfile ?? null) as AthleteProfilePayload | null);
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
@@ -119,7 +119,9 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
       prompt += `\nGEZONDHEID:\n`;
       if (garminHealth.sleepScore > 0) prompt += `- Slaap: ${garminHealth.sleepDurationHours}u (score ${garminHealth.sleepScore}/100)\n`;
       prompt += `- Rust HR: ${garminHealth.restingHR} bpm\n`;
-      { const hrvText = buildHrvCoachText(garminHealth); if (hrvText) prompt += `- ${hrvText}\n`; }
+      { const hrvText = buildHrvCoachText(garminHealth, Array.isArray(garminHealthArchive) ? garminHealthArchive : []); if (hrvText) prompt += `- ${hrvText}\n`; }
+      if (garminHealth.garminReadiness) prompt += `- Garmin Readiness: ${garminHealth.garminReadiness}/100${garminHealth.recoveryHours ? `, herstel nog ~${garminHealth.recoveryHours}u` : ''}\n`;
+      { const rf = buildReadinessFactorText(garminHealth); if (rf) prompt += `- ${rf}\n`; }
       prompt += `- Body Battery: ${garminHealth.bodyBatteryChange > 0 ? '+' : ''}${garminHealth.bodyBatteryChange}\n`;
       if (garminHealth.avgRespirationRate) prompt += `- Ademhaling (slaap): ${garminHealth.avgRespirationRate}/min\n`;
       if (garminHealth.lactateThresholdHR || garminHealth.lactateThresholdPace) {

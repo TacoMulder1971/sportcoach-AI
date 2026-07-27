@@ -8,10 +8,10 @@ import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import LatestActivityCard from '@/components/LatestActivityCard';
 import AdherenceCard from '@/components/AdherenceCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset, amsterdamDateForOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile, getRunZones, getCyclingZones, recordPlannedDays } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile, getRunZones, getCyclingZones, recordPlannedDays, getHealthArchive } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
-import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
 import { TrainingDay, TrainingSession, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 
@@ -129,6 +129,7 @@ export default function HomeContent() {
           goalsHistory: buildGoalsHistoryText(),
           equipmentAttention,
           athleteProfile: athleteProfilePayload(getProfile()),
+          garminHealthArchive: getHealthArchive(),
         }),
       });
 
@@ -286,7 +287,7 @@ export default function HomeContent() {
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, statsActivities);
+    return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, statsActivities, getHealthArchive());
   }, [garmin, todayTraining, statsActivities]);
 
   // Trainingsadvies: gereedheid vs. geplande training
@@ -295,6 +296,12 @@ export default function HomeContent() {
     const plannedTRIMP = estimatePlannedTRIMP(todayTraining.sessions);
     return getTrainingAdvice(readiness, plannedTRIMP);
   }, [readiness, todayTraining]);
+
+  // Vroege vermoeidheidssignalen (#5/#6): HRV-trend + rust-HR + balansband + belasting
+  const fatigue = useMemo(
+    () => assessFatigue(garmin?.health ?? null, readiness?.hrvTrend, trainingLoad),
+    [garmin, readiness, trainingLoad]
+  );
 
   // Fetch daily message — laad cache direct, genereer alleen als nodig
   useEffect(() => {
@@ -387,6 +394,27 @@ export default function HomeContent() {
       </Link>
 
       <div className="px-5 space-y-5 pb-8">
+        {/* Vroege vermoeidheidswaarschuwing (#5): ≥2 herstel-signalen tegelijk */}
+        {fatigue.signalCount >= 2 && (() => {
+          const parts: string[] = [];
+          if (fatigue.hrvDeclining && readiness?.hrvTrend) parts.push(`HRV ${readiness.hrvTrend.daysDeclining} dagen dalend`);
+          if (fatigue.restingHrRising) parts.push('rust-HR loopt op');
+          if (fatigue.hrvBelowBand) parts.push('HRV onder je balansband');
+          return (
+            <Link href="/schema" className="block bg-[#0d0d0f] border border-amber-500/30 rounded-3xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0 text-lg">⚠️</div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-400">Vroege vermoeidheidssignalen</p>
+                  <p className="text-sm text-gray-300 mt-0.5">
+                    {parts.join(' · ')}{fatigue.loadHigh ? ' · belasting hoog' : ''}. Overweeg vandaag een lichtere dag of extra herstel.
+                  </p>
+                  <span className="inline-block text-xs text-amber-400 mt-2 font-semibold">Pas je training aan →</span>
+                </div>
+              </div>
+            </Link>
+          );
+        })()}
         {/* Post-race resultaat prompt */}
         {pendingResultGoal && (
           <div className="bg-[#0d0d0f] border border-amber-500/20 rounded-3xl p-4">
@@ -498,6 +526,10 @@ export default function HomeContent() {
                     );
                   })}
                 </div>
+                {/* Belasting-vs-herstel-ontkoppeling (#6) */}
+                {fatigue.loadRecoveryConflict && (
+                  <span className="text-[11px] text-amber-400 mt-2 leading-tight">⚠ Belasting hoog terwijl je HRV daalt</span>
+                )}
               </>
             ) : (
               <p className="text-gray-400 text-sm py-2">Sync voor data</p>

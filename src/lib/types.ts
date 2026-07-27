@@ -267,6 +267,17 @@ export interface GarminHealthStats {
   avgRespirationRate?: number;   // ademhalingen/minuut tijdens slaap
   lactateThresholdHR?: number;   // lactaatdrempel hartslag (bpm)
   lactateThresholdPace?: string; // lactaatdrempel tempo (bijv. "4:35/km")
+  // Garmins eigen Training Readiness (metrics-service/trainingreadiness) — al
+  // opgehaald in de sync; hier bewaard als kruischeck naast onze eigen gereedheid.
+  garminReadiness?: number;      // Garmin-score 0-100
+  garminReadinessLevel?: string; // Garmin-niveau (ruwe key, bv. "READY"/"MODERATE"/"LOW")
+  recoveryHours?: number;        // uren tot volledig hersteld (Garmin recoveryTime)
+  garminReadinessFeedback?: string; // Garmins korte feedback-key (bv. "STRESS_HIGH")
+  // Garmins uitsplitsing van wat de readiness stuurt (factor-bijdragen in %) —
+  // handige context voor de coach om te zien wat het herstel beperkt.
+  readinessFactors?: {
+    sleep?: number; sleepHistory?: number; recovery?: number; hrv?: number; stress?: number; acuteLoad?: number;
+  };
 }
 
 export interface TrainingLoadData {
@@ -280,6 +291,18 @@ export interface GarminSyncData {
   activities: GarminActivity[];
   health: GarminHealthStats | null;
   syncedAt: string;
+}
+
+// Meerdaagse HRV-trend: het vroegste teken van onderherstel/naderende ziekte is
+// een dalende HRV over 3-5 dagen — vaak vóór het voelbaar is. Afgeleid uit het
+// health-archief, geen extra Garmin-calls.
+export type HrvTrendDir = 'dalend' | 'stabiel' | 'stijgend' | 'onbekend';
+
+export interface HrvTrend {
+  dir: HrvTrendDir;
+  daysDeclining: number; // opeenvolgende dagen dag-op-dag omlaag (t/m vandaag)
+  deltaMs: number;       // laatste dag − eerste dag in het venster (afgerond)
+  restingHrRising: boolean; // rust-HR loopt tegelijk op → sterker fatigue-signaal
 }
 
 export interface TrainingReadiness {
@@ -297,6 +320,7 @@ export interface TrainingReadiness {
     label2: string; score2: number | null; max2: number;
     label3: string; score3: number | null; max3: number;
   };
+  hrvTrend?: HrvTrend; // meerdaagse HRV-trend (alleen volledige modus, als het archief genoeg data heeft)
 }
 
 export interface TrainingAdvice {

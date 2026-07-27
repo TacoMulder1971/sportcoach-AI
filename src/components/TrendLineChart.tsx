@@ -13,6 +13,11 @@ interface TrendLineChartProps {
   unit: string;
   title: string;
   invertY?: boolean;
+  baseline?: number;      // gestreepte referentielijn (bv. 7-daagse HRV-basislijn)
+  baselineLabel?: string;
+  bandLow?: number;       // ondergrens gearceerde zone (bv. HRV-balansband)
+  bandHigh?: number;      // bovengrens gearceerde zone
+  bandLabel?: string;
 }
 
 interface Tooltip {
@@ -22,7 +27,10 @@ interface Tooltip {
   value: number;
 }
 
-export default function TrendLineChart({ data, color, unit, title, invertY = false }: TrendLineChartProps) {
+export default function TrendLineChart({
+  data, color, unit, title, invertY = false,
+  baseline, baselineLabel, bandLow, bandHigh, bandLabel,
+}: TrendLineChartProps) {
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
 
   const validData = data.filter(d => d.value > 0);
@@ -38,8 +46,13 @@ export default function TrendLineChart({ data, color, unit, title, invertY = fal
   const chartH = H - padTop - padBottom;
 
   const values = validData.map(d => d.value);
-  const minVal = Math.min(...values);
-  const maxVal = Math.max(...values);
+  // Y-domein: neem de balansband en de basislijn mee zodat ze niet buiten beeld vallen.
+  const domainVals = [...values];
+  if (bandLow !== undefined) domainVals.push(bandLow);
+  if (bandHigh !== undefined) domainVals.push(bandHigh);
+  if (baseline !== undefined) domainVals.push(baseline);
+  const minVal = Math.min(...domainVals);
+  const maxVal = Math.max(...domainVals);
   const range = maxVal - minVal || 1;
 
   function xOf(i: number) {
@@ -54,11 +67,17 @@ export default function TrendLineChart({ data, color, unit, title, invertY = fal
   const points = validData.map((d, i) => `${xOf(i)},${yOf(d.value)}`).join(' ');
   const lastVal = validData[validData.length - 1].value;
 
+  const hasBand = bandLow !== undefined && bandHigh !== undefined;
+  const bandTopY = hasBand ? yOf(bandHigh!) : 0;
+  const bandBottomY = hasBand ? yOf(bandLow!) : 0;
+
+  // X-as-labels dunnen uit: ~6 labels ongeacht het aantal punten.
+  const labelStep = Math.max(1, Math.ceil(validData.length / 6));
+
   // Vind dichtstbijzijnde datapunt op basis van muispositie
   function getNearestPoint(divX: number, divWidth: number): DataPoint | null {
     if (validData.length < 2) return null;
     const svgX = (divX / divWidth) * W;
-    // Bereken x-positie van elk punt en vind de dichtstbijzijnde
     let best: DataPoint | null = null;
     let bestDist = Infinity;
     validData.forEach((d, i) => {
@@ -83,7 +102,7 @@ export default function TrendLineChart({ data, color, unit, title, invertY = fal
 
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 mb-1">{title}</p>
+      {title && <p className="text-xs font-semibold text-gray-500 mb-1">{title}</p>}
       <div
         className="relative"
         onMouseMove={handleMouseMove}
@@ -99,19 +118,49 @@ export default function TrendLineChart({ data, color, unit, title, invertY = fal
         }}
       >
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="overflow-visible">
+          {/* Balansband (gearceerde zone) */}
+          {hasBand && (
+            <>
+              <rect
+                x={padLeft} y={bandTopY}
+                width={chartW} height={Math.max(0, bandBottomY - bandTopY)}
+                fill="rgba(34,197,94,0.10)"
+              />
+              <line x1={padLeft} y1={bandTopY} x2={W - padRight} y2={bandTopY} stroke="rgba(34,197,94,0.35)" strokeWidth={0.5} />
+              <line x1={padLeft} y1={bandBottomY} x2={W - padRight} y2={bandBottomY} stroke="rgba(34,197,94,0.35)" strokeWidth={0.5} />
+              {bandLabel && (
+                <text x={W - padRight} y={bandTopY + 7} textAnchor="end" fontSize={7} fill="#4ade80">{bandLabel}</text>
+              )}
+            </>
+          )}
+
           {/* Y-as referentielijnen */}
           {[0, 0.5, 1].map((frac) => {
             const y = padTop + frac * chartH;
-            const val = invertY ? minVal + (1 - frac) * range : minVal + frac * range;
+            // Label moet met yOf() overeenkomen: zonder invert staat het maximum bovenaan.
+            const val = invertY ? minVal + frac * range : minVal + (1 - frac) * range;
             return (
               <g key={frac}>
-                <line x1={padLeft} y1={y} x2={W - padRight} y2={y} stroke="#e5e7eb" strokeWidth={0.5} />
+                <line x1={padLeft} y1={y} x2={W - padRight} y2={y} stroke="rgba(255,255,255,0.1)" strokeWidth={0.5} />
                 <text x={padLeft - 3} y={y + 3.5} textAnchor="end" fontSize={7} fill="#9ca3af">
                   {Math.round(val)}
                 </text>
               </g>
             );
           })}
+
+          {/* Basislijn (gestreept) */}
+          {baseline !== undefined && (
+            <>
+              <line
+                x1={padLeft} y1={yOf(baseline)} x2={W - padRight} y2={yOf(baseline)}
+                stroke="#9ca3af" strokeWidth={0.6} strokeDasharray="3 3"
+              />
+              {baselineLabel && (
+                <text x={padLeft + 2} y={yOf(baseline) - 2} textAnchor="start" fontSize={7} fill="#9ca3af">{baselineLabel}</text>
+              )}
+            </>
+          )}
 
           {/* Lijn */}
           <polyline
@@ -139,7 +188,7 @@ export default function TrendLineChart({ data, color, unit, title, invertY = fal
 
           {/* X-as labels */}
           {validData.map((d, i) => {
-            if (validData.length > 5 && i % 2 !== 0) return null;
+            if (i % labelStep !== 0 && i !== validData.length - 1) return null;
             return (
               <text key={i} x={xOf(i)} y={H - 4} textAnchor="middle" fontSize={7} fill="#9ca3af">
                 {d.label}

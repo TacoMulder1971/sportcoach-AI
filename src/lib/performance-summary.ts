@@ -1,5 +1,5 @@
 import { GarminActivity, GarminHealthStats, Goal, GOAL_TYPES } from './types';
-import { calcTRIMP, expandMultisportActivity } from './training-load';
+import { calcTRIMP, expandMultisportActivity, getHrvTrend } from './training-load';
 
 /**
  * Bouwt een prestatie-samenvatting van de afgelopen weken voor de AI-planmaker.
@@ -197,5 +197,15 @@ function buildRecoveryTrend(health: GarminHealthStats[], ref: Date): string | nu
   if (restHR !== null) bits.push(`rust-HR ${Math.round(restHR)}`);
   if (bits.length === 0) return null;
 
-  return `HERSTEL (gem. laatste 7 dagen): ${bits.join(', ')}`;
+  // Meerdaagse HRV-trend als vroeg herstelsignaal — het 7-daags gemiddelde alleen
+  // maskeert een sluipende daling; de trend maakt die expliciet voor de coach.
+  const trend = getHrvTrend(health, ref);
+  let trendBit = '';
+  if (trend?.dir === 'dalend') {
+    trendBit = ` — HRV-trend: ${trend.daysDeclining} dagen dalend (${trend.deltaMs} ms)${trend.restingHrRising ? ', rust-HR loopt op' : ''}`;
+  } else if (trend?.dir === 'stijgend') {
+    trendBit = ` — HRV-trend: meerdere dagen stijgend (+${trend.deltaMs} ms)`;
+  }
+
+  return `HERSTEL (gem. laatste 7 dagen): ${bits.join(', ')}${trendBit}`;
 }

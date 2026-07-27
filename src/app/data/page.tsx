@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity, describeGarminReadiness, assessFatigue } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
 import BuildupBarChart from '@/components/BuildupBarChart';
+import TrendLineChart from '@/components/TrendLineChart';
 import MaterialSection from '@/components/MaterialSection';
 import EquipmentAssignChip from '@/components/EquipmentAssignChip';
 import EquipmentIcon from '@/components/EquipmentIcon';
@@ -42,7 +43,7 @@ export default function DataPage() {
   const [swimVariants, setSwimVariants] = useState<ActivitySwimVariants>({});
   const [section, setSection] = useState<Section>('overzicht');
   const [expandedSplits, setExpandedSplits] = useState<Set<number>>(new Set());
-  const [hrvPeriod, setHrvPeriod] = useState<7 | 30>(7);
+  const [hrvView, setHrvView] = useState<'7' | '30' | 'avg'>('avg');
   const [yazioSyncing, setYazioSyncing] = useState(false);
   const [yazioStatus, setYazioStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const touchStartY = useRef(0);
@@ -169,8 +170,14 @@ export default function DataPage() {
 
   const readiness: TrainingReadiness | null = useMemo(() => {
     if (!garmin) return null;
-    return getTrainingReadiness(garmin.health, true, statsActivities);
+    return getTrainingReadiness(garmin.health, true, statsActivities, getHealthArchive());
   }, [garmin, statsActivities]);
+
+  // Belasting-vs-herstel-ontkoppeling (#6): hoge belasting terwijl HRV daalt.
+  const fatigue = useMemo(
+    () => assessFatigue(garmin?.health ?? null, readiness?.hrvTrend, trainingLoad),
+    [garmin, readiness, trainingLoad]
+  );
 
   // Weekly totals
   const weekStats = useMemo(() => {
@@ -292,6 +299,7 @@ export default function DataPage() {
     const now = new Date();
     const restingHRData: { label: string; value: number }[] = [];
     const hrvData: { label: string; value: number }[] = [];
+    const baselineData: { label: string; value: number }[] = [];
     for (let i = 7; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i * 7);
@@ -306,34 +314,59 @@ export default function DataPage() {
       const week = archive.filter(h => h.date >= weekStart && h.date <= weekEndStr);
       const withHR = week.filter(h => (h.restingHR || 0) > 0);
       const withHRV = week.filter(h => (h.avgOvernightHrv || 0) > 0);
+      const withBase = week.filter(h => (h.hrvBaseline || 0) > 0);
       restingHRData.push({ label, value: withHR.length > 0 ? Math.round(withHR.reduce((s, h) => s + (h.restingHR || 0), 0) / withHR.length) : 0 });
       hrvData.push({ label, value: withHRV.length > 0 ? Math.round(withHRV.reduce((s, h) => s + (h.avgOvernightHrv || 0), 0) / withHRV.length) : 0 });
+      baselineData.push({ label, value: withBase.length > 0 ? Math.round(withBase.reduce((s, h) => s + (h.hrvBaseline || 0), 0) / withBase.length) : 0 });
     }
     const hasHR = restingHRData.some(d => d.value > 0);
     const hasHRV = hrvData.some(d => d.value > 0);
+    const hasBaseline = baselineData.filter(d => d.value > 0).length >= 2;
     if (!hasHR && !hasHRV) return null;
-    return { restingHRData, hrvData, hasHR, hasHRV };
+    return { restingHRData, hrvData, baselineData, hasHR, hasHRV, hasBaseline };
   }, [garmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // HRV per dag over de gekozen periode (7 of 30 dagen, uit health-archief) — voor
-  // het mini-grafiekje in het gereedheid-blok. 0 = geen meting die nacht.
+  // HRV-grafiek voor het gereedheid-blok. Drie weergaven:
+  //  '7'/'30' = ruwe HRV per dag (0 = geen meting die nacht);
+  //  'avg'    = 7-daags voortschrijdend gemiddelde over de laatste 30 dagen —
+  //             vlakt de nacht-op-nacht-ruis af zodat de meerdaagse trend zichtbaar wordt.
   const hrvDaily = useMemo(() => {
     const archive = getHealthArchive();
     if (archive.length === 0) return [];
     const byDate = new Map(archive.map(h => [h.date, h.avgOvernightHrv || 0]));
-    const days: { label: string; value: number }[] = [];
     const now = new Date();
     const wd = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
-    for (let i = hrvPeriod - 1; i >= 0; i--) {
+    const isoOf = (d: Date) => d.toISOString().split('T')[0];
+    const days: { label: string; value: number }[] = [];
+
+    if (hrvView === 'avg') {
+      // Per dag het gemiddelde van die dag + de 6 voorgaande dagen met een meting.
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const vals: number[] = [];
+        for (let k = 0; k < 7; k++) {
+          const e = new Date(d);
+          e.setDate(e.getDate() - k);
+          const v = byDate.get(isoOf(e)) || 0;
+          if (v > 0) vals.push(v);
+        }
+        const avgVal = vals.length ? Math.round(vals.reduce((s, x) => s + x, 0) / vals.length) : 0;
+        days.push({ label: `${d.getDate()}/${d.getMonth() + 1}`, value: avgVal });
+      }
+      return days;
+    }
+
+    const period = hrvView === '30' ? 30 : 7;
+    for (let i = period - 1; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const iso = d.toISOString().split('T')[0];
       // 7 dagen: weekdag-labels; langere periode: dag/maand voor leesbaarheid
-      const label = hrvPeriod <= 7 ? wd[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`;
-      days.push({ label, value: byDate.get(iso) || 0 });
+      const label = period <= 7 ? wd[d.getDay()] : `${d.getDate()}/${d.getMonth() + 1}`;
+      days.push({ label, value: byDate.get(isoOf(d)) || 0 });
     }
     return days;
-  }, [garmin, hrvPeriod]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [garmin, hrvView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (window.scrollY === 0) {
@@ -524,6 +557,22 @@ export default function DataPage() {
                   ))}
                 </div>
                 {(() => {
+                  const gr = describeGarminReadiness(garmin?.health ?? null);
+                  if (!gr) return null;
+                  return (
+                    <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs text-gray-500">Garmin Readiness</span>
+                        <span className="text-sm font-semibold text-white">{gr.score}</span>
+                        {gr.levelLabel && <span className="text-xs text-gray-400">· {gr.levelLabel}</span>}
+                      </div>
+                      {gr.recoveryHours !== undefined && (
+                        <span className="text-xs text-gray-400">herstel nog ~{gr.recoveryHours}u</span>
+                      )}
+                    </div>
+                  );
+                })()}
+                {(() => {
                   const hrv = describeHrv(garmin?.health ?? null);
                   if (!hrv) return null;
                   const trendColor = hrv.trend === 'boven' ? 'text-green-400' : hrv.trend === 'onder' ? 'text-red-400' : 'text-gray-300';
@@ -551,27 +600,33 @@ export default function DataPage() {
                         </p>
                       ) : null}
                       <p className="text-xs text-gray-400 leading-relaxed">{hrv.interpretation}</p>
+                      {readiness?.hrvTrend?.dir === 'dalend' && (
+                        <p className="text-xs text-amber-400 mt-1 leading-relaxed">
+                          ▼ HRV {readiness.hrvTrend.daysDeclining} dagen dalend ({readiness.hrvTrend.deltaMs} ms)
+                          {readiness.hrvTrend.restingHrRising ? ' · rust-HR loopt op' : ''} — vroeg signaal van onderherstel.
+                        </p>
+                      )}
                       {hrvDaily.filter(d => d.value > 0).length >= 2 && (
                         <div className="mt-3">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-sm font-semibold text-gray-300">
-                              HRV — afgelopen {hrvPeriod} dagen
+                              {hrvView === 'avg' ? 'HRV — 7-daags gemiddelde' : `HRV — afgelopen ${hrvView === '30' ? 30 : 7} dagen`}
                             </p>
                             <div className="flex gap-1 bg-white/5 rounded-lg p-0.5">
-                              {([7, 30] as const).map((p) => (
+                              {([['7', '7d'], ['30', '30d'], ['avg', '7d gem.']] as const).map(([v, lbl]) => (
                                 <button
-                                  key={p}
-                                  onClick={() => setHrvPeriod(p)}
-                                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                                    hrvPeriod === p ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400'
+                                  key={v}
+                                  onClick={() => setHrvView(v)}
+                                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                                    hrvView === v ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400'
                                   }`}
                                 >
-                                  {p}d
+                                  {lbl}
                                 </button>
                               ))}
                             </div>
                           </div>
-                          <BuildupBarChart
+                          <TrendLineChart
                             data={hrvDaily}
                             color="#06b6d4"
                             unit="ms"
@@ -671,6 +726,11 @@ export default function DataPage() {
                   <span>Over</span>
                 </div>
                 <p className="text-sm text-gray-300 mt-3">{trainingLoad.advice}</p>
+                {fatigue.loadRecoveryConflict && (
+                  <p className="text-sm text-amber-400 mt-2 pt-2 border-t border-white/5 leading-relaxed">
+                    ⚠ Je belasting is {trainingLoad.status} terwijl je HRV{fatigue.hrvBelowBand ? ' onder de balansband zit' : ' meerdere dagen daalt'}. Dat wijst op opgestapelde vermoeidheid — plan bewust herstel in.
+                  </p>
+                )}
               </div>
             </section>
           )}
@@ -807,6 +867,13 @@ export default function DataPage() {
                 )}
                 {healthTrends?.hasHRV && (
                   <BuildupBarChart data={healthTrends.hrvData} color="#06b6d4" unit="ms" title="HRV per week (nacht)" />
+                )}
+                {healthTrends?.hasBaseline && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 mb-1">HRV-basislijn (drift over 8 weken)</p>
+                    <TrendLineChart data={healthTrends.baselineData} color="#22d3ee" unit="ms" title="" />
+                    <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">Stijgt de basislijn, dan verbetert je autonome herstel/fitheid; een aanhoudende daling wijst op chronische stress of vermoeidheid.</p>
+                  </div>
                 )}
 
                 {/* Prestatiemetrieken */}
