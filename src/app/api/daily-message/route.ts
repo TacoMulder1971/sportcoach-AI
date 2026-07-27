@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // Bouw de prompt op
     let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
-Spreek informeel (je/jij), wees warm en motiverend. Geen emojis in lopende tekst, alleen eventueel aan het begin.
+Spreek informeel (je/jij), wees warm en motiverend. Gebruik GEEN emojis of icoontjes — niet in de lopende tekst en ook niet aan het begin.
 BELANGRIJK: Het is nu ${timeStr} (${dagdeel}). Pas je begroeting aan: gebruik "goedemorgen" alleen 's ochtends, "goedemiddag" 's middags, "goedenavond" 's avonds.
 
 DATA-INTEGRITEIT (KRITIEK):
