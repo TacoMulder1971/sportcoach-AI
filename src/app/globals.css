@@ -41,6 +41,23 @@ body {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+/* iOS Safari zoomt bij het focussen automatisch in op invoervelden met een
+   lettergrootte < 16px. Nu pinch-zoom aanstaat (userScalable) willen we die
+   ongewenste auto-zoom-sprong niet: til de compacte velden (text-sm = 14px,
+   text-xs = 12px) op touch-apparaten naar 16px. Alleen op coarse pointers,
+   zodat de desktop-weergave (MacBook) exact gelijk blijft. Velden zonder
+   expliciete tekstgrootte erven de grote body-font en zoomen sowieso niet. */
+@media (pointer: coarse) {
+  input.text-sm,
+  input.text-xs,
+  textarea.text-sm,
+  textarea.text-xs,
+  select.text-sm,
+  select.text-xs {
+    font-size: 16px;
+  }
+}
+
 /* Hide Next.js dev tools button (overlaps navigation) */
 nextjs-portal {
   display: none !important;

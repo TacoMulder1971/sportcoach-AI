@@ -20,8 +20,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Pinch-zoom bewust toegestaan (toegankelijkheid). iOS zoomt normaal in op
+  // invoervelden < 16px bij focus; dat vangen we op in globals.css (zie de
+  // `@media (pointer: coarse)`-regel voor formuliervelden).
+  userScalable: true,
   themeColor: '#000000',
   viewportFit: 'cover',
 };

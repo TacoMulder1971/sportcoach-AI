@@ -146,10 +146,10 @@ export default function HomeContent() {
   }, []);
 
   useEffect(() => {
-    const { plan, cycleStartDate, id } = getActivePlan();
+    const { plan, cycleStartDate, activeFrom, id } = getActivePlan();
     setHasOwnPlan(id !== 'default');
-    const training = getTodayTraining(plan, cycleStartDate);
-    const yt = getTrainingForDayOffset(-1, plan, cycleStartDate);
+    const training = getTodayTraining(plan, cycleStartDate, activeFrom);
+    const yt = getTrainingForDayOffset(-1, plan, cycleStartDate, activeFrom);
     setTodayTraining(training);
     setYesterdayTraining(yt);
     setGarmin(getGarminData());
@@ -235,9 +235,9 @@ export default function HomeContent() {
     const nonStrength = sameDay.filter((a) => a.sport !== 'kracht');
     const dayActivities = nonStrength.length > 0 ? nonStrength : sameDay;
 
-    const { plan, cycleStartDate } = getActivePlan();
+    const { plan, cycleStartDate, activeFrom } = getActivePlan();
     const daysSince = daysBetween(latest.date, isoDate(new Date()));
-    const training = getTrainingForDayOffset(-daysSince, plan, cycleStartDate);
+    const training = getTrainingForDayOffset(-daysSince, plan, cycleStartDate, activeFrom);
     const sessions = training && !training.isRestDay ? training.sessions : [];
     const usedSessions = new Set<TrainingSession>();
 

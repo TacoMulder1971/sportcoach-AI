@@ -349,7 +349,8 @@ export interface AgendaInput {
 export interface StoredPlan {
   id: string;
   plan: TrainingWeek[];
-  cycleStartDate: string; // ISO, altijd een maandag
+  cycleStartDate: string; // ISO, altijd een maandag (anker voor de weeknummering)
+  activeFrom?: string;    // ISO datum vanaf wanneer het schema zichtbaar is (>= cycleStartDate). Ontbreekt op oude plannen → val terug op cycleStartDate.
   createdAt: string;
   agendaInput: AgendaInput;
   status: 'active' | 'archived';
