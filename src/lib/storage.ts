@@ -1,4 +1,4 @@
-import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, ALL_TRAINING_SPORTS, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, YazioCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession, PlannedDayRecord } from './types';
+import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, ALL_TRAINING_SPORTS, GarminSyncData, GarminActivity, GarminHealthStats, StoredPlan, TrainingWeek, HeartRateZone, NutritionLog, Goal, GoalResult, GOAL_TYPES, Equipment, MaintenanceItem, ActivityAssignments, EQUIPMENT_DEFAULT_MAINTENANCE, SwimVariant, ActivitySwimVariants, RaceWeather, GarminCredentials, GarminTokens, GarminSyncResponse, YazioCredentials, computeHRZones, HRZoneConfig, hrZoneConfigToZones, HeartRateZoneInfo, SessionBreakdown, TrainingSession, PlannedDayRecord } from './types';
 import { trainingPlan } from '@/data/training-plan';
 import { getTrainingForDayOffset, amsterdamDateForOffset } from './schedule';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
@@ -32,6 +32,7 @@ const KEYS = {
   HEALTH_ARCHIVE: 'tricoach_health_archive',
   RACE_WEATHER: 'tricoach_race_weather',
   GARMIN_CREDENTIALS: 'tricoach_garmin_credentials',
+  GARMIN_TOKENS: 'tricoach_garmin_tokens',
   YAZIO_CREDENTIALS: 'tricoach_yazio_credentials',
   SESSION_BREAKDOWN: 'tricoach_session_breakdown',
   STRENGTH_WORKOUTS: 'tricoach_strength_workouts',
@@ -282,19 +283,26 @@ export function saveGarminData(data: GarminSyncData): void {
 export async function syncGarminData(): Promise<GarminSyncData | null> {
   const existingData = getGarminData();
   const existingActivityIds = existingData?.activities?.map(a => a.id) || [];
-  // Credentials meesturen (multi-user); server valt terug op env vars als ze ontbreken
+  // Credentials + bewaarde sessietokens meesturen (multi-user). De server gebruikt
+  // de tokens als die er zijn en logt alleen met wachtwoord in als dat moet.
   const creds = getGarminCredentials();
 
   const res = await fetch('/api/garmin/sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ existingActivityIds, email: creds?.email, password: creds?.password }),
+    body: JSON.stringify({
+      existingActivityIds,
+      email: creds?.email,
+      password: creds?.password,
+      tokens: getGarminTokens(),
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Sync mislukt');
   }
-  const data: GarminSyncData = await res.json();
+  const { tokens, ...data }: GarminSyncResponse = await res.json();
+  if (tokens) saveGarminTokens(tokens);
 
   // Behoud hrZones van bestaande activiteiten (server stuurt die niet altijd mee)
   if (existingData?.activities) {
@@ -1345,6 +1353,25 @@ export function saveGarminCredentials(creds: GarminCredentials): void {
 export function clearGarminCredentials(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(KEYS.GARMIN_CREDENTIALS);
+  clearGarminTokens();
+}
+
+// ─── Garmin-sessietokens ─────────────────────────────────────────
+// Bewaard na een geslaagde login en bij elke sync meegestuurd, zodat de server
+// de sessie herstelt i.p.v. opnieuw met wachtwoord in te loggen (zie
+// GarminTokens in types.ts). Loskoppelen wist ze mee.
+
+export function getGarminTokens(): GarminTokens | null {
+  return getItem<GarminTokens | null>(KEYS.GARMIN_TOKENS, null);
+}
+
+export function saveGarminTokens(tokens: GarminTokens): void {
+  setItem(KEYS.GARMIN_TOKENS, tokens);
+}
+
+export function clearGarminTokens(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.GARMIN_TOKENS);
 }
 
 // Yazio-credentials (voeding-koppeling) — zelfde patroon als Garmin: per gebruiker

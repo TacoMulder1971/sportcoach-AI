@@ -5,6 +5,29 @@ export interface GarminCredentials {
   password: string;
 }
 
+// OAuth-tokens van een geslaagde Garmin-login. Door die te bewaren en te
+// hergebruiken hoeft de app niet bij elke sync opnieuw met wachtwoord in te
+// loggen — dat zag Garmin als "aanmelding vanaf nieuwe locatie" (elke
+// Vercel-functie draait op een ander IP) en leverde de gebruiker een stroom
+// waarschuwingsmails op. Een verlopen oauth2-token wordt via het oauth1-token
+// ververst; dat is een token-uitwisseling, geen aanmelding.
+export interface GarminOAuth1Token {
+  oauth_token: string;
+  oauth_token_secret: string;
+}
+
+export interface GarminOAuth2Token {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  [key: string]: unknown;
+}
+
+export interface GarminTokens {
+  oauth1: GarminOAuth1Token;
+  oauth2: GarminOAuth2Token;
+}
+
 export interface YazioCredentials {
   email: string;
   password: string;
@@ -291,6 +314,12 @@ export interface GarminSyncData {
   activities: GarminActivity[];
   health: GarminHealthStats | null;
   syncedAt: string;
+}
+
+// Wat /api/garmin/sync teruggeeft: de sync-data plus de (eventueel ververste)
+// tokens, die de client apart opslaat en bij de volgende sync meestuurt.
+export interface GarminSyncResponse extends GarminSyncData {
+  tokens?: GarminTokens;
 }
 
 // Meerdaagse HRV-trend: het vroegste teken van onderherstel/naderende ziekte is

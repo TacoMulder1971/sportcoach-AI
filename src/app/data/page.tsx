@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
+import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getGarminTokens, saveGarminTokens, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
 import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity, describeGarminReadiness, assessFatigue } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
@@ -85,10 +85,21 @@ export default function DataPage() {
       const res = await fetch('/api/garmin/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ existingActivityIds, email: creds?.email, password: creds?.password }),
+        body: JSON.stringify({
+          existingActivityIds,
+          email: creds?.email,
+          password: creds?.password,
+          tokens: getGarminTokens(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync mislukt');
+      // Bewaar de (ververste) sessietokens; scheelt een wachtwoord-login — en
+      // dus een "nieuwe locatie"-mail van Garmin — bij de volgende sync.
+      if (data.tokens) {
+        saveGarminTokens(data.tokens);
+        delete data.tokens;
+      }
 
       // Merge: behoud hrZones van bestaande activiteiten
       if (existingData?.activities) {
