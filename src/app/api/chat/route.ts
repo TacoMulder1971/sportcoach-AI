@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { getAmsterdamNow, relativeDayLabel, buildTimingRule } from '@/lib/coach-dates';
+import { getAmsterdamNow, relativeDayLabel, buildTimingRule, daysBetween } from '@/lib/coach-dates';
 import { AthleteProfilePayload, buildAthleteProfileText, coachPersona } from '@/lib/athlete';
 import { buildHrvCoachText, buildReadinessFactorText } from '@/lib/training-load';
 
@@ -34,17 +34,25 @@ STIJL:
 - Geef maximaal 1-2 alinea's antwoord tenzij meer detail gevraagd wordt
 - Gebruik geen emojis in lopende tekst, alleen aan het begin van een bericht als het past`;
 
-function buildPlanText(plan: { weekNumber: number; label: string; days: { day: string; isRestDay: boolean; sessions: { sport: string; type: string; durationMinutes?: number; zone?: string; description: string }[] }[] }[]): string {
+// Het schema zoals de atleet het op de Schema- en Home-tab ziet — inclusief de
+// omschrijving per sessie. Die omschrijving bevat de opbouw ("60min Z2 + 15min
+// Z3 raceritme"); zonder die regel praat de coach over een ander schema dan de
+// app toont. `activeWeek` markeert de week die nu loopt.
+function buildPlanText(
+  plan: { weekNumber: number; label: string; days: { day: string; isRestDay: boolean; sessions: { sport: string; type: string; durationMinutes?: number; zone?: string; description: string }[] }[] }[],
+  activeWeek?: number,
+): string {
   let text = '\nTRAININGSSCHEMA (2-weekse cyclus):\n';
   for (const week of plan) {
-    text += `${week.label}:\n`;
+    text += `${week.label}${activeWeek === week.weekNumber ? '  ← DIT IS DE HUIDIGE WEEK' : ''}:\n`;
     for (const day of week.days) {
       if (day.isRestDay) {
         text += `- ${day.day}: Rust\n`;
       } else {
-        const parts = day.sessions.map((s) =>
-          `${s.sport} ${s.type} (${s.durationMinutes}min ${s.zone || ''})`
-        );
+        const parts = day.sessions.map((s) => {
+          const head = `${s.sport} ${s.type} (${s.durationMinutes}min ${s.zone || ''})`;
+          return s.description ? `${head}: ${s.description}` : head;
+        });
         text += `- ${day.day}: ${parts.join(' + ')}\n`;
       }
     }
@@ -52,6 +60,10 @@ function buildPlanText(plan: { weekNumber: number; label: string; days: { day: s
   }
   return text;
 }
+
+const DAY_INDEX_BY_NAME: Record<string, number> = {
+  maandag: 0, dinsdag: 1, woensdag: 2, donderdag: 3, vrijdag: 4, zaterdag: 5, zondag: 6,
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,16 +76,51 @@ export async function POST(request: NextRequest) {
     }
 
     const {
-      messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate,
+      messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate, activeFrom,
       weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
       raceContext, goalsHistory, equipmentAttention, hrZoneText, athleteProfile, planStrategy,
       garminHealthArchive,
     } = await request.json();
 
+    // Add current date/time context — betrouwbaar via Intl in de Amsterdam-tijdzone
+    // (toLocaleDateString is onbetrouwbaar in Node.js/Vercel, zie CLAUDE.md).
+    const now = new Date();
+    const ams = getAmsterdamNow(now);
+    const todayIso = ams.isoDate;
+
+    // Week in de cyclus — exact dezelfde rekenwijze als getCurrentWeekNumber in
+    // src/lib/schedule.ts: hele dagen tussen twee Amsterdamse kalenderdagen, en
+    // week 1 zolang de cyclus nog niet begonnen is. Zonder die twee regels wees
+    // deze route een andere week aan dan de Schema- en Home-tab.
+    const startStr = (cycleStartDate || '2026-02-23').split('T')[0];
+    const diffDays = daysBetween(startStr, todayIso);
+    const weekNum: 1 | 2 = diffDays < 0 ? 1 : Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2;
+
+    // Schema nog niet actief (net aangemaakt, start pas morgen/maandag)?
+    const activeFromStr = typeof activeFrom === 'string' && activeFrom ? activeFrom.split('T')[0] : startStr;
+    const planNotStarted = daysBetween(activeFromStr, todayIso) < 0;
+
     // Bouw schema tekst dynamisch
     let planText = '';
     if (currentPlan && Array.isArray(currentPlan) && currentPlan.length === 2) {
-      planText = buildPlanText(currentPlan);
+      planText = buildPlanText(currentPlan, planNotStarted ? undefined : weekNum);
+      const todayIndex = DAY_INDEX_BY_NAME[ams.dayName];
+      if (planNotStarted) {
+        planText += `\nLET OP: dit schema gaat pas in op ${activeFromStr}. Er staat vandaag dus nog GEEN training uit dit schema gepland — behandel de dagen hierboven als toekomst.\n`;
+      } else if (todayIndex !== undefined) {
+        const week = currentPlan.find((w: { weekNumber: number }) => w.weekNumber === weekNum);
+        const today = week?.days?.find((d: { dayIndex: number }) => d.dayIndex === todayIndex);
+        if (today) {
+          const planned = today.isRestDay
+            ? 'Rust'
+            : today.sessions
+                .map((s: { sport: string; type: string; durationMinutes?: number; zone?: string; description: string }) =>
+                  `${s.sport} ${s.type} (${s.durationMinutes}min ${s.zone || ''})${s.description ? `: ${s.description}` : ''}`)
+                .join(' + ');
+          planText += `\nGEPLAND VOOR VANDAAG (${ams.dayName}, week ${weekNum}): ${planned}\n`
+            + `Dit is de enige geldige lezing van "de training van vandaag" — lees geen andere dag of week uit het schema hierboven.\n`;
+        }
+      }
     } else {
       // Fallback naar hardcoded tekst
       planText = `\nTRAININGSSCHEMA (2-weekse cyclus):
@@ -102,21 +149,9 @@ Week 2:
       planText += `\nCOACHSTRATEGIE ACHTER DIT SCHEMA (de overwegingen waarmee dit schema is gemaakt — houd je advies hiermee consistent):\n${planStrategy}\n`;
     }
 
-    // Add current date/time context — betrouwbaar via Intl in de Amsterdam-tijdzone
-    // (toLocaleDateString is onbetrouwbaar in Node.js/Vercel, zie CLAUDE.md).
-    const now = new Date();
-    const ams = getAmsterdamNow(now);
-    const todayIso = ams.isoDate;
-
-    // Determine current week in cycle
-    const startStr = cycleStartDate || '2026-02-23';
-    const startDate = new Date(startStr);
-    const diffDays = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const weekNum = Math.floor(diffDays / 7) % 2 === 0 ? 1 : 2;
-
     const daysUntilRace = typeof daysUntilRaceBody === 'number' ? daysUntilRaceBody : 0;
 
-    let contextMessage = `\n\nHUIDIGE CONTEXT:\n- ${buildTimingRule(ams)}\n- Datum: ${ams.dayName} ${ams.dateStr}\n- Tijd: ${ams.timeStr} (${ams.dagdeel})\n- Week in cyclus: Week ${weekNum}\n- Dagen tot wedstrijd: ${daysUntilRace}\n`;
+    let contextMessage = `\n\nHUIDIGE CONTEXT:\n- ${buildTimingRule(ams)}\n- Datum: ${ams.dayName} ${ams.dateStr}\n- Tijd: ${ams.timeStr} (${ams.dagdeel})\n- Week in cyclus: ${planNotStarted ? `schema start pas op ${activeFromStr}` : `Week ${weekNum}`}\n- Dagen tot wedstrijd: ${daysUntilRace}\n`;
 
     if (raceContext) {
       contextMessage += `- Actief doel: ${raceContext}\n`;

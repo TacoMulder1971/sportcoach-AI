@@ -201,7 +201,7 @@ export default function CoachContent() {
         ? calculateTrainingLoad(statsActivities, garminData.health)
         : null;
 
-      const { plan: currentPlan, cycleStartDate } = getActivePlan();
+      const { plan: currentPlan, cycleStartDate, activeFrom } = getActivePlan();
 
       const restingHR = garminData?.health?.restingHR || 55;
       const weeklyTRIMP = garminData
@@ -248,6 +248,7 @@ export default function CoachContent() {
           trainingLoad,
           currentPlan,
           cycleStartDate,
+          activeFrom,
           weeklyTRIMP,
           currentPhase: { id: currentPhase.id, label: currentPhase.label },
           daysUntilRace,

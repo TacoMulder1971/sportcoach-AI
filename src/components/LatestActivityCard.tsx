@@ -4,7 +4,7 @@ import { useState } from 'react';
 import SportIcon from '@/components/SportIcon';
 import { GarminActivity, TrainingSession, HEART_RATE_ZONES } from '@/lib/types';
 import { getRunZones, getCyclingZones } from '@/lib/storage';
-import { computeActivityMatchScore, getHRZone, MultisportMatchScore } from '@/lib/training-load';
+import { computeActivityMatchScore, describePlannedSegments, getHRZone, MultisportMatchScore } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
 
 const DAY_NAMES = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
@@ -36,14 +36,26 @@ function scoreColor(score: number): string {
   return '#ef4444';
 }
 
+/** "75 min Z3 fietsen" — of "60min Z2 + 15min Z3 fietsen" als de omschrijving de opbouw geeft. */
+function describeSession(s: TrainingSession): string {
+  const sport = (SPORT_LABEL[s.sport] || s.sport).toLowerCase();
+  const profile = describePlannedSegments(s);
+  if (profile) return `${profile} ${sport}`;
+  const duur = s.durationMinutes ? `${s.durationMinutes} min` : '';
+  return `${duur}${s.zone ? ` ${s.zone}` : ''} ${sport}`.trim();
+}
+
 export default function LatestActivityCard({
   activity,
   plannedSession,
   multisportMatch = null,
+  plannedDay = [],
 }: {
   activity: GarminActivity;
   plannedSession: TrainingSession | null;
   multisportMatch?: MultisportMatchScore | null;
+  /** Alle geplande sessies van die dag — de "Gepland"-regel toont de hele dag. */
+  plannedDay?: TrainingSession[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const zones = zonesForSport(activity.sport);
@@ -124,12 +136,20 @@ export default function LatestActivityCard({
       <div className="mt-3 pt-3 border-t border-white/5">
         {multisportMatch ? (
           <>
-            <p className="text-sm text-gray-300">
-              Gepland: {multisportMatch.parts
-                .filter((p) => p.session)
-                .map((p) => `${p.session!.durationMinutes ? `${p.session!.durationMinutes} min` : ''}${p.session!.zone ? ` ${p.session!.zone}` : ''} ${(SPORT_LABEL[p.sport] || p.sport).toLowerCase()}`.trim())
-                .join(' + ')}
-            </p>
+            <p className="text-xs text-gray-500 mb-1">Gepland</p>
+            <ul className="space-y-0.5">
+              {(plannedDay.length > 0
+                ? plannedDay
+                : multisportMatch.parts.filter((p) => p.session).map((p) => p.session!)
+              ).map((s, i) => (
+                <li key={i} className="text-sm text-gray-300">{describeSession(s)}</li>
+              ))}
+            </ul>
+            {plannedDay.length > multisportMatch.parts.filter((p) => p.session).length && (
+              <p className="text-xs text-gray-500 mt-1">
+                Deze activiteit dekt {multisportMatch.parts.filter((p) => p.session).length} van de {plannedDay.length} onderdelen.
+              </p>
+            )}
             <p className="text-xs text-gray-400 mt-1">
               {multisportMatch.parts
                 .filter((p) => p.match)
@@ -143,9 +163,8 @@ export default function LatestActivityCard({
         ) : plannedSession ? (
           <>
             <p className="text-sm text-gray-300">
-              Gepland: {plannedSession.durationMinutes ? `${plannedSession.durationMinutes} min` : ''}
-              {plannedSession.zone ? ` in ${plannedSession.zone}` : ''} ({SPORT_LABEL[plannedSession.sport] || plannedSession.sport}
-              {plannedSession.type ? `, ${plannedSession.type}` : ''})
+              Gepland: {describeSession(plannedSession)}
+              {plannedSession.type ? ` (${plannedSession.type})` : ''}
             </p>
             {matchScore && (
               <p className="text-sm font-medium mt-1" style={{ color: scoreColor(matchScore.score) }}>
