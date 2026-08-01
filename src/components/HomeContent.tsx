@@ -8,7 +8,7 @@ import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import LatestActivityCard from '@/components/LatestActivityCard';
 import AdherenceCard from '@/components/AdherenceCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset, amsterdamDateForOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getProfile, getRunZones, getCyclingZones, recordPlannedDays, getHealthArchive } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getGarminTokens, saveGarminTokens, getProfile, getRunZones, getCyclingZones, recordPlannedDays, getHealthArchive } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue } from '@/lib/training-load';
@@ -180,10 +180,21 @@ export default function HomeContent() {
       const res = await fetch('/api/garmin/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ existingActivityIds, email: creds?.email, password: creds?.password }),
+        body: JSON.stringify({
+          existingActivityIds,
+          email: creds?.email,
+          password: creds?.password,
+          tokens: getGarminTokens(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync mislukt');
+      // Bewaar de (ververste) sessietokens; scheelt een wachtwoord-login — en
+      // dus een "nieuwe locatie"-mail van Garmin — bij de volgende sync.
+      if (data.tokens) {
+        saveGarminTokens(data.tokens);
+        delete data.tokens;
+      }
 
       // Merge: behoud hrZones van bestaande activiteiten
       if (existingData?.activities) {

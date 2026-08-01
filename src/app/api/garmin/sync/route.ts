@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GarminConnect } from 'garmin-connect';
-import { GarminActivity, GarminHealthStats, GarminSyncData, Sport, SwimVariant } from '@/lib/types';
+import { GarminActivity, GarminHealthStats, GarminSyncResponse, GarminTokens, Sport, SwimVariant } from '@/lib/types';
 
 function mapGarminSport(typeKey: string): Sport | 'overig' {
   const map: Record<string, Sport> = {
@@ -46,32 +46,127 @@ function mapSwimVariant(typeKey: string): SwimVariant | undefined {
   return undefined;
 }
 
+// De sync doet veel calls (150 activiteiten + details + readiness-endpoints) en
+// kan er in het slechtste geval een wachtwoord-login bij krijgen als de bewaarde
+// sessie geweigerd wordt; de Vercel-standaard van 10s is daar te krap voor.
+export const maxDuration = 60;
+
+// Hoe lang we de bewaarde sessie de kans geven zichzelf te bewijzen voordat we
+// gewoon opnieuw inloggen.
+const TOKEN_PROBE_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label}: time-out na ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
+/**
+ * Toetst een bewaard oauth2-token met een directe fetch, bewust BUITEN de
+ * axios-client van garmin-connect om. Reden: die client vangt een 401 op in een
+ * interceptor die het token wil vernieuwen, en zet daarbij een module-brede
+ * `isRefreshing`-vlag die nooit meer op false gaat als het vernieuwen gooit —
+ * elk volgend 401-antwoord in hetzelfde (warme) proces blijft dan eeuwig hangen.
+ * Door de check zelf te doen ziet die interceptor nooit een 401.
+ *
+ * Geeft de displayName terug (die de readiness-endpoints verderop nodig hebben),
+ * of null als het token niet meer geldig is.
+ */
+async function probeAccessToken(accessToken: string): Promise<{ displayName?: string } | null> {
+  const res = await fetch('https://connectapi.garmin.com/userprofile-service/socialProfile', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'User-Agent': 'com.garmin.android.apps.connectmobile',
+      Accept: 'application/json',
+    },
+  });
+  if (!res.ok) return null;
+  return (await res.json().catch(() => ({}))) as { displayName?: string };
+}
+
 export async function POST(request: Request) {
   try {
-    // Credentials komen uit het request body (per-gebruiker via localStorage).
-    // Env vars blijven als fallback zodat bestaande server-configuratie intact blijft.
+    // Credentials én sessietokens komen uit het request body (per-gebruiker via
+    // localStorage). Bewust GEEN env-var-fallback meer: de app is multi-user, en
+    // een server-breed account zou betekenen dat een gebruiker zonder eigen
+    // koppeling stilzwijgend de data van de eigenaar te zien krijgt.
     let existingActivityIds: number[] = [];
     let email: string | undefined;
     let password: string | undefined;
+    let tokens: GarminTokens | undefined;
     try {
       const body = await request.json();
       existingActivityIds = body.existingActivityIds || [];
-      email = body.email || process.env.GARMIN_EMAIL;
-      password = body.password || process.env.GARMIN_PASSWORD;
+      email = body.email;
+      password = body.password;
+      tokens = body.tokens || undefined;
     } catch {
-      email = process.env.GARMIN_EMAIL;
-      password = process.env.GARMIN_PASSWORD;
+      // geen/ongeldige body — hieronder afgevangen
     }
 
-    if (!email || !password) {
+    if (!tokens && (!email || !password)) {
       return NextResponse.json(
-        { error: 'Garmin credentials niet geconfigureerd' },
-        { status: 500 }
+        { error: 'Garmin niet gekoppeld — vul je Garmin-gegevens in op de Data-tab.' },
+        { status: 400 }
       );
     }
 
-    const GC = new GarminConnect({ username: email, password });
-    await GC.login();
+    const GC = new GarminConnect({ username: email || '', password: password || '' });
+
+    // Sessie herstellen uit de bewaarde tokens. Dat voorkomt een wachtwoord-login
+    // per sync — die zag Garmin telkens als "aanmelding vanaf nieuwe locatie"
+    // (elke Vercel-functie draait op een ander IP) en mailde de gebruiker daarover.
+    // Een verlopen oauth2-token vernieuwt de client zelf via het oauth1-token;
+    // dat is een token-uitwisseling, geen aanmelding. Lukt het herstellen niet
+    // (token ingetrokken of verlopen), dan alsnog een gewone login.
+    let displayName: string | undefined;
+    let restored = false;
+    if (tokens?.oauth1?.oauth_token && tokens?.oauth2?.access_token) {
+      const expiresAt = Number(tokens.oauth2.expires_at) || 0;
+      const stillValid = expiresAt * 1000 > Date.now() + 60_000;
+      try {
+        GC.loadToken(tokens.oauth1 as never, tokens.oauth2 as never);
+        if (stillValid) {
+          // Token zou nog moeten werken: rechtstreeks toetsen (zie probeAccessToken).
+          const profile = await withTimeout(
+            probeAccessToken(tokens.oauth2.access_token),
+            TOKEN_PROBE_TIMEOUT_MS,
+            'sessie-check'
+          );
+          if (!profile) throw new Error('token geweigerd door Garmin');
+          displayName = profile.displayName;
+        } else {
+          // Verlopen oauth2: de client wisselt 'm via het oauth1-token in voor een
+          // nieuw token (geen aanmelding, dus geen mail). Die weg loopt via
+          // checkTokenVaild() en gooit netjes als het oauth1-token dood is.
+          const profile = await withTimeout(
+            (GC as unknown as { getUserProfile: () => Promise<{ displayName?: string }> }).getUserProfile(),
+            TOKEN_PROBE_TIMEOUT_MS,
+            'token vernieuwen'
+          );
+          displayName = profile?.displayName;
+        }
+        restored = true;
+        console.log(`[garmin-auth] sessie hersteld uit bewaarde tokens (${stillValid ? 'nog geldig' : 'vernieuwd via oauth1'}) — geen login nodig`);
+      } catch (e) {
+        console.warn('[garmin-auth] tokens onbruikbaar, val terug op wachtwoord-login:',
+          e instanceof Error ? e.message : e);
+      }
+    }
+
+    if (!restored) {
+      if (!email || !password) {
+        return NextResponse.json(
+          { error: 'Garmin-sessie verlopen — koppel je Garmin-account opnieuw op de Data-tab.' },
+          { status: 401 }
+        );
+      }
+      await GC.login();
+      console.log('[garmin-auth] ingelogd met wachtwoord (nieuwe sessie)');
+    }
 
     // Fetch activities. We halen er bewust veel op (niet 30) zodat het
     // activiteiten-archief in één sync meerdere maanden historie terugvult —
@@ -308,13 +403,15 @@ export async function POST(request: Request) {
       }
     };
 
-    // displayName nodig voor de daily-summary URL
-    let displayName: string | undefined;
-    try {
-      const profile = await (GC as unknown as { getUserProfile: () => Promise<{ displayName?: string }> }).getUserProfile();
-      displayName = profile?.displayName;
-    } catch (e) {
-      console.error('[readiness] getUserProfile() FAILED:', e instanceof Error ? e.message : e);
+    // displayName nodig voor de daily-summary URL. Bij een herstelde sessie is
+    // die hierboven al opgehaald als sessie-toets — dan geen tweede call.
+    if (!displayName) {
+      try {
+        const profile = await (GC as unknown as { getUserProfile: () => Promise<{ displayName?: string }> }).getUserProfile();
+        displayName = profile?.displayName;
+      } catch (e) {
+        console.error('[readiness] getUserProfile() FAILED:', e instanceof Error ? e.message : e);
+      }
     }
 
     type HrvResp = { hrvSummary?: { lastNightAvg?: number; weeklyAvg?: number; status?: string; baseline?: { lowUpper?: number; balancedLow?: number; balancedUpper?: number; markerValue?: number } } };
@@ -462,10 +559,21 @@ export async function POST(request: Request) {
         + 'Check de bovenstaande [readiness]-regels: als álle endpoints FAILED tonen is het sessie/auth; tonen ze lege objecten, dan heeft Garmin de nacht nog niet gepost.');
     }
 
-    const syncData: GarminSyncData = {
+    // Tokens teruggeven zodat de client de (mogelijk ververste) sessie bewaart
+    // voor de volgende sync. Mislukt het exporteren, dan gaat de sync gewoon
+    // door — de client houdt dan z'n oude tokens.
+    let freshTokens: GarminTokens | undefined;
+    try {
+      freshTokens = GC.exportToken() as unknown as GarminTokens;
+    } catch (e) {
+      console.warn('[garmin-auth] exportToken() mislukt:', e instanceof Error ? e.message : e);
+    }
+
+    const syncData: GarminSyncResponse = {
       activities,
       health,
       syncedAt: new Date().toISOString(),
+      tokens: freshTokens,
     };
 
     return NextResponse.json(syncData);
