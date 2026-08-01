@@ -128,6 +128,9 @@ export default function HomeContent() {
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
           equipmentAttention,
+          // Sport-specifieke zones: anders rekent de coach fietssessies om met
+          // de loop-zones en noemt hij andere bpm-ranges dan het schema toont.
+          sportZones: { run: getRunZones(), cycling: getCyclingZones() },
           athleteProfile: athleteProfilePayload(getProfile()),
           garminHealthArchive: getHealthArchive(),
         }),
@@ -247,11 +250,14 @@ export default function HomeContent() {
           activity,
           plannedSession: null,
           multisportMatch: sessions.length > 0 ? computeMultisportMatchScore(activity, sessions, zonesForSport) : null,
+          // Het volledige dagplan, zodat "Gepland" niet alleen de onderdelen
+          // toont die aan deze activiteit gekoppeld konden worden.
+          plannedDay: sessions,
         };
       }
       const session = sessions.find((s) => s.sport === activity.sport && !usedSessions.has(s)) || null;
       if (session) usedSessions.add(session);
-      return { activity, plannedSession: session, multisportMatch: null };
+      return { activity, plannedSession: session, multisportMatch: null, plannedDay: sessions };
     });
   }, [statsActivities]);
 
@@ -691,6 +697,7 @@ export default function HomeContent() {
                   activity={entry.activity}
                   plannedSession={entry.plannedSession}
                   multisportMatch={entry.multisportMatch}
+                  plannedDay={entry.plannedDay}
                 />
               ))}
             </div>

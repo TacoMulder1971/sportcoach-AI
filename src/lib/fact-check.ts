@@ -2,19 +2,37 @@
 // Doel: voorkom dat de AI HR-waarden, zones of sporten verzint bij multisport-
 // activiteiten of activiteiten met splits.
 
-import { HEART_RATE_ZONES, GarminActivity, TrainingSession } from './types';
+import { HEART_RATE_ZONES, GarminActivity, HeartRateZoneInfo, TrainingSession } from './types';
 
-export function zoneForHR(hr: number): string {
+/**
+ * Sport-specifieke hartslagzones van de atleet (zoals de app ze toont).
+ * Zonder dit valt alles terug op de hardcoded loop-zones — dan noemt de coach
+ * voor een fietssessie de loop-bpm-range en wijkt hij af van het schema.
+ */
+export interface SportZones {
+  run: HeartRateZoneInfo[];
+  cycling: HeartRateZoneInfo[];
+}
+
+const CYCLING_SPORTS = ['fietsen', 'mountainbike'];
+
+/** Zones die bij een sport horen; valt terug op de loop-zones. */
+export function zonesForSportName(sport: string | undefined, zones?: SportZones): HeartRateZoneInfo[] {
+  if (!zones) return HEART_RATE_ZONES;
+  return CYCLING_SPORTS.includes((sport || '').toLowerCase()) ? zones.cycling : zones.run;
+}
+
+export function zoneForHR(hr: number, zones: HeartRateZoneInfo[] = HEART_RATE_ZONES): string {
   if (!hr || hr <= 0) return '–';
-  for (const z of [...HEART_RATE_ZONES].reverse()) {
+  for (const z of [...zones].reverse()) {
     if (hr >= z.min) return `${z.zone} (${z.min}-${z.max} bpm)`;
   }
   return 'Onder Z1';
 }
 
-export function zoneNameForHR(hr: number): string {
+export function zoneNameForHR(hr: number, zones: HeartRateZoneInfo[] = HEART_RATE_ZONES): string {
   if (!hr || hr <= 0) return '–';
-  for (const z of [...HEART_RATE_ZONES].reverse()) {
+  for (const z of [...zones].reverse()) {
     if (hr >= z.min) return z.zone;
   }
   return 'Onder Z1';
@@ -35,11 +53,11 @@ export function fmtDuration(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function plannedZoneRange(zoneStr?: string): string {
+export function plannedZoneRange(zoneStr?: string, zones: HeartRateZoneInfo[] = HEART_RATE_ZONES): string {
   if (!zoneStr) return 'geen zone gespecificeerd';
   const m = zoneStr.match(/Z[1-5]/);
   if (!m) return zoneStr;
-  const z = HEART_RATE_ZONES.find(zz => zz.zone === m[0]);
+  const z = zones.find(zz => zz.zone === m[0]);
   return z ? `${z.zone} (${z.min}-${z.max} bpm)` : zoneStr;
 }
 
@@ -52,11 +70,13 @@ export function plannedZoneRange(zoneStr?: string): string {
  * @param contextLabel  Beschrijving van het tijdvenster ("vandaag", "gisteren", etc.)
  * @param sessions       Geplande trainingssessies
  * @param activities     Werkelijk uitgevoerde Garmin-activiteiten in dat venster
+ * @param zones          Sport-specifieke zones van de atleet (zonder dit: loop-zones voor alles)
  */
 export function buildVerifiedFactsBlock(
   contextLabel: string,
   sessions: TrainingSession[],
   activities: GarminActivity[],
+  zones?: SportZones,
 ): string {
   if (activities.length === 0 && sessions.length === 0) return '';
 
@@ -66,7 +86,12 @@ export function buildVerifiedFactsBlock(
   if (sessions.length > 0) {
     out += `\nGEPLAND ${contextLabel}:\n`;
     for (const s of sessions) {
-      out += `- ${s.sport} ${s.type}, ${s.durationMinutes ?? '?'}min, doel ${plannedZoneRange(s.zone)}\n`;
+      // De omschrijving hoort erbij: die bevat de opbouw van de sessie
+      // ("60min Z2 + 15min Z3 raceritme"). Zonder die regel oordeelt de coach
+      // op de hoofdzone alleen en wijkt hij af van wat het schema toont.
+      out += `- ${s.sport} ${s.type}, ${s.durationMinutes ?? '?'}min, doel ${plannedZoneRange(s.zone, zonesForSportName(s.sport, zones))}`;
+      if (s.description) out += ` — "${s.description}"`;
+      out += '\n';
     }
   }
 
@@ -74,9 +99,10 @@ export function buildVerifiedFactsBlock(
   if (activities.length > 0) {
     out += `\nWERKELIJK UITGEVOERD ${contextLabel}:\n`;
     for (const a of activities) {
+      const actZones = zonesForSportName(a.sport, zones);
       out += `Activiteit "${a.activityName}" (${a.sport}, ${a.durationMinutes}min, ${a.distanceKm}km):\n`;
       if (a.avgHR > 0) {
-        out += `- Totaal: gem HR ${a.avgHR} → ${zoneForHR(a.avgHR)}, max HR ${a.maxHR}`;
+        out += `- Totaal: gem HR ${a.avgHR} → ${zoneForHR(a.avgHR, actZones)}, max HR ${a.maxHR}`;
       } else {
         out += `- Totaal: gem HR niet beschikbaar, max HR ${a.maxHR}`;
       }
@@ -93,12 +119,15 @@ export function buildVerifiedFactsBlock(
       }
 
       if (a.splits && a.splits.length > 1) {
-        out += `- Splits (sport gecategoriseerd op basis van snelheid):\n`;
+        // Garmin levert bij een multisport-opname per split het echte sport-label;
+        // alleen als dat ontbreekt leiden we de sport uit de snelheid af.
+        const hasSportLabels = a.splits.some((s) => !!s.sport);
+        out += `- Splits (sport ${hasSportLabels ? 'volgens Garmin' : 'gecategoriseerd op basis van snelheid'}):\n`;
         a.splits.forEach((s, i) => {
-          const sport = detectSplitSport(s.distance, s.durationSeconds);
+          const sport = s.sport || detectSplitSport(s.distance, s.durationSeconds);
           const speedKmh = s.durationSeconds > 0 ? (s.distance / s.durationSeconds) * 3600 : 0;
           const distStr = s.distance >= 1 ? `${s.distance}km` : `${Math.round(s.distance * 1000)}m`;
-          const zoneStr = s.avgHR > 0 ? ` → ${zoneForHR(s.avgHR)}` : '';
+          const zoneStr = s.avgHR > 0 ? ` → ${zoneForHR(s.avgHR, zonesForSportName(sport, zones))}` : '';
           const powerStr = (s.avgPower || 0) > 0 ? `, ${s.avgPower}W` : '';
           out += `  ${i + 1}. ${sport} — ${distStr} in ${fmtDuration(s.durationSeconds)} (${speedKmh.toFixed(1)} km/h), HR ${s.avgHR || '–'}${zoneStr}${powerStr}\n`;
         });
@@ -116,7 +145,8 @@ export function buildVerifiedFactsBlock(
       for (const a of activities) {
         if (a.splits && a.splits.length > 1) {
           for (const sp of a.splits) {
-            if (detectSplitSport(sp.distance, sp.durationSeconds) === targetSport && sp.avgHR > 0) {
+            const splitSport = sp.sport || detectSplitSport(sp.distance, sp.durationSeconds);
+            if (splitSport === targetSport && sp.avgHR > 0) {
               actualHR = sp.avgHR;
               matchSource = `split (${sp.distance >= 1 ? `${sp.distance}km` : `${Math.round(sp.distance * 1000)}m`})`;
               break;
@@ -130,16 +160,17 @@ export function buildVerifiedFactsBlock(
           break;
         }
       }
+      const sessionZones = zonesForSportName(s.sport, zones);
       const plannedLabel = s.zone || 'geen zone';
       if (actualHR > 0) {
-        const actualZoneName = zoneNameForHR(actualHR);
+        const actualZoneName = zoneNameForHR(actualHR, sessionZones);
         const plannedMatch = s.zone ? s.zone.match(/Z[1-5]/) : null;
         const verdict = plannedMatch && plannedMatch[0] === actualZoneName
           ? '✓ MATCH'
           : plannedMatch
             ? `✗ AFWIJKING (gepland ${plannedMatch[0]}, werkelijk ${actualZoneName})`
             : '–';
-        out += `- ${s.sport} ${s.type} (gepland ${plannedLabel}) → werkelijk HR ${actualHR} (${zoneForHR(actualHR)}) [${matchSource}] → ${verdict}\n`;
+        out += `- ${s.sport} ${s.type} (gepland ${plannedLabel}) → werkelijk HR ${actualHR} (${zoneForHR(actualHR, sessionZones)}) [${matchSource}] → ${verdict}\n`;
       } else {
         out += `- ${s.sport} ${s.type} (gepland ${plannedLabel}) → geen passende HR-data gevonden\n`;
       }

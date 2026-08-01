@@ -59,8 +59,10 @@ export default function CheckInContent({ onComplete }: { onComplete: () => void 
 
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
-    const { plan, cycleStartDate } = getActivePlan();
-    setTodayTraining(getTodayTraining(plan, cycleStartDate));
+    // activeFrom meegeven, net als de Home-tab: een net aangemaakt schema dat
+    // pas morgen/maandag ingaat mag vandaag geen training tonen.
+    const { plan, cycleStartDate, activeFrom } = getActivePlan();
+    setTodayTraining(getTodayTraining(plan, cycleStartDate, activeFrom));
 
     // Bestaande check-out van vandaag (voor resume-gesprek)
     const todayCheckIns = getCheckInsForDate(today);

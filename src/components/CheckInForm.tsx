@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport, SwimVariant, SWIM_VARIANT_LABEL } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, buildPlanStrategyText, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant, getProfile, getHealthArchive } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, buildPlanStrategyText, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant, getProfile, getHealthArchive, buildHRZoneText, getRunZones, getCyclingZones, buildRaceContextText } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { calculateTrainingLoad } from '@/lib/training-load';
-import { buildVerifiedFactsBlock } from '@/lib/fact-check';
+import { buildVerifiedFactsBlock, SportZones } from '@/lib/fact-check';
 import { buildEquipmentAttentionLine, filterStatsActivities, assignableEquipment, inSameSportGroup } from '@/lib/equipment';
 
 const SWIM_VARIANTS: SwimVariant[] = ['zwembad_binnen', 'zwembad_buiten', 'openwater'];
@@ -164,7 +164,8 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       const trainingLoad = garminData
         ? calculateTrainingLoad(statsActivities, garminData.health)
         : null;
-      const { plan: currentPlan, cycleStartDate } = getActivePlan();
+      const { plan: currentPlan, cycleStartDate, activeFrom } = getActivePlan();
+      const sportZones: SportZones = { run: getRunZones(), cycling: getCyclingZones() };
 
       let feedbackPrompt = `De atleet heeft zojuist een check-out gedaan na de training van ${dayLabel}.\n`;
       feedbackPrompt += `Gevoel: ${checkIn.feeling}/5`;
@@ -172,7 +173,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       feedbackPrompt += '\n';
 
       if (todayActivities.length > 0) {
-        feedbackPrompt += buildVerifiedFactsBlock('vandaag', sessions, todayActivities);
+        feedbackPrompt += buildVerifiedFactsBlock('vandaag', sessions, todayActivities, sportZones);
         if (sessions.length > 0) {
           feedbackPrompt += `\nOPDRACHT: Geef in 2-3 zinnen feedback op basis van bovenstaande feiten. Gebruik de getallen exact zoals ze hier staan — verzin geen andere HR-waarden, zones of snelheden. Begin met of de doelen gehaald zijn (zie VERGELIJKING), benoem 1 hoogtepunt en 1 concreet verbeterpunt voor de volgende keer.`;
         } else {
@@ -182,7 +183,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       } else {
         feedbackPrompt += '\nGEEN Garmin-activiteit beschikbaar voor vandaag.\n\nGeplande sessies:\n';
         for (const s of sessions) {
-          feedbackPrompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min${s.zone ? ` in ${s.zone}` : ''}\n`;
+          feedbackPrompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min${s.zone ? ` in ${s.zone}` : ''}${s.description ? ` — "${s.description}"` : ''}\n`;
         }
         feedbackPrompt += '\nOPDRACHT: Geef korte feedback (2-3 zinnen) op basis van het gevoel en de geplande training. Vraag of de training is uitgevoerd en op welke intensiteit, omdat er geen Garmin-data is.';
       }
@@ -197,7 +198,12 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           trainingLoad,
           currentPlan,
           cycleStartDate,
+          activeFrom,
           equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
+          // Zonder deze twee viel de check-out-coach terug op de hardcoded
+          // standaardzones/geen doelcontext, terwijl de Coach-tab ze wél meestuurt.
+          hrZoneText: buildHRZoneText(),
+          raceContext: buildRaceContextText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           planStrategy: buildPlanStrategyText(),
           garminHealthArchive: getHealthArchive(),
@@ -245,7 +251,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
       const trainingLoad = garminData
         ? calculateTrainingLoad(statsActivities, garminData.health)
         : null;
-      const { plan: currentPlan, cycleStartDate } = getActivePlan();
+      const { plan: currentPlan, cycleStartDate, activeFrom } = getActivePlan();
 
       const apiMessages = [
         { role: 'user' as const, content: `[Check-out context: ${dayLabel}, gevoel ${feeling}/5${note ? `, notitie: "${note}"` : ''}]` },
@@ -262,7 +268,10 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           trainingLoad,
           currentPlan,
           cycleStartDate,
+          activeFrom,
           equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
+          hrZoneText: buildHRZoneText(),
+          raceContext: buildRaceContextText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           planStrategy: buildPlanStrategyText(),
           garminHealthArchive: getHealthArchive(),

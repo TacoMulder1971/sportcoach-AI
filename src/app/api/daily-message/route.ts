@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention, athleteProfile, garminHealthArchive } = await request.json();
+    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention, athleteProfile, garminHealthArchive, sportZones } = await request.json();
     const profileText = buildAthleteProfileText((athleteProfile ?? null) as AthleteProfilePayload | null);
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
@@ -58,7 +58,9 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     if (!isRestDay) {
       prompt += `\nTRAINING VANDAAG (gepland):\n`;
       for (const s of todayTraining.sessions) {
-        prompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min in ${s.zone}\n`;
+        // Inclusief omschrijving: die bevat de opbouw van de sessie, precies
+        // zoals de Schema- en Home-tab die tonen.
+        prompt += `- ${s.sport} ${s.type}: ${s.durationMinutes}min in ${s.zone}${s.description ? ` — "${s.description}"` : ''}\n`;
       }
       if (trainingAlGedaan) {
         prompt += `\nSTATUS: TRAINING VAN VANDAAG IS AL GEDAAN. Zie de volgende Garmin-activiteit(en) van vandaag:\n`;
@@ -178,12 +180,12 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
 
       // GEVERIFIEERDE FEITEN: vandaag (als training al gedaan)
       if (trainingAlGedaan && todayTraining?.sessions && todayCompletedActs.length > 0) {
-        prompt += buildVerifiedFactsBlock('vandaag', todayTraining.sessions, todayCompletedActs);
+        prompt += buildVerifiedFactsBlock('vandaag', todayTraining.sessions, todayCompletedActs, sportZones);
       }
 
       // GEVERIFIEERDE FEITEN: gisteren (om recap onderbouwd te maken)
       if (yesterdayTraining && !yesterdayTraining.isRestDay && yesterdayTraining.sessions && gisterenActiviteiten.length > 0) {
-        prompt += buildVerifiedFactsBlock('gisteren', yesterdayTraining.sessions, gisterenActiviteiten);
+        prompt += buildVerifiedFactsBlock('gisteren', yesterdayTraining.sessions, gisterenActiviteiten, sportZones);
       }
 
       const deviations: string[] = [];

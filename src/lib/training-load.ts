@@ -818,6 +818,78 @@ export function getDailyTRIMPHistory(
 
 const ZONE_ORDER: HeartRateZone[] = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
 
+// ─── Zone-opbouw uit de sessie-omschrijving ─────────────────────────
+// Een geplande sessie heeft één hoofdzone (`zone`) én een vrije omschrijving
+// die de échte opbouw bevat ("60min Z2 + 15min Z3 raceritme"). De Schema-tab
+// toont die omschrijving; alle andere schermen keken alleen naar de hoofdzone
+// en rekenden zo'n sessie af alsof hij volledig op Z3 gepland stond.
+
+/** Eén blok uit de omschrijving: N minuten op zone-waarde 1..5 (bereik = gemiddelde). */
+interface PlannedSegment {
+  minutes: number;
+  zoneValue: number;
+}
+
+// "60min Z2", "15 min in Z3", "4x 8min Z4", "20min Z3-Z4"
+const SEGMENT_RE = /(?:(\d{1,2})\s*[x×]\s*)?(\d{1,3})\s*(?:min|minuten|')\s*(?:in\s+|@\s*)?(Z[1-5])(?:\s*[-–/]\s*(Z[1-5]))?/gi;
+
+export function parsePlannedSegments(description?: string): PlannedSegment[] {
+  if (!description) return [];
+  const out: PlannedSegment[] = [];
+  for (const m of description.matchAll(SEGMENT_RE)) {
+    const reps = m[1] ? parseInt(m[1], 10) : 1;
+    const minutes = reps * parseInt(m[2], 10);
+    if (!minutes || minutes <= 0) continue;
+    const low = ZONE_ORDER.indexOf(m[3].toUpperCase() as HeartRateZone) + 1;
+    const high = m[4] ? ZONE_ORDER.indexOf(m[4].toUpperCase() as HeartRateZone) + 1 : low;
+    if (low < 1 || high < 1) continue;
+    out.push({ minutes, zoneValue: (low + high) / 2 });
+  }
+  return out;
+}
+
+/**
+ * Duur-gewogen doelzone (1..5) van een geplande sessie.
+ * De blokken uit de omschrijving wegen mee voor hun eigen minuten; de rest van
+ * de geplande duur valt terug op de hoofdzone. Staat er geen blok in de
+ * omschrijving, dan is de uitkomst exact de hoofdzone — dus identiek aan het
+ * oude gedrag.
+ */
+export function plannedZoneTarget(session: TrainingSession): number | null {
+  const baseValue = session.zone ? ZONE_ORDER.indexOf(session.zone) + 1 : 0;
+  const segments = parsePlannedSegments(session.description);
+  if (segments.length === 0) return baseValue > 0 ? baseValue : null;
+
+  const segMinutes = segments.reduce((s, x) => s + x.minutes, 0);
+  const total = session.durationMinutes && session.durationMinutes > segMinutes
+    ? session.durationMinutes
+    : segMinutes;
+  const restMinutes = total - segMinutes;
+
+  let weighted = segments.reduce((s, x) => s + x.zoneValue * x.minutes, 0);
+  // Resterende minuten zonder eigen zone-aanduiding (bv. warming-up/cooldown,
+  // of "Rustig, laatste 5min Z3-aanzet") volgen de hoofdzone van de sessie.
+  if (restMinutes > 0) {
+    if (baseValue === 0) return weighted / segMinutes;
+    weighted += baseValue * restMinutes;
+  }
+  return weighted / total;
+}
+
+/** Leesbare opbouw voor de UI: "60min Z2 + 15min Z3". Leeg als er geen blokken zijn. */
+export function describePlannedSegments(session: TrainingSession): string {
+  const segments = parsePlannedSegments(session.description);
+  if (segments.length === 0) return '';
+  return segments
+    .map((s) => {
+      const lowIdx = Math.floor(s.zoneValue) - 1;
+      const highIdx = Math.ceil(s.zoneValue) - 1;
+      const label = lowIdx === highIdx ? ZONE_ORDER[lowIdx] : `${ZONE_ORDER[lowIdx]}-${ZONE_ORDER[highIdx]}`;
+      return `${s.minutes}min ${label}`;
+    })
+    .join(' + ');
+}
+
 /**
  * Bepaal in welke hartslagzone een gemiddelde HR valt.
  */
@@ -837,6 +909,21 @@ export interface ActivityMatchScore {
   plannedZone?: HeartRateZone;
   actualZone: HeartRateZone | null;
   plannedMinutes?: number;
+  /** Duur-gewogen doelzone (1..5) incl. de opbouw uit de omschrijving. */
+  plannedZoneValue?: number;
+  /** Leesbare opbouw uit de omschrijving ("60min Z2 + 15min Z3"), '' als die er niet is. */
+  plannedProfile?: string;
+}
+
+/**
+ * Zone-afwijking → score. Knikpunten (0→100, 1→65, 2→25) zijn exact de oude
+ * waarden, met lineaire interpolatie ertussen. Een sessie zonder opbouw in de
+ * omschrijving levert dus precies dezelfde score als voorheen.
+ */
+function zoneScoreForDiff(diff: number): number {
+  if (diff <= 1) return Math.round(100 - 35 * diff);
+  if (diff < 2) return Math.round(65 - 40 * (diff - 1));
+  return 25;
 }
 
 /**
@@ -857,16 +944,22 @@ export function computeActivityMatchScore(
     durationScore = Math.max(0, Math.round(100 - Math.abs(1 - ratio) * 150));
   }
 
+  // Doelzone incl. de opbouw uit de omschrijving: een sessie van "60min Z2 +
+  // 15min Z3" wordt niet langer als 75 minuten Z3 afgerekend.
+  const plannedZoneValue = plannedZoneTarget(session) ?? undefined;
   let zoneScore = 70;
-  if (session.zone && actualZone) {
-    const diff = Math.abs(ZONE_ORDER.indexOf(session.zone) - ZONE_ORDER.indexOf(actualZone));
-    zoneScore = diff === 0 ? 100 : diff === 1 ? 65 : 25;
+  if (plannedZoneValue !== undefined && actualZone) {
+    zoneScore = zoneScoreForDiff(Math.abs(plannedZoneValue - (ZONE_ORDER.indexOf(actualZone) + 1)));
   }
 
   const score = Math.round(durationScore * 0.5 + zoneScore * 0.5);
   const label = score >= 85 ? 'Precies volgens plan' : score >= 60 ? 'Redelijk uitgevoerd' : 'Flink afgeweken';
 
-  return { score, label, durationScore, zoneScore, plannedZone: session.zone, actualZone, plannedMinutes: session.durationMinutes };
+  return {
+    score, label, durationScore, zoneScore,
+    plannedZone: session.zone, actualZone, plannedMinutes: session.durationMinutes,
+    plannedZoneValue, plannedProfile: describePlannedSegments(session),
+  };
 }
 
 // ─── Plan-adherentie: gepland vs. gedaan over de afgelopen week ──────
