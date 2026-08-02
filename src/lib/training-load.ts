@@ -615,9 +615,27 @@ export function buildRecoveryAdjustText(
 }
 
 export interface GarminReadinessInsight {
-  score: number;          // Garmin-score 0-100
-  levelLabel: string;     // Nederlands niveau-label
-  recoveryHours?: number; // uren tot volledig hersteld
+  score: number;           // Garmin-score 0-100
+  levelLabel: string;      // Nederlands niveau-label
+  recoveryHours?: number;  // uren tot volledig hersteld
+  recoveryLabel?: string;  // leesbare vorm, bv. "12u" of "35 min"
+}
+
+/**
+ * Garmins `recoveryTime` komt binnen in MINUTEN. Data die vóór die correctie is
+ * gesynct staat als "uren" in het archief terwijl het minuten waren (695 → "695u"),
+ * dus alles boven Garmins maximum van 96 uur (4 dagen) wordt alsnog als minuten gelezen.
+ */
+export function normalizeRecoveryHours(value: number | undefined): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return undefined;
+  const hours = value > 96 ? value / 60 : value;
+  return Math.round(hours * 10) / 10;
+}
+
+/** Hersteltijd leesbaar maken: onder het uur in minuten, daarboven in hele uren. */
+export function formatRecoveryTime(hours: number): string {
+  if (hours < 1) return `${Math.max(5, Math.round(hours * 60))} min`;
+  return `${Math.round(hours)}u`;
 }
 
 /**
@@ -632,10 +650,12 @@ export function describeGarminReadiness(health: GarminHealthStats | null): Garmi
     MODERATELY_LOW: 'Redelijk laag', LOW: 'Laag', VERY_LOW: 'Zeer laag', POOR: 'Slecht', READY: 'Klaar',
   };
   const levelLabel = map[raw] || (raw ? raw.charAt(0) + raw.slice(1).toLowerCase().replace(/_/g, ' ') : '');
+  const recoveryHours = normalizeRecoveryHours(health.recoveryHours);
   return {
     score: health.garminReadiness,
     levelLabel,
-    recoveryHours: typeof health.recoveryHours === 'number' && health.recoveryHours > 0 ? health.recoveryHours : undefined,
+    recoveryHours,
+    recoveryLabel: recoveryHours !== undefined ? formatRecoveryTime(recoveryHours) : undefined,
   };
 }
 

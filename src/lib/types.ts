@@ -294,7 +294,7 @@ export interface GarminHealthStats {
   // opgehaald in de sync; hier bewaard als kruischeck naast onze eigen gereedheid.
   garminReadiness?: number;      // Garmin-score 0-100
   garminReadinessLevel?: string; // Garmin-niveau (ruwe key, bv. "READY"/"MODERATE"/"LOW")
-  recoveryHours?: number;        // uren tot volledig hersteld (Garmin recoveryTime)
+  recoveryHours?: number;        // uren tot volledig hersteld (Garmin recoveryTime, komt in minuten binnen)
   garminReadinessFeedback?: string; // Garmins korte feedback-key (bv. "STRESS_HIGH")
   // Garmins uitsplitsing van wat de readiness stuurt (factor-bijdragen in %) —
   // handige context voor de coach om te zien wat het herstel beperkt.

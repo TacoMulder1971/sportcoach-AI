@@ -488,8 +488,11 @@ export async function POST(request: Request) {
     // Garmins eigen Training Readiness — kruischeck naast onze 9-punts-gereedheid.
     const garminReadiness = typeof readiness?.score === 'number' && readiness.score > 0 ? Math.round(readiness.score) : undefined;
     const garminReadinessLevel = readiness?.level || undefined;
-    // recoveryTime is in Garmins trainingreadiness-payload in UREN.
-    const recoveryHours = typeof readiness?.recoveryTime === 'number' && readiness.recoveryTime > 0 ? Math.round(readiness.recoveryTime) : undefined;
+    // recoveryTime staat in Garmins trainingreadiness-payload in MINUTEN (bv. 695 = ~11,6 uur).
+    // Opslaan als uren met één decimaal; de UI/prompts formatteren dat verder.
+    const recoveryHours = typeof readiness?.recoveryTime === 'number' && readiness.recoveryTime > 0
+      ? Math.round((readiness.recoveryTime / 60) * 10) / 10
+      : undefined;
     // #3 — Garmins factor-uitsplitsing (wat stuurt de readiness): alleen ingevulde velden bewaren.
     const factorPct = (v: number | undefined) => typeof v === 'number' && v > 0 ? Math.round(v) : undefined;
     const readinessFactors = {

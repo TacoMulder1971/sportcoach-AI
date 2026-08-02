@@ -3,7 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { getAmsterdamNow, relativeDayLabel } from '@/lib/coach-dates';
 import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
-import { buildHrvCoachText, buildReadinessFactorText } from '@/lib/training-load';
+import { buildHrvCoachText, buildReadinessFactorText, normalizeRecoveryHours, formatRecoveryTime } from '@/lib/training-load';
 
 export async function POST(request: NextRequest) {
   try {
@@ -122,7 +122,10 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
       if (garminHealth.sleepScore > 0) prompt += `- Slaap: ${garminHealth.sleepDurationHours}u (score ${garminHealth.sleepScore}/100)\n`;
       prompt += `- Rust HR: ${garminHealth.restingHR} bpm\n`;
       { const hrvText = buildHrvCoachText(garminHealth, Array.isArray(garminHealthArchive) ? garminHealthArchive : []); if (hrvText) prompt += `- ${hrvText}\n`; }
-      if (garminHealth.garminReadiness) prompt += `- Garmin Readiness: ${garminHealth.garminReadiness}/100${garminHealth.recoveryHours ? `, herstel nog ~${garminHealth.recoveryHours}u` : ''}\n`;
+      if (garminHealth.garminReadiness) {
+        const rec = normalizeRecoveryHours(garminHealth.recoveryHours);
+        prompt += `- Garmin Readiness: ${garminHealth.garminReadiness}/100${rec ? `, herstel nog ~${formatRecoveryTime(rec)}` : ''}\n`;
+      }
       { const rf = buildReadinessFactorText(garminHealth); if (rf) prompt += `- ${rf}\n`; }
       prompt += `- Body Battery: ${garminHealth.bodyBatteryChange > 0 ? '+' : ''}${garminHealth.bodyBatteryChange}\n`;
       if (garminHealth.avgRespirationRate) prompt += `- Ademhaling (slaap): ${garminHealth.avgRespirationRate}/min\n`;

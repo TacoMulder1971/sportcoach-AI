@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek, DayPreference } from '@/lib/types';
 import { AthleteProfilePayload, buildAthleteProfileText, buildSportConstraintText, buildStrengthStrategyText, buildStrengthFormatRule, coachPersona, isMultiSportAthlete } from '@/lib/athlete';
-import { buildHrvCoachText, buildReadinessFactorText } from '@/lib/training-load';
+import { buildHrvCoachText, buildReadinessFactorText, normalizeRecoveryHours, formatRecoveryTime } from '@/lib/training-load';
 
 export const maxDuration = 60; // Vercel timeout: twee-traps (Opus-redenering + snelle JSON) past hierin
 
@@ -277,7 +277,10 @@ ${JSON_FORMAT_SPEC}`;
       const h = garminData.health;
       performanceText += `\nHERSTEL: Slaap ${h.sleepDurationHours}u (score ${h.sleepScore}), rust HR ${h.restingHR}\n`;
       performanceText += `${buildHrvCoachText(h, Array.isArray(garminHealthArchive) ? garminHealthArchive : []) || `HRV ${h.avgOvernightHrv}ms (${h.hrvStatus})`}\n`;
-      if (h.garminReadiness) performanceText += `Garmin Readiness ${h.garminReadiness}/100${h.recoveryHours ? `, herstel ${h.recoveryHours}u` : ''}\n`;
+      if (h.garminReadiness) {
+        const rec = normalizeRecoveryHours(h.recoveryHours);
+        performanceText += `Garmin Readiness ${h.garminReadiness}/100${rec ? `, herstel ${formatRecoveryTime(rec)}` : ''}\n`;
+      }
       { const rf = buildReadinessFactorText(h); if (rf) performanceText += `${rf}\n`; }
     }
     if (trainingLoad) {
