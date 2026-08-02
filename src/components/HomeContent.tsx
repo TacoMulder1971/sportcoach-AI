@@ -11,7 +11,7 @@ import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurr
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getGarminTokens, saveGarminTokens, getProfile, getRunZones, getCyclingZones, recordPlannedDays, getHealthArchive } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
-import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue, describeGarminReadiness } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
 import { TrainingDay, TrainingSession, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 
@@ -307,6 +307,9 @@ export default function HomeContent() {
     return getTrainingReadiness(garmin.health, !!todayTraining && !todayTraining.isRestDay, statsActivities, getHealthArchive());
   }, [garmin, todayTraining, statsActivities]);
 
+  // Garmins hersteltijd (afgeteld tot nu) — als kruischeck onder de gereedheid-ring
+  const garminReadinessInsight = useMemo(() => describeGarminReadiness(garmin?.health ?? null), [garmin]);
+
   // Trainingsadvies: gereedheid vs. geplande training
   const trainingAdvice: TrainingAdvice | null = useMemo(() => {
     if (!readiness || !todayTraining || todayTraining.isRestDay) return null;
@@ -508,6 +511,18 @@ export default function HomeContent() {
                     </div>
                   ))}
                 </div>
+                {garminReadinessInsight && (garminReadinessInsight.recoveryLabel || garminReadinessInsight.recoveryHours === 0) && (
+                  <p className="mt-3 pt-2 border-t border-white/5 text-center text-[10px] leading-tight">
+                    {garminReadinessInsight.recoveryLabel ? (
+                      <>
+                        <span className="text-gray-500">Herstel nog </span>
+                        <span className="text-gray-300 font-semibold">~{garminReadinessInsight.recoveryLabel}</span>
+                      </>
+                    ) : (
+                      <span className="text-green-400 font-semibold">Volledig hersteld</span>
+                    )}
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-gray-400 text-sm text-center py-8">Sync voor gereedheid-data</p>
