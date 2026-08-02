@@ -617,8 +617,8 @@ export function buildRecoveryAdjustText(
 export interface GarminReadinessInsight {
   score: number;           // Garmin-score 0-100
   levelLabel: string;      // Nederlands niveau-label
-  recoveryHours?: number;  // uren tot volledig hersteld
-  recoveryLabel?: string;  // leesbare vorm, bv. "12u" of "35 min"
+  recoveryHours?: number;  // resterende uren tot volledig hersteld (afgeteld tot nu), 0 = klaar
+  recoveryLabel?: string;  // leesbare vorm, bv. "12u" of "35 min"; leeg als er niets meer resteert
 }
 
 /**
@@ -639,6 +639,26 @@ export function formatRecoveryTime(hours: number): string {
 }
 
 /**
+ * Resterende hersteltijd *nu*, zonder nieuwe sync: van de opgehaalde waarde gaat
+ * de tijd af die sinds het ophalen is verstreken (`recoveryFetchedAt`). Garmin telt
+ * die teller ook af, dus zonder deze correctie bleef een ochtendwaarde de hele dag
+ * staan. Zonder tijdstempel (data van vóór deze wijziging) blijft de opgeslagen
+ * waarde ongewijzigd staan. Geeft 0 als het herstel volgens de klok voorbij is.
+ */
+export function remainingRecoveryHours(
+  health: GarminHealthStats | null,
+  now: Date = new Date(),
+): number | undefined {
+  const base = normalizeRecoveryHours(health?.recoveryHours);
+  if (base === undefined) return undefined;
+  const fetchedAt = health?.recoveryFetchedAt ? new Date(health.recoveryFetchedAt) : null;
+  if (!fetchedAt || Number.isNaN(fetchedAt.getTime())) return base;
+  const elapsedHours = (now.getTime() - fetchedAt.getTime()) / 3_600_000;
+  if (!Number.isFinite(elapsedHours) || elapsedHours <= 0) return base;
+  return Math.max(0, Math.round((base - elapsedHours) * 10) / 10);
+}
+
+/**
  * Duiding van Garmins eigen Training Readiness (0-100) — bewust náást onze eigen
  * 9-punts-gereedheid als kruischeck. Geeft null als Garmin geen score gaf.
  */
@@ -650,12 +670,12 @@ export function describeGarminReadiness(health: GarminHealthStats | null): Garmi
     MODERATELY_LOW: 'Redelijk laag', LOW: 'Laag', VERY_LOW: 'Zeer laag', POOR: 'Slecht', READY: 'Klaar',
   };
   const levelLabel = map[raw] || (raw ? raw.charAt(0) + raw.slice(1).toLowerCase().replace(/_/g, ' ') : '');
-  const recoveryHours = normalizeRecoveryHours(health.recoveryHours);
+  const recoveryHours = remainingRecoveryHours(health);
   return {
     score: health.garminReadiness,
     levelLabel,
     recoveryHours,
-    recoveryLabel: recoveryHours !== undefined ? formatRecoveryTime(recoveryHours) : undefined,
+    recoveryLabel: recoveryHours !== undefined && recoveryHours > 0 ? formatRecoveryTime(recoveryHours) : undefined,
   };
 }
 

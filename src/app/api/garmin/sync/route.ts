@@ -553,6 +553,9 @@ export async function POST(request: Request) {
         garminReadiness,
         garminReadinessLevel,
         recoveryHours,
+        // Tijdstip van ophalen, zodat de app de hersteltijd zelf kan aftellen
+        // zonder telkens opnieuw te syncen.
+        recoveryFetchedAt: recoveryHours !== undefined ? new Date().toISOString() : undefined,
         garminReadinessFeedback: readiness?.feedbackShort || undefined,
         readinessFactors: hasReadinessFactors ? readinessFactors : undefined,
       };
