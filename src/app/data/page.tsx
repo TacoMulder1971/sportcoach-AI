@@ -577,9 +577,11 @@ export default function DataPage() {
                         <span className="text-sm font-semibold text-white">{gr.score}</span>
                         {gr.levelLabel && <span className="text-xs text-gray-400">· {gr.levelLabel}</span>}
                       </div>
-                      {gr.recoveryLabel && (
+                      {gr.recoveryLabel ? (
                         <span className="text-xs text-gray-400">herstel nog ~{gr.recoveryLabel}</span>
-                      )}
+                      ) : gr.recoveryHours === 0 ? (
+                        <span className="text-xs text-green-400">volledig hersteld</span>
+                      ) : null}
                     </div>
                   );
                 })()}

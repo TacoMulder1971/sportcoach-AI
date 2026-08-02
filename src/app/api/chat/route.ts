@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getAmsterdamNow, relativeDayLabel, buildTimingRule, daysBetween } from '@/lib/coach-dates';
 import { AthleteProfilePayload, buildAthleteProfileText, coachPersona } from '@/lib/athlete';
-import { buildHrvCoachText, buildReadinessFactorText, normalizeRecoveryHours, formatRecoveryTime } from '@/lib/training-load';
+import { buildHrvCoachText, buildReadinessFactorText, remainingRecoveryHours, formatRecoveryTime } from '@/lib/training-load';
 
 export const maxDuration = 30; // Opus coach-chat kan langer duren dan de standaard 10s
 
@@ -179,8 +179,8 @@ Week 2:
         contextMessage += `- Diepe slaap: ${h.deepSleepMinutes} min, REM: ${h.remSleepMinutes} min\n`;
         contextMessage += `- ${buildHrvCoachText(h, Array.isArray(garminHealthArchive) ? garminHealthArchive : []) || `HRV: ${h.avgOvernightHrv} ms (status: ${h.hrvStatus})`}\n`;
         if (h.garminReadiness) {
-          const rec = normalizeRecoveryHours(h.recoveryHours);
-          contextMessage += `- Garmin Training Readiness: ${h.garminReadiness}/100${h.garminReadinessLevel ? ` (${h.garminReadinessLevel})` : ''}${rec ? `, herstel nog ~${formatRecoveryTime(rec)}` : ''}\n`;
+          const rec = remainingRecoveryHours(h);
+          contextMessage += `- Garmin Training Readiness: ${h.garminReadiness}/100${h.garminReadinessLevel ? ` (${h.garminReadinessLevel})` : ''}${rec ? `, herstel nog ~${formatRecoveryTime(rec)}` : rec === 0 ? ', hersteltijd voorbij' : ''}\n`;
         }
         { const rf = buildReadinessFactorText(h); if (rf) contextMessage += `- ${rf}\n`; }
         contextMessage += `- Rust hartslag: ${h.restingHR} bpm\n`;
