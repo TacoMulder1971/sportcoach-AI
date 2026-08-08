@@ -281,6 +281,13 @@ export interface GarminHealthStats {
   remSleepMinutes: number;
   avgOvernightHrv: number;
   hrvStatus: string;
+  // Van wélke kalenderdag de HRV/slaap écht komt. Garmin post de nacht pas nadat
+  // het horloge 's ochtends gesynchroniseerd heeft; tot die tijd valt de sync
+  // terug op gisteren. Zonder deze velden werd die oude nacht als "vandaag"
+  // weggeschreven — dubbel datapunt in de trendgrafiek en een coach die op
+  // verouderde cijfers adviseert. Afwezig = zelfde dag als `date` (oude data).
+  hrvDate?: string;
+  sleepDate?: string;
   hrvBaseline?: number;          // 7-daags HRV-gemiddelde (Garmin weeklyAvg) = marker binnen de band
   hrvBaselineLow?: number;       // ondergrens balans-bandbreedte (Garmin baseline.balancedLow)
   hrvBaselineHigh?: number;      // bovengrens balans-bandbreedte (Garmin baseline.balancedUpper)

@@ -174,17 +174,38 @@ export function getStrengthWorkoutForSession(session: TrainingSession): Strength
 // Auto-sync throttle (1x per dag)
 const AUTO_SYNC_KEY = 'tricoach_last_auto_sync';
 
+// Minimale pauze tussen twee pogingen als de nacht van vandaag nog ontbreekt.
+// Voorkomt een sync per paginabezoek, maar houdt de data binnen het halfuur vers
+// zodra Garmin de nacht alsnog post.
+const STALE_RETRY_MINUTES = 30;
+
+/**
+ * Heeft het health-record de nacht van vandaag, of leunt het nog op gisteren?
+ * Records van vóór de bron-datum-velden (`hrvDate`/`sleepDate` ontbreken) gelden
+ * als vers — anders zou oude cache eindeloos hersyncen.
+ */
+function healthMissesTonight(health: GarminHealthStats | null | undefined, today: string): boolean {
+  if (!health) return true;
+  if (health.date !== today) return true;
+  return (health.hrvDate ?? health.date) !== today || (health.sleepDate ?? health.date) !== today;
+}
+
 export function shouldAutoSync(): boolean {
   if (typeof window === 'undefined') return false;
-  const last = localStorage.getItem(AUTO_SYNC_KEY);
-  if (!last) return true;
-  const today = new Date().toISOString().split('T')[0];
-  return last !== today;
+  const today = amsterdamDateForOffset(0);
+  if (localStorage.getItem(AUTO_SYNC_KEY) !== today) return true;
+
+  // Al gesynct vandaag — maar als dat gebeurde vóórdat het horloge z'n nacht
+  // had geüpload, staat de app op de cijfers van gisteren. Dan later op de dag
+  // opnieuw proberen i.p.v. tot morgen wachten.
+  const data = getGarminData();
+  if (!healthMissesTonight(data?.health, today)) return false;
+  const syncedAt = data?.syncedAt ? new Date(data.syncedAt).getTime() : 0;
+  return !syncedAt || Date.now() - syncedAt > STALE_RETRY_MINUTES * 60_000;
 }
 
 export function markAutoSyncDone(): void {
-  const today = new Date().toISOString().split('T')[0];
-  localStorage.setItem(AUTO_SYNC_KEY, today);
+  localStorage.setItem(AUTO_SYNC_KEY, amsterdamDateForOffset(0));
 }
 
 // Chat messages
@@ -383,12 +404,35 @@ export function getHealthArchive(): GarminHealthStats[] {
   return getItem<GarminHealthStats[]>(KEYS.HEALTH_ARCHIVE, []);
 }
 
+/**
+ * Haalt geleende nacht-waarden uit een health-record voordat het als dag-punt in
+ * het archief belandt. Heeft Garmin de nacht van vandaag nog niet gepost, dan
+ * valt de sync terug op gisteren; die waarde is prima om nú te tónen, maar mag
+ * geen datapunt van vandaag worden — dat dupliceert gisteren in de trendgrafiek
+ * en maakt de HRV-trenddetectie blind voor een echte daling. Een latere sync met
+ * de echte nacht overschrijft het record alsnog volledig.
+ */
+function stripBorrowedNight(health: GarminHealthStats): GarminHealthStats {
+  const entry = { ...health };
+  if (entry.hrvDate && entry.hrvDate !== entry.date) {
+    entry.avgOvernightHrv = 0;
+  }
+  if (entry.sleepDate && entry.sleepDate !== entry.date) {
+    entry.sleepScore = 0;
+    entry.sleepDurationHours = 0;
+    entry.deepSleepMinutes = 0;
+    entry.remSleepMinutes = 0;
+  }
+  return entry;
+}
+
 export function mergeHealthIntoArchive(health: GarminHealthStats | null): void {
   if (!health || !health.date) return;
+  const entry = stripBorrowedNight(health);
   const existing = getHealthArchive();
-  const idx = existing.findIndex(h => h.date === health.date);
-  if (idx >= 0) existing[idx] = health;
-  else existing.push(health);
+  const idx = existing.findIndex(h => h.date === entry.date);
+  if (idx >= 0) existing[idx] = entry;
+  else existing.push(entry);
   existing.sort((a, b) => b.date.localeCompare(a.date));
   setItem(KEYS.HEALTH_ARCHIVE, existing);
 }

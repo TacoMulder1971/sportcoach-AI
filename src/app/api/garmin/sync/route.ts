@@ -375,13 +375,28 @@ export async function POST(request: Request) {
         return null;
       }
     };
+    // Van wélke dag de gebruikte slaap/HRV komt. Blijft `undefined` als er
+    // helemaal geen data is; wijkt af van `today` zodra de terugval op gisteren
+    // is gebruikt, zodat de app die waarde niet als "vannacht" presenteert.
+    let sleepSourceDate: string | undefined;
+    let hrvSourceDate: string | undefined;
+
+    const isoDay = today; // YYYY-MM-DD (Amsterdam)
+    const yISO = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(d); })();
+
     sleepData = await fetchSleep(new Date(), 'vandaag');
-    // Leeg = geen echte slaapdata (bv. `dailySleepDTO` ontbreekt of 0 sec) → probeer gisteren.
-    if (!sleepData?.dailySleepDTO?.sleepTimeSeconds) {
+    if (sleepData?.dailySleepDTO?.sleepTimeSeconds) {
+      sleepSourceDate = isoDay;
+    } else {
+      // Leeg = Garmin heeft de nacht nog niet gepost (horloge nog niet gesynct).
+      // Terugval op gisteren, maar dan wél gelabeld als data van gisteren.
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const y = await fetchSleep(yesterday, 'gisteren');
-      if (y?.dailySleepDTO?.sleepTimeSeconds) sleepData = y;
+      if (y?.dailySleepDTO?.sleepTimeSeconds) {
+        sleepData = y;
+        sleepSourceDate = yISO;
+      }
     }
 
     // ── Dedicated wellness-/readiness-endpoints ───────────────────
@@ -389,8 +404,6 @@ export async function POST(request: Request) {
     // battery uit APARTE services die vaak nog werken als getSleepData faalt of
     // leeg is. We halen ze direct op (zelfde geauthenticeerde client als de
     // activiteit-details) en gebruiken ze als primaire bron mét slaap als fallback.
-    const isoDay = today; // YYYY-MM-DD (Amsterdam)
-    const yISO = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(d); })();
 
     const fetchJson = async <T,>(url: string, label: string): Promise<T | null> => {
       try {
@@ -430,11 +443,16 @@ export async function POST(request: Request) {
       hrvFactorPercent?: number; stressHistoryFactorPercent?: number; acuteLoad?: number;
     };
 
-    // HRV (val terug op gisteren als vannacht nog leeg is)
+    // HRV (val terug op gisteren als vannacht nog leeg is — wel gelabeld)
     let hrv = await fetchJson<HrvResp>(`${API_BASE}/hrv-service/hrv/${isoDay}`, `hrv(${isoDay})`);
-    if (!hrv?.hrvSummary?.lastNightAvg) {
+    if (hrv?.hrvSummary?.lastNightAvg) {
+      hrvSourceDate = isoDay;
+    } else {
       const y = await fetchJson<HrvResp>(`${API_BASE}/hrv-service/hrv/${yISO}`, `hrv(${yISO})`);
-      if (y?.hrvSummary?.lastNightAvg) hrv = y;
+      if (y?.hrvSummary?.lastNightAvg) {
+        hrv = y;
+        hrvSourceDate = yISO;
+      }
     }
 
     // Training readiness (Garmins eigen readiness-score; array of object)
@@ -475,8 +493,16 @@ export async function POST(request: Request) {
           ? (daily?.bodyBatteryChargedValue || 0) - (daily?.bodyBatteryDrainedValue || 0)
           : (sleepData?.bodyBatteryChange || 0);
 
+    // Bronvolgorde vastleggen: alleen `lastNightAvg` is écht de nacht van
+    // `hrvSourceDate`. Valt hij terug op de slaap-DTO, dan geldt de slaapdatum;
+    // valt hij terug op een weekgemiddelde, dan is het geen enkele nacht — dat
+    // labelen we niet als "vandaag" (anders zet één weekgemiddelde een vals
+    // datapunt in de trendgrafiek).
     const avgOvernightHrv = Math.round(
       hrv?.hrvSummary?.lastNightAvg || sleepData?.avgOvernightHrv || readiness?.hrvWeeklyAverage || hrv?.hrvSummary?.weeklyAvg || 0);
+    if (!hrv?.hrvSummary?.lastNightAvg) {
+      hrvSourceDate = sleepData?.avgOvernightHrv ? sleepSourceDate : undefined;
+    }
     // 7-daags HRV-gemiddelde: marker binnen de balans-band
     const hrvBaseline = Math.round(hrv?.hrvSummary?.weeklyAvg || readiness?.hrvWeeklyAverage || 0) || undefined;
     // Balans-bandbreedte: de persoonlijke onder/bovengrens waartegen Garmin de status bepaalt
@@ -541,6 +567,8 @@ export async function POST(request: Request) {
         remSleepMinutes: Math.round((sleepData?.dailySleepDTO?.remSleepSeconds || 0) / 60),
         avgOvernightHrv,
         hrvStatus,
+        hrvDate: hrvSourceDate,
+        sleepDate: sleepSourceDate,
         hrvBaseline,
         hrvBaselineLow,
         hrvBaselineHigh,
@@ -560,6 +588,12 @@ export async function POST(request: Request) {
         readinessFactors: hasReadinessFactors ? readinessFactors : undefined,
       };
       console.log('[readiness] health opgebouwd →', JSON.stringify(health));
+      if (sleepSourceDate && sleepSourceDate !== today) {
+        console.warn(`[readiness] slaap komt van ${sleepSourceDate} i.p.v. ${today} — Garmin heeft de nacht nog niet gepost.`);
+      }
+      if (hrvSourceDate !== today) {
+        console.warn(`[readiness] HRV komt van ${hrvSourceDate ?? 'geen enkele nacht (weekgemiddelde)'} i.p.v. ${today}.`);
+      }
     } else {
       console.warn('[readiness] GEEN readiness-data uit welke bron dan ook (slaap/hrv/readiness/daily) — health blijft null. '
         + 'Check de bovenstaande [readiness]-regels: als álle endpoints FAILED tonen is het sessie/auth; tonen ze lege objecten, dan heeft Garmin de nacht nog niet gepost.');

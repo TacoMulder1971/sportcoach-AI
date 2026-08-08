@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { getGarminData, saveGarminData, getEquipment, getActivityAssignments, getSwimVariants, mergeActivitiesIntoArchive, mergeHealthIntoArchive, deleteActivity, getGarminCredentials, getGarminTokens, saveGarminTokens, getActivityArchive, getHealthArchive, getProfile, markAutoSyncDone, getActivePlan, getRunZones, getCyclingZones, syncYazioNutrition, recordPlannedDays } from '@/lib/storage';
-import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity, describeGarminReadiness, assessFatigue } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, getDailyTRIMPHistory, computeWeekAdherence, describeHrv, expandMultisportActivity, describeGarminReadiness, assessFatigue, describeBorrowedNight } from '@/lib/training-load';
 import { GarminSyncData, TrainingReadiness, Equipment, ActivityAssignments, ActivitySwimVariants, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import TrainingLoadChart from '@/components/TrainingLoadChart';
@@ -613,6 +613,12 @@ export default function DataPage() {
                         </p>
                       ) : null}
                       <p className="text-xs text-gray-400 leading-relaxed">{hrv.interpretation}</p>
+                      {hrv.isBorrowed && (
+                        <p className="text-xs text-amber-400/90 mt-1 leading-relaxed">
+                          Meting van {describeBorrowedNight(garmin?.health ?? null) ?? 'een eerdere nacht'} — Garmin heeft de nacht van
+                          vandaag nog niet gepost. Synchroniseer je horloge en trek deze pagina omlaag.
+                        </p>
+                      )}
                       {readiness?.hrvTrend?.dir === 'dalend' && (
                         <p className="text-xs text-amber-400 mt-1 leading-relaxed">
                           ▼ HRV {readiness.hrvTrend.daysDeclining} dagen dalend ({readiness.hrvTrend.deltaMs} ms)
