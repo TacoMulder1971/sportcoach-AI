@@ -11,7 +11,7 @@ import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurr
 import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getGarminTokens, saveGarminTokens, getProfile, getRunZones, getCyclingZones, recordPlannedDays, getHealthArchive } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
-import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue, describeGarminReadiness } from '@/lib/training-load';
+import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue, describeGarminReadiness, healthNightIsBorrowed, describeBorrowedNight } from '@/lib/training-load';
 import { daysBetween } from '@/lib/coach-dates';
 import { TrainingDay, TrainingSession, GarminSyncData, TrainingLoadData, TrainingReadiness, TrainingAdvice, Goal, Sport, HeartRateZoneInfo, HEART_RATE_ZONES } from '@/lib/types';
 
@@ -309,6 +309,10 @@ export default function HomeContent() {
 
   // Garmins hersteltijd (afgeteld tot nu) — als kruischeck onder de gereedheid-ring
   const garminReadinessInsight = useMemo(() => describeGarminReadiness(garmin?.health ?? null), [garmin]);
+  // Garmin post de nacht pas ná de eerste horloge-sync van de ochtend; tot dan
+  // toont de app die van gisteren. Benoemen, anders lijkt het verse data.
+  const nightIsBorrowed = useMemo(() => healthNightIsBorrowed(garmin?.health ?? null), [garmin]);
+  const borrowedNightLabel = useMemo(() => describeBorrowedNight(garmin?.health ?? null), [garmin]);
 
   // Trainingsadvies: gereedheid vs. geplande training
   const trainingAdvice: TrainingAdvice | null = useMemo(() => {
@@ -511,6 +515,11 @@ export default function HomeContent() {
                     </div>
                   ))}
                 </div>
+                {nightIsBorrowed && (
+                  <p className="mt-3 pt-2 border-t border-white/5 text-center text-[10px] leading-tight text-amber-400/90">
+                    Meting van {borrowedNightLabel ?? 'een eerdere nacht'}
+                  </p>
+                )}
                 {garminReadinessInsight && (garminReadinessInsight.recoveryLabel || garminReadinessInsight.recoveryHours === 0) && (
                   <p className="mt-3 pt-2 border-t border-white/5 text-center text-[10px] leading-tight">
                     {garminReadinessInsight.recoveryLabel ? (

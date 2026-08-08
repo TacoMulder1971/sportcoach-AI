@@ -298,6 +298,36 @@ export interface HrvInsight {
   statusLabel: string;         // Nederlands status-label
   trend: 'boven' | 'binnen' | 'onder' | 'onbekend';
   interpretation: string;      // één zin duiding
+  sourceDate?: string;         // kalenderdag waar de meting écht vandaan komt
+  isBorrowed: boolean;         // meting is van een eerdere dag dan het record
+}
+
+/**
+ * Leunt dit health-record nog op een eerdere nacht? Garmin post de nacht pas
+ * nadat het horloge 's ochtends gesynchroniseerd heeft; tot dat moment toont de
+ * app de vorige nacht. Die waarde is bruikbaar, maar moet als zodanig benoemd
+ * worden — anders lijkt het alsof je HRV twee nachten identiek was.
+ *
+ * Records van vóór de bron-datum-velden gelden als actueel (geen valse melding
+ * op historische data).
+ */
+export function healthNightIsBorrowed(health: GarminHealthStats | null | undefined): boolean {
+  if (!health) return false;
+  return (health.hrvDate ?? health.date) !== health.date
+    || (health.sleepDate ?? health.date) !== health.date;
+}
+
+/** "gisteren" of de weekdag, voor een korte melding in de UI. */
+export function describeBorrowedNight(health: GarminHealthStats | null | undefined): string | null {
+  if (!health || !healthNightIsBorrowed(health)) return null;
+  const source = health.hrvDate ?? health.sleepDate;
+  if (!source) return null;
+  const diffDays = Math.round(
+    (new Date(`${health.date}T00:00:00Z`).getTime() - new Date(`${source}T00:00:00Z`).getTime()) / 86_400_000
+  );
+  if (diffDays === 1) return 'gisteren';
+  const weekday = new Date(`${source}T00:00:00Z`).toLocaleDateString('nl-NL', { weekday: 'long', timeZone: 'UTC' });
+  return `${weekday} (${diffDays} dagen geleden)`;
 }
 
 export function describeHrv(health: GarminHealthStats | null): HrvInsight | null {
@@ -339,13 +369,21 @@ export function describeHrv(health: GarminHealthStats | null): HrvInsight | null
   const good = rawStatus === 'balanced' || rawStatus === 'good' || rawStatus === 'optimal' || trend === 'boven';
   const bad = rawStatus === 'unbalanced' || rawStatus === 'low' || rawStatus === 'poor' || trend === 'onder';
 
-  const interpretation = good
-    ? 'HRV in of boven je normale bandbreedte — je zenuwstelsel is goed hersteld.'
-    : bad
-      ? 'HRV onder je normale bandbreedte — teken van vermoeidheid, stress of onvoldoende herstel; houd de intensiteit in de gaten.'
+  // `bad` gaat vóór `good`: beide kunnen tegelijk waar zijn (Garmin-status nog
+  // "Gebalanceerd" — dat is een meerweeks oordeel — terwijl de meting van
+  // vannacht ónder de band ligt). Won `good`, dan stond er "in of boven je
+  // bandbreedte" pal naast een rode "▼ onder bandbreedte" in dezelfde kaart.
+  const interpretation = bad
+    ? 'HRV onder je normale bandbreedte — teken van vermoeidheid, stress of onvoldoende herstel; houd de intensiteit in de gaten.'
+    : good
+      ? 'HRV in of boven je normale bandbreedte — je zenuwstelsel is goed hersteld.'
       : 'HRV binnen je normale bandbreedte.';
 
-  return { value, baseline, baselineLow, baselineHigh, diff, statusLabel, trend, interpretation };
+  return {
+    value, baseline, baselineLow, baselineHigh, diff, statusLabel, trend, interpretation,
+    sourceDate: health.hrvDate ?? health.date,
+    isBorrowed: (health.hrvDate ?? health.date) !== health.date,
+  };
 }
 
 /**
@@ -723,6 +761,12 @@ export function buildHrvCoachText(
     parts.push(`basislijn ${hrv.baseline}ms${diffStr}${trendStr}`);
   }
   let text = `HRV: ${parts.join(' (')}${hasBand || hrv.baseline ? ')' : ''} — ${hrv.statusLabel}: ${hrv.interpretation}`;
+  // Zonder deze regel presenteert de coach een geleende nacht als "vannacht".
+  if (hrv.isBorrowed) {
+    const when = describeBorrowedNight(health);
+    text += ` LET OP: deze meting is van ${when ?? 'een eerdere nacht'}, niet van vannacht`
+      + ' (Garmin had de nacht bij het synchroniseren nog niet gepost) — noem hem niet "vannacht" en hang er geen harde conclusie aan.';
+  }
 
   // Meerdaagse trend als vroeg herstelsignaal, alleen bij een duidelijke richting.
   const ref = health?.date ? new Date(health.date) : new Date();
