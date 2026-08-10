@@ -3,8 +3,25 @@ import Anthropic from '@anthropic-ai/sdk';
 import { TrainingWeek, DayPreference } from '@/lib/types';
 import { AthleteProfilePayload, buildAthleteProfileText, buildSportConstraintText, buildStrengthStrategyText, buildStrengthFormatRule, coachPersona, isMultiSportAthlete } from '@/lib/athlete';
 import { buildHrvCoachText, buildReadinessFactorText, remainingRecoveryHours, formatRecoveryTime } from '@/lib/training-load';
+import { SWIM_PACE_RULE } from '@/lib/swim';
 
 export const maxDuration = 60; // Vercel timeout: twee-traps (Opus-redenering + snelle JSON) past hierin
+
+interface PhaseScheduleWeek {
+  weekNumber: number;
+  range: string;          // "10 aug – 16 aug"
+  phaseLabel: string;
+  phaseDescription: string;
+  goals?: string[];
+}
+
+interface PhaseScheduleTransition {
+  date: string;           // "16 aug"
+  dayName: string;        // "zondag"
+  weekNumber: number;
+  from: string;
+  to: string;
+}
 
 const VALID_SPORTS = ['zwemmen', 'fietsen', 'hardlopen', 'mountainbike', 'kracht', 'rust'];
 const VALID_ZONES = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
@@ -177,6 +194,8 @@ export async function POST(request: NextRequest) {
       refinementFeedback,
       currentPhase,
       nextPhase,
+      phaseSchedule,
+      seasonContext,
       raceContext,
       goalsHistory,
       performanceSummary,
@@ -222,6 +241,7 @@ REGELS:
 - Geblokkeerde dagen (rustdagen) NIET wijzigen
 - Balanceer de sporten van de atleet over de week
 - Maximaal 2 sessies per dag
+- ${SWIM_PACE_RULE}
 ${sportConstraintSoft ? `- ${sportConstraintSoft}\n` : ''}- Descriptions max 10 woorden, Nederlands
 
 ${JSON_FORMAT_SPEC}`;
@@ -303,8 +323,27 @@ ${JSON_FORMAT_SPEC}`;
 
     const preferencesText = buildPreferencesText(agenda?.dayPreferences || []);
 
+    // Fase-context. phaseSchedule beschrijft de fase per week van dít blok plus
+    // eventuele fasegrenzen die er middenin vallen — currentPhase alleen is een
+    // momentopname van de generatiedag en scheert beide weken over één kam.
     let phaseAdvice = '';
-    if (currentPhase) {
+    if (phaseSchedule?.weeks?.length) {
+      const weekLines = phaseSchedule.weeks
+        .map((w: PhaseScheduleWeek) => `- Week ${w.weekNumber} (${w.range}): ${w.phaseLabel} — ${w.phaseDescription}${w.goals?.length ? `\n  Doelen: ${w.goals.join('; ')}` : ''}`)
+        .join('\n');
+      phaseAdvice = `FASEPLANNING VOOR DIT BLOK:\n${weekLines}`;
+      if (phaseSchedule.transitions?.length) {
+        const t = phaseSchedule.transitions
+          .map((tr: PhaseScheduleTransition) => `op ${tr.date} (${tr.dayName}, week ${tr.weekNumber}) gaat de ${tr.from} over in de ${tr.to}`)
+          .join('; ');
+        phaseAdvice += `\nLET OP — FASEGRENS BINNEN DIT BLOK: ${t}. Plan de dagen ná die grens volgens de nieuwe fase; scheer de twee weken niet over één kam.`;
+      } else {
+        phaseAdvice += `\nDit hele blok valt binnen dezelfde fase.`;
+      }
+      if (phaseSchedule.nextPhaseAfterBlock) {
+        phaseAdvice += `\nNa dit blok volgt: ${phaseSchedule.nextPhaseAfterBlock} (bouw hier naartoe).`;
+      }
+    } else if (currentPhase) {
       phaseAdvice = `HUIDIGE FASE: ${currentPhase.label} (${currentPhase.progressPercent}% voltooid)\n`;
       phaseAdvice += `Beschrijving: ${currentPhase.description}\n`;
       phaseAdvice += `Doelen deze fase:\n${currentPhase.goals.map((g: string) => `- ${g}`).join('\n')}`;
@@ -323,10 +362,11 @@ ${JSON_FORMAT_SPEC}`;
 
     // Gedeelde atleet-context voor beide traps
     const athleteContext = `${profileText ? `${profileText}\n${sportConstraint ? `${sportConstraint}\n` : ''}\n` : ''}ATLEET: ${hrZoneText || 'Max HR 172 bpm, Zones: Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max)'}
+${SWIM_PACE_RULE}
 DOEL: ${raceContext || 'persoonlijke wedstrijd'}
 DAGEN TOT WEDSTRIJD: ${daysUntilRace}
 ${phaseAdvice}
-${goalsHistory ? `\n${goalsHistory}\n` : ''}${blockedText}${preferencesText}${previousPlanText}${performanceText}`;
+${seasonContext ? `\n${seasonContext}\n` : ''}${goalsHistory ? `\n${goalsHistory}\n` : ''}${blockedText}${preferencesText}${previousPlanText}${performanceText}`;
 
     // --- TRAP 1: Opus denkt na over de coachstrategie (extended thinking) ---
     const strategyPrompt = `Je bent een ervaren ${persona}. Analyseer de situatie van de atleet en bepaal de strategie voor de komende 2 trainingsweken. Schrijf GEEN schema in JSON — alleen je redenering en concrete richtlijnen.
@@ -338,6 +378,7 @@ Houd expliciet rekening met de PRESTATIES van de afgelopen weken:
 - Zijn er sporten die achterblijven of juist te zwaar belast zijn? Herbalanceer.
 - Wat zeggen herstel (slaap, HRV, rust-HR) en training load over hoeveel belasting verantwoord is?
 - Sluit de progressie aan op de huidige trainingsfase en de dagen tot de wedstrijd?
+${seasonContext ? '- Blijf binnen het seizoensplan hierboven: dit blok is een uitwerking van dat kader, geen losse planning.\n' : ''}- Valt er een fasegrens middenin dit blok? Laat het verschil tussen week 1 en week 2 dan ook echt terugkomen in volume en intensiteit.
 
 Geef je antwoord als beknopte coachnotitie in het Nederlands:
 1. KORTE ANALYSE (2-4 zinnen): hoe staat de atleet ervoor op basis van de recente prestaties en herstel.

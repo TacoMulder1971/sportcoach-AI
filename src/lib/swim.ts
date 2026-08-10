@@ -94,6 +94,46 @@ export function formatSwimPaceRange(t: SwimPaceTarget): string {
   return `${formatSwimPace(t.minSecPer100)}–${formatSwimPace(t.maxSecPer100)}`;
 }
 
+/** Gemiddeld tempo van een zwemactiviteit in sec/100m (0 als niet te bepalen). */
+export function swimPaceSecPer100(distanceKm: number, durationMinutes: number): number {
+  if (distanceKm <= 0 || durationMinutes <= 0) return 0;
+  return (durationMinutes * 60) / (distanceKm * 10);
+}
+
+/** In welke zone valt een gezwommen tempo? Null als het buiten alle bereiken valt. */
+export function swimZoneForPace(secPer100: number, targets?: SwimPaceTargets | null): SwimPaceTarget | null {
+  if (!targets || secPer100 <= 0) return null;
+  // Zones lopen van langzaam (Z1) naar snel (Z5); pak de zone waarin het tempo valt.
+  for (const z of targets.zones) {
+    if (secPer100 >= z.minSecPer100 && secPer100 <= z.maxSecPer100) return z;
+  }
+  // Buiten de bereiken: langzamer dan Z1 of sneller dan Z5 — pak het dichtstbijzijnde uiteinde.
+  const slowest = targets.zones[0];
+  const fastest = targets.zones[targets.zones.length - 1];
+  if (secPer100 > slowest.maxSecPer100) return slowest;
+  if (secPer100 < fastest.minSecPer100) return fastest;
+  return null;
+}
+
+/**
+ * Vaste promptregel over de eenheid van zwemintensiteit. Zonder deze regel
+ * rekent de AI zwemsessies af in bpm of min/km, terwijl de app (en de zwemmer)
+ * met minuten per 100 meter werkt.
+ */
+export const SWIM_PACE_RULE =
+  'ZWEMMEN: intensiteit gaat op TEMPO PER 100 METER (min:sec per 100m, bijv. "2:15 per 100m"), niet op hartslag. Beschrijf zwemsessies in meters/series (bijv. "8× 100m") en gebruik bij zwemmen nooit bpm, min/km of km/u.';
+
+/**
+ * Zone-tekst voor AI-prompts. Zwemmen stuur je op tempo per 100m — hartslag is
+ * in het water onbruikbaar — dus de coach krijgt hier expliciet de eenheid mee.
+ */
+export function buildSwimPaceText(targets: SwimPaceTargets | null): string {
+  const rule = 'Zwemmen: stuur op TEMPO PER 100 METER (min:sec/100m, bijv. 2:15/100m), nooit op hartslag, min/km of km/u';
+  if (!targets) return `${rule}. Er is nog te weinig zwemdata voor persoonlijke richttempo's — stuur op gevoel.`;
+  const zones = targets.zones.map(z => `${z.zone}(${formatSwimPaceRange(z)} ${z.label})`).join(', ');
+  return `${rule}. Richttempo's per 100m: ${zones}`;
+}
+
 // Offsets in sec/100m t.o.v. het basistempo (mediaan van hele trainingen,
 // inclusief techniek/rust — dat zit qua intensiteit rond rustig duurtempo).
 const ZONE_OFFSETS: { zone: HeartRateZone; label: string; min: number; max: number }[] = [

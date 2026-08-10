@@ -108,6 +108,63 @@ export function getCurrentPhase(raceDate: string = FALLBACK_RACE_DATE): Training
   return TRAINING_PHASES[TRAINING_PHASES.length - 1];
 }
 
+/**
+ * Hele dagen tussen een kalenderdag en de racedag (UTC, dus geen tijdzone-drift).
+ * Positief = race ligt in de toekomst.
+ */
+export function daysUntilRaceOn(dateISO: string, raceDate: string): number {
+  const from = new Date(`${dateISO.split('T')[0]}T00:00:00Z`);
+  const race = new Date(`${raceDate.split('T')[0]}T00:00:00Z`);
+  if (isNaN(from.getTime()) || isNaN(race.getTime())) return 0;
+  return Math.round((race.getTime() - from.getTime()) / 86400000);
+}
+
+/**
+ * Fase op een wíllekeurige kalenderdag (niet alleen vandaag). Nodig omdat een
+ * 2-weeks blok over een fasegrens heen kan lopen: getCurrentPhase() kijkt alleen
+ * naar vandaag en zou de hele periode onder één fase scharen.
+ */
+export function getPhaseForDate(dateISO: string, raceDate: string = FALLBACK_RACE_DATE): TrainingPhase {
+  const days = daysUntilRaceOn(dateISO, raceDate);
+  if (days < 0) return POST_RACE_PHASE;
+  for (const phase of TRAINING_PHASES) {
+    if (days > phase.minDays && days <= phase.maxDays) return phase;
+  }
+  return TRAINING_PHASES[TRAINING_PHASES.length - 1];
+}
+
+export interface PhaseTransition {
+  date: string;       // eerste dag van de nieuwe fase
+  from: TrainingPhase;
+  to: TrainingPhase;
+}
+
+/** Fasegrenzen die binnen [startISO, endISO] vallen (beide inclusief). */
+export function findPhaseTransitions(
+  startISO: string,
+  endISO: string,
+  raceDate: string = FALLBACK_RACE_DATE,
+): PhaseTransition[] {
+  const transitions: PhaseTransition[] = [];
+  const start = new Date(`${startISO.split('T')[0]}T00:00:00Z`);
+  const end = new Date(`${endISO.split('T')[0]}T00:00:00Z`);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return transitions;
+
+  let prev = getPhaseForDate(startISO, raceDate);
+  const cursor = new Date(start);
+  cursor.setUTCDate(cursor.getUTCDate() + 1);
+  while (cursor <= end) {
+    const iso = cursor.toISOString().split('T')[0];
+    const phase = getPhaseForDate(iso, raceDate);
+    if (phase.id !== prev.id) {
+      transitions.push({ date: iso, from: prev, to: phase });
+      prev = phase;
+    }
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return transitions;
+}
+
 export function getPhaseProgress(raceDate: string = FALLBACK_RACE_DATE): number {
   const days = getDaysUntilRace(raceDate);
   const phase = getCurrentPhase(raceDate);

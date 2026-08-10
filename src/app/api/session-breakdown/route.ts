@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
+import { SWIM_PACE_RULE } from '@/lib/swim';
 
 // Sonnet redeneert op dagniveau (zoals adjust-day) — trainingsinhoud, geen pure opmaak.
 export const maxDuration = 30;
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const prompt = `Je bent een ervaren duursport-coach. Werk voor ELKE onderstaande trainingssessie een gedetailleerd uitvoeringsplan uit dat de atleet direct kan overnemen (bijv. in een Garmin-horloge).
 
-${profileText ? `${profileText}\n\n` : ''}${hrZoneText ? `HARTSLAGZONES (gebruik uitsluitend deze zone-codes Z1–Z5):\n${hrZoneText}\n\n` : ''}SESSIES VAN VANDAAG:
+${profileText ? `${profileText}\n\n` : ''}${hrZoneText ? `ZONES PER SPORT (gebruik uitsluitend deze zone-codes Z1–Z5; zwemmen stuurt op tempo per 100m):\n${hrZoneText}\n\n` : ''}SESSIES VAN VANDAAG:
 ${sessionList}
 
 Splits elke sessie op in opeenvolgende segmenten:
@@ -55,6 +56,7 @@ REGELS:
 - "detail": concreet en kort, in het Nederlands (wat doe je, intensiteit, eventuele herhalingen).
 - "technique": één korte techniekfocus passend bij de sport (optioneel — laat weg als niet relevant). Bijv. hardlopen: cadans/landing; zwemmen: catch/rotatie; fietsen: souplesse/trapfrequentie.
 - Verzin GEEN exacte bpm-, watt- of tempowaarden. Gebruik alleen de zone-codes (Z1–Z5).
+- ${SWIM_PACE_RULE} Neem een zwemtempo alleen over als het letterlijk in de zones hierboven staat.
 - Alles in het Nederlands.
 
 Antwoord met UITSLUITEND geldige JSON, exact dit formaat (de array "breakdowns" is uitgelijnd op de sessievolgorde):

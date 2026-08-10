@@ -14,7 +14,7 @@ import EquipmentIcon from '@/components/EquipmentIcon';
 import SwimVariantIcon from '@/components/SwimVariantIcon';
 import SwimVariantChip from '@/components/SwimVariantChip';
 import { filterStatsActivities, equipmentForActivity } from '@/lib/equipment';
-import { swimVariantForActivity } from '@/lib/swim';
+import { swimVariantForActivity, formatSwimPace } from '@/lib/swim';
 import GarminSetupCard from '@/components/GarminSetupCard';
 import YazioSetupCard from '@/components/YazioSetupCard';
 import HeartRateZonesCard from '@/components/HeartRateZonesCard';
@@ -30,6 +30,14 @@ function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
   if (sport === 'hardlopen') return getRunZones();
   if (sport === 'fietsen' || sport === 'mountainbike') return getCyclingZones();
   return HEART_RATE_ZONES;
+}
+
+/** Hardlooptempo in decimale minuten per km → "5:30" (5.5 leest niemand als 5:30). */
+function formatRunPace(minPerKm: number): string {
+  const totalSec = Math.round(minPerKm * 60);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function DataPage() {
@@ -898,13 +906,14 @@ export default function DataPage() {
                 {/* Prestatiemetrieken */}
                 {weeklyTrends && (<>
                   <BuildupBarChart data={weeklyTrends.hrData} color="#ef4444" unit="bpm" title="Gemiddelde hartslag per week" />
-                  <BuildupBarChart data={weeklyTrends.runTempoData} color="#f97316" unit="min/km" title="Hardlooptempo per week" />
+                  <BuildupBarChart data={weeklyTrends.runTempoData} color="#f97316" unit="per km" title="Hardlooptempo per week" formatValue={formatRunPace} />
                   <BuildupBarChart data={weeklyTrends.raceSpeedData} color="#22c55e" unit="km/h" title="Snelheid racefiets per week" />
                   <BuildupBarChart data={weeklyTrends.mtbSpeedData} color="#10b981" unit="km/h" title="Snelheid mountainbike per week" />
                   {weeklyTrends.powerData.some(d => d.value > 0) && (
                     <BuildupBarChart data={weeklyTrends.powerData} color="#f59e0b" unit="W" title="Gemiddeld vermogen fietsen per week" />
                   )}
-                  <BuildupBarChart data={weeklyTrends.swimPaceData} color="#3b82f6" unit="s/100m" title="Zwemtempo per week" />
+                  {/* Zwemtempo leest als min:sec per 100m (2:30), niet als 150 seconden */}
+                  <BuildupBarChart data={weeklyTrends.swimPaceData} color="#3b82f6" unit="per 100m" title="Zwemtempo per week" formatValue={formatSwimPace} />
                 </>)}
               </div>
             </section>

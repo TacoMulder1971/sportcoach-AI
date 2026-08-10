@@ -17,6 +17,8 @@ interface BuildupBarChartProps {
   bandLow?: number;         // optionele gearceerde band: ondergrens (bijv. HRV-balansbereik)
   bandHigh?: number;        // optionele gearceerde band: bovengrens
   bandLabel?: string;       // label bij de band (default "balans")
+  /** Waarde-opmaak voor as-labels en tooltip (bijv. zwemtempo 150 → "2:30"). */
+  formatValue?: (value: number) => string;
 }
 
 interface Tooltip {
@@ -32,8 +34,12 @@ interface Tooltip {
  * gemarkeerd. Een leesbare verticale as (0 / midden / max) links.
  * Hover/touch toont een tooltip met de exacte waarde.
  */
-export default function BuildupBarChart({ data, color, title, unit, baseline, baselineLabel, bandLow, bandHigh, bandLabel }: BuildupBarChartProps) {
+export default function BuildupBarChart({ data, color, title, unit, baseline, baselineLabel, bandLow, bandHigh, bandLabel, formatValue }: BuildupBarChartProps) {
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
+  // As-labels rondden altijd al af; de tooltip toonde de waarde ongewijzigd
+  // (bijv. 31.3 km/h). Met een formatter gaan beide door dezelfde opmaak.
+  const fmtAxis = (v: number) => (formatValue ? formatValue(v) : String(Math.round(v)));
+  const fmtValue = (v: number) => (formatValue ? formatValue(v) : String(v));
 
   if (data.filter(d => d.value > 0).length < 2) return null;
 
@@ -97,11 +103,11 @@ export default function BuildupBarChart({ data, color, title, unit, baseline, ba
           {/* Verticale as */}
           {[0, 0.5, 1].map((frac) => {
             const y = padT + (1 - frac) * chartH;
-            const val = Math.round(max * frac);
+            const val = max * frac;
             return (
               <g key={frac}>
                 <line x1={padL} y1={y} x2={W - padR} y2={y} stroke={frac === 0 ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)'} strokeWidth={1} />
-                <text x={padL - 6} y={y + 3.5} textAnchor="end" fontSize={10} fill="#9ca3af">{val}</text>
+                <text x={padL - 6} y={y + 3.5} textAnchor="end" fontSize={10} fill="#9ca3af">{fmtAxis(val)}</text>
               </g>
             );
           })}
@@ -184,7 +190,7 @@ export default function BuildupBarChart({ data, color, title, unit, baseline, ba
             }}
           >
             <div className="bg-gray-800 text-white text-xs rounded-lg px-2.5 py-1.5 shadow-lg whitespace-nowrap">
-              <span className="font-semibold">{tooltip.value} {unit}</span>
+              <span className="font-semibold">{fmtValue(tooltip.value)} {unit}</span>
               <span className="text-gray-400 ml-1.5">· {tooltip.label}</span>
             </div>
           </div>
