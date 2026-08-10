@@ -621,14 +621,42 @@ export function getPlannedDayArchive(): PlannedDayRecord[] {
   return getItem<PlannedDayRecord[]>(KEYS.PLANNED_DAY_ARCHIVE, []);
 }
 
+type DatedPlan = { plan: TrainingWeek[]; cycleStartDate: string; activeFrom: string };
+
+/**
+ * Het schema dat op een bepaalde kalenderdag gold. Een nieuw schema start pas
+ * morgen of aanstaande maandag (`activeFrom`), dus de dagen dáárvóór horen nog
+ * bij het vórige (nu gearchiveerde) schema. Zonder deze lookup legde
+ * `recordPlannedDays` de aanmaakdag vast als "geen plan" — het nieuwe schema
+ * gaf voor die dag immers `null` — waardoor de trainingen van die dag uit de
+ * "Volgens plan"-kaart verdwenen.
+ */
+function resolvePlanForDate(date: string, active: DatedPlan & { id: string }, stored: StoredPlan[]): DatedPlan {
+  if (date >= active.activeFrom) return active;
+  // Val terug op het laatst gestarte schema dat op die dag al liep.
+  const previous = stored
+    .filter((p) => p.id !== active.id)
+    .map((p) => ({ p, start: p.activeFrom ?? p.cycleStartDate }))
+    .filter((c) => c.start <= date)
+    .sort((a, b) => (a.start === b.start ? a.p.createdAt.localeCompare(b.p.createdAt) : a.start.localeCompare(b.start)))
+    .pop();
+  if (!previous) return active;
+  return { plan: previous.p.plan, cycleStartDate: previous.p.cycleStartDate, activeFrom: previous.start };
+}
+
 export function recordPlannedDays(): PlannedDayRecord[] {
-  const { plan, cycleStartDate, activeFrom } = getActivePlan();
+  const active = getActivePlan();
+  const stored = getStoredPlans();
   const byDate = new Map(getPlannedDayArchive().map((r) => [r.date, r]));
   // Vandaag altijd verversen; nog niet vastgelegde voorbije dagen (t/m 7 terug)
-  // backfillen vanuit het huidige schema (best effort, beter dan geen historie).
+  // backfillen vanuit het schema dat op díe dag gold. Een voorbije dag die als
+  // "geen plan" is vastgelegd wordt opnieuw afgeleid — dat is meestal een
+  // artefact van een schema dat later die dag is goedgekeurd; dagen mét een
+  // vastgelegd plan blijven bevroren.
   for (let offset = -7; offset <= 0; offset++) {
     const date = amsterdamDateForOffset(offset);
-    if (offset < 0 && byDate.has(date)) continue;
+    if (offset < 0 && byDate.get(date)?.hasPlan) continue;
+    const { plan, cycleStartDate, activeFrom } = resolvePlanForDate(date, active, stored);
     const training = getTrainingForDayOffset(offset, plan, cycleStartDate, activeFrom);
     byDate.set(date, {
       date,
