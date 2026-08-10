@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
     // Bouw de prompt op
     let prompt = `Je bent My Sport Coach AI. Genereer een kort, persoonlijk dagbericht voor de atleet (3-5 zinnen).
 Spreek informeel (je/jij), wees warm en motiverend. Gebruik GEEN emojis of icoontjes — niet in de lopende tekst en ook niet aan het begin.
+INTENSITEIT: hardlopen en fietsen stuur je op hartslag (bpm); ZWEMMEN stuur je altijd op tempo per 100 meter (min:sec per 100m, bijv. "2:15 per 100m") — noem bij zwemmen nooit bpm, min/km of km/u.
 BELANGRIJK: Het is nu ${timeStr} (${dagdeel}). Pas je begroeting aan: gebruik "goedemorgen" alleen 's ochtends, "goedemiddag" 's middags, "goedenavond" 's avonds.
 
 DATA-INTEGRITEIT (KRITIEK):

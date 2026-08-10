@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# lokale preview-testdata (persoonlijke export — nooit committen)
+public/preview-fixture.json

@@ -8,7 +8,7 @@ import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import LatestActivityCard from '@/components/LatestActivityCard';
 import AdherenceCard from '@/components/AdherenceCard';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset, amsterdamDateForOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getGarminTokens, saveGarminTokens, getProfile, getRunZones, getCyclingZones, recordPlannedDays, getHealthArchive } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getGarminTokens, saveGarminTokens, getProfile, getRunZones, getCyclingZones, getSwimPaceTargets, recordPlannedDays, getHealthArchive } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue, describeGarminReadiness, healthNightIsBorrowed, describeBorrowedNight } from '@/lib/training-load';
@@ -130,7 +130,8 @@ export default function HomeContent() {
           equipmentAttention,
           // Sport-specifieke zones: anders rekent de coach fietssessies om met
           // de loop-zones en noemt hij andere bpm-ranges dan het schema toont.
-          sportZones: { run: getRunZones(), cycling: getCyclingZones() },
+          // Zwemmen gaat op tempo per 100m, niet op hartslag.
+          sportZones: { run: getRunZones(), cycling: getCyclingZones(), swim: getSwimPaceTargets() },
           athleteProfile: athleteProfilePayload(getProfile()),
           garminHealthArchive: getHealthArchive(),
         }),

@@ -9,7 +9,11 @@ export const maxDuration = 30; // Opus coach-chat kan langer duren dan de standa
 const BASE_PROMPT_INTRO = `Je bent My Sport Coach AI, een persoonlijke trainingscoach voor duursporters (hardlopen, fietsen, zwemmen, triatlon). Je spreekt Nederlands.
 
 ATLEET PROFIEL:
-- Hartslagzones: {{HR_ZONE_TEXT}}
+- Zones per sport: {{HR_ZONE_TEXT}}
+
+INTENSITEIT PER SPORT:
+- Hardlopen en fietsen: stuur op hartslag (bpm) binnen de zones hierboven.
+- Zwemmen: stuur ALTIJD op tempo per 100 meter, genoteerd als min:sec per 100m (bijv. "2:15 per 100m"). Gebruik voor zwemmen NOOIT bpm, min/km of km/u — hartslag is in het water onbruikbaar.
 
 JE TAKEN:
 1. Geef concreet, praktisch trainingsadvies afgestemd op het actieve doel
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
     const {
       messages, checkIns, garminData, trainingLoad, currentPlan, cycleStartDate, activeFrom,
       weeklyTRIMP, currentPhase, daysUntilRace: daysUntilRaceBody, avgFeeling, recentNotes, todayNutrition, localDateTime,
-      raceContext, goalsHistory, equipmentAttention, hrZoneText, athleteProfile, planStrategy,
+      raceContext, goalsHistory, equipmentAttention, hrZoneText, athleteProfile, planStrategy, seasonContext,
       garminHealthArchive,
     } = await request.json();
 
@@ -147,6 +151,12 @@ Week 2:
     // consistent met de bedoeling van het schema (bv. bewust rustige week).
     if (planStrategy && typeof planStrategy === 'string' && planStrategy.trim().length > 0) {
       planText += `\nCOACHSTRATEGIE ACHTER DIT SCHEMA (de overwegingen waarmee dit schema is gemaakt — houd je advies hiermee consistent):\n${planStrategy}\n`;
+    }
+
+    // Het seizoensblok waarin vandaag valt — het lange-termijnkader boven het
+    // 2-weeks schema, zodat advies niet tegen de seizoensopbouw in gaat.
+    if (seasonContext && typeof seasonContext === 'string' && seasonContext.trim().length > 0) {
+      planText += `\n${seasonContext}\n`;
     }
 
     const daysUntilRace = typeof daysUntilRaceBody === 'number' ? daysUntilRaceBody : 0;
@@ -263,7 +273,7 @@ Week 2:
       contextMessage += `\nVOEDING VANDAAG: ${todayNutrition.calories} kcal | KH: ${todayNutrition.carbsG}g | Eiwit: ${todayNutrition.proteinG}g | Vet: ${todayNutrition.fatG}g\n`;
     }
 
-    const defaultZoneText = 'Hardlopen: Max HR 172 bpm, Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max) | Fietsen: Max HR 164 bpm, Z1(82-98), Z2(98-115), Z3(115-131), Z4(131-148), Z5(148-164)';
+    const defaultZoneText = 'Hardlopen: Max HR 172 bpm, Z1(86-103 Herstel), Z2(103-120 Basis), Z3(120-138 Aeroob), Z4(138-155 Drempel), Z5(155-172 VO2max) | Fietsen: Max HR 164 bpm, Z1(82-98), Z2(98-115), Z3(115-131), Z4(131-148), Z5(148-164) | Zwemmen: stuur op tempo per 100 meter (min:sec/100m), niet op hartslag';
     // Personalisatie: persona + profielblok uit het meegestuurde atleet-profiel
     const profile = (athleteProfile ?? null) as AthleteProfilePayload | null;
     const personaText = profile ? `Je bent gespecialiseerd als ${coachPersona(profile)} — stem al je advies af op de sporten van deze atleet.\n` : '';

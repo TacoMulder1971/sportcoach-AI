@@ -13,6 +13,7 @@ import {
   getProfile,
   buildPlanStrategyText,
   clearCycleWeekFlip,
+  buildSeasonPlanContext,
 } from '@/lib/storage';
 import { cleanStrategyText } from '@/lib/plan-strategy';
 import { athleteProfilePayload } from '@/lib/athlete';
@@ -20,7 +21,8 @@ import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildPerformanceSummary } from '@/lib/performance-summary';
 import { filterStatsActivities } from '@/lib/equipment';
 import { AgendaInput, DayPreference, TrainingWeek } from '@/lib/types';
-import { getCurrentPhase, getPhaseProgress, TRAINING_PHASES } from '@/lib/periodization';
+import { getCurrentPhase, getPhaseProgress, getPhaseForDate, findPhaseTransitions, TRAINING_PHASES } from '@/lib/periodization';
+import { addDaysISO, formatDayNL, formatRangeNL } from '@/lib/season';
 
 const DAY_NAMES = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
 const FULL_DAY_NAMES = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -77,6 +79,56 @@ export default function NieuwSchemaPage() {
     setPreferences((prev) => ({ ...prev, [key]: value }));
   }
 
+  /** De 14 dagen die dit schema bestrijkt, afgeleid van de gekozen startdag. */
+  function planWindow() {
+    const activeFrom = startChoice === 'monday' ? getNextMonday() : amsterdamDateForOffset(1);
+    const cycleStartDate = mondayOfWeekUTC(activeFrom);
+    return { activeFrom, cycleStartDate, endDate: addDaysISO(cycleStartDate, 13) };
+  }
+
+  /**
+   * Fase per week van dít blok plus de fasegrenzen die er middenin vallen.
+   * Zonder dit kreeg de AI alleen de fase van de generatiedag en werden beide
+   * weken over één kam geschoren — ook als er op dag 7 een taper begon.
+   */
+  function buildPhaseSchedule(cycleStartDate: string, raceDate: string) {
+    const weeks = ([1, 2] as const).map((weekNumber) => {
+      const start = addDaysISO(cycleStartDate, (weekNumber - 1) * 7);
+      const end = addDaysISO(start, 6);
+      const phase = getPhaseForDate(start, raceDate);
+      return {
+        weekNumber,
+        range: formatRangeNL(start, end),
+        phaseLabel: phase.label,
+        phaseDescription: phase.description,
+        goals: phase.goals,
+      };
+    });
+
+    const endDate = addDaysISO(cycleStartDate, 13);
+    const transitions = findPhaseTransitions(cycleStartDate, endDate, raceDate).map((t) => {
+      const dayOffset = Math.round(
+        (new Date(`${t.date}T00:00:00Z`).getTime() - new Date(`${cycleStartDate}T00:00:00Z`).getTime()) / 86400000,
+      );
+      return {
+        date: formatDayNL(t.date),
+        dayName: new Date(`${t.date}T00:00:00Z`).toLocaleDateString('nl-NL', { weekday: 'long', timeZone: 'UTC' }),
+        weekNumber: dayOffset < 7 ? 1 : 2,
+        from: t.from.label,
+        to: t.to.label,
+      };
+    });
+
+    // Fase direct ná dit blok, zodat de coach ernaartoe kan bouwen.
+    const phaseAtEnd = getPhaseForDate(endDate, raceDate);
+    const phaseAfter = getPhaseForDate(addDaysISO(endDate, 1), raceDate);
+    return {
+      weeks,
+      transitions,
+      nextPhaseAfterBlock: phaseAfter.id !== phaseAtEnd.id ? phaseAfter.label : null,
+    };
+  }
+
   function buildAgenda(): AgendaInput {
     const blockedDays = Array.from(blocked).map((key) => {
       const [w, d] = key.split('-').map(Number);
@@ -115,9 +167,11 @@ export default function NieuwSchemaPage() {
     const performanceSummary = buildPerformanceSummary(statsActivities, getHealthArchive(), getArchivedGoals());
 
     try {
-      const currentPhase = getCurrentPhase(getActiveRaceDate());
-      const phaseProgress = getPhaseProgress(getActiveRaceDate());
+      const raceDate = getActiveRaceDate();
+      const currentPhase = getCurrentPhase(raceDate);
+      const phaseProgress = getPhaseProgress(raceDate);
       const nextPhase = TRAINING_PHASES.find(p => p.minDays < currentPhase.minDays) || null;
+      const { cycleStartDate } = planWindow();
 
       const res = await fetch('/api/generate-plan', {
         method: 'POST',
@@ -137,6 +191,8 @@ export default function NieuwSchemaPage() {
             progressPercent: Math.round(phaseProgress),
           },
           nextPhase: nextPhase ? { label: nextPhase.label } : null,
+          phaseSchedule: buildPhaseSchedule(cycleStartDate, raceDate),
+          seasonContext: buildSeasonPlanContext(cycleStartDate),
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
           performanceSummary,
@@ -209,8 +265,7 @@ export default function NieuwSchemaPage() {
     // blijft maandag-uitgelijnd (weeknummering intact); activeFrom bepaalt vanaf
     // wanneer het schema zichtbaar is, zodat er op de aanmaakdag geen nieuwe
     // training verschijnt en een "morgen"-start midden in de week netjes werkt.
-    const activeFrom = startChoice === 'monday' ? getNextMonday() : amsterdamDateForOffset(1);
-    const cycleStartDate = mondayOfWeekUTC(activeFrom);
+    const { activeFrom, cycleStartDate } = planWindow();
 
     // Een verse cyclus heeft z'n eigen ankerdatum; een achtergebleven handmatige
     // week-flip van een vorig schema zou die anders stilzwijgend een week
@@ -242,6 +297,33 @@ export default function NieuwSchemaPage() {
           </button>
           <h1 className="text-2xl font-bold text-white">Nieuw schema</h1>
           <p className="text-gray-400 text-sm">Tik op dagen waarop je NIET kunt trainen</p>
+        </div>
+
+        {/* Startdag — bepaalt welke 14 dagen het schema bestrijkt, dus vóór het
+            genereren: de coach heeft die datums nodig om de fase per week te bepalen. */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-gray-200">Vanaf welke dag start dit schema?</p>
+          <div className="flex gap-2">
+            {([['monday', 'Aanstaande maandag'], ['tomorrow', 'Morgen']] as const).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setStartChoice(val)}
+                className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-semibold transition-all ${
+                  startChoice === val
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-white/5 text-gray-200 border border-white/10'
+                }`}
+              >
+                <span className="block">{label}</span>
+                <span className="block text-[11px] font-normal opacity-70 mt-0.5">
+                  {formatStartDate(val === 'monday' ? getNextMonday() : amsterdamDateForOffset(1))}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">
+            Vandaag komt er geen nieuwe training bij — het schema begint op de gekozen dag.
+          </p>
         </div>
 
         {/* 14-daags grid */}
@@ -450,30 +532,16 @@ export default function NieuwSchemaPage() {
           <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl">{error}</div>
         )}
 
-        {/* Startdag-keuze */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-semibold text-gray-200">Vanaf welke dag start dit schema?</p>
-          <div className="flex gap-2">
-            {([['monday', 'Aanstaande maandag'], ['tomorrow', 'Morgen']] as const).map(([val, label]) => {
-              const date = val === 'monday' ? getNextMonday() : amsterdamDateForOffset(1);
-              return (
-                <button
-                  key={val}
-                  onClick={() => setStartChoice(val)}
-                  className={`flex-1 py-2.5 px-2 rounded-xl text-sm font-semibold transition-all ${
-                    startChoice === val
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white/5 text-gray-200 border border-white/10'
-                  }`}
-                >
-                  <span className="block">{label}</span>
-                  <span className="block text-[11px] font-normal opacity-70 mt-0.5">{formatStartDate(date)}</span>
-                </button>
-              );
-            })}
-          </div>
-          <p className="text-xs text-gray-500">
-            Vandaag komt er geen nieuwe training bij — het schema begint op de gekozen dag.
+        {/* Startdag — gekozen in stap 1, hier alleen ter bevestiging */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <p className="text-sm text-gray-300">
+            Start:{' '}
+            <span className="font-semibold text-white">
+              {formatStartDate(startChoice === 'monday' ? getNextMonday() : amsterdamDateForOffset(1))}
+            </span>
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Vandaag komt er geen nieuwe training bij — het schema begint op die dag.
           </p>
         </div>
 

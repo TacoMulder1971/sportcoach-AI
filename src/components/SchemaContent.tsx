@@ -4,13 +4,15 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import TrainingCard from '@/components/TrainingCard';
 import GoalsSection from '@/components/GoalsSection';
-import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace } from '@/lib/schedule';
-import { getActivePlan, getActiveStoredPlan, buildPlanStrategyText, updateActivePlan, shouldAutoBackup, markBackupDone, downloadExport, getGarminData, getHealthArchive, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip } from '@/lib/storage';
+import SeasonBlockList from '@/components/SeasonBlockList';
+import { getCurrentWeekNumber, getTodayDayIndex, getDaysInCurrentCycle, getDaysUntilRace, amsterdamDateForOffset } from '@/lib/schedule';
+import { getActivePlan, getActiveStoredPlan, buildPlanStrategyText, updateActivePlan, shouldAutoBackup, markBackupDone, downloadExport, getGarminData, getHealthArchive, getActiveRaceDate, buildRaceContextText, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, getProfile, toggleCycleWeekFlip, getSeasonPlan, getSeasonPlanStatus, buildSeasonBlockContext } from '@/lib/storage';
+import { formatRangeNL, SeasonPlanStatus } from '@/lib/season';
 import { buildRecoveryAdjustText } from '@/lib/training-load';
 import { cleanStrategyText } from '@/lib/plan-strategy';
 import { athleteProfilePayload, resolveSports } from '@/lib/athlete';
 import { formatSwimPace, formatSwimPaceRange } from '@/lib/swim';
-import { TrainingWeek, TrainingDay, GarminHealthStats, HEART_RATE_ZONES } from '@/lib/types';
+import { TrainingWeek, TrainingDay, GarminHealthStats, SeasonPlan, HEART_RATE_ZONES } from '@/lib/types';
 import { TRAINING_PHASES, getPhaseProgress, getPhaseStatus, getPhaseDateRange } from '@/lib/periodization';
 
 type TabSelection = 1 | 2 | 'longterm';
@@ -40,6 +42,9 @@ export default function SchemaContent() {
   const [health, setHealth] = useState<GarminHealthStats | null>(null);
   const [raceDate, setRaceDate] = useState<string>('2026-06-13');
   const [mounted, setMounted] = useState(false);
+  const [seasonPlan, setSeasonPlan] = useState<SeasonPlan | null>(null);
+  const [seasonStatus, setSeasonStatus] = useState<SeasonPlanStatus | null>(null);
+  const [showSeasonRationale, setShowSeasonRationale] = useState(false);
 
   // Zwemtempo-targets uit het archief (client-only; 1× per render van de tab)
   const swimPaces = useMemo(() => (mounted ? getSwimPaceTargets() : null), [mounted]);
@@ -64,6 +69,8 @@ export default function SchemaContent() {
     setShowBackupReminder(shouldAutoBackup());
     setHealth(getGarminData()?.health || null);
     setRaceDate(getActiveRaceDate());
+    setSeasonPlan(getSeasonPlan());
+    setSeasonStatus(getSeasonPlanStatus());
     setMounted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabParam]);
@@ -117,6 +124,7 @@ export default function SchemaContent() {
           hrZoneText: buildHRZoneText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           planStrategy: buildPlanStrategyText(),
+          seasonContext: buildSeasonBlockContext(),
           recoveryContext: buildRecoveryAdjustText(health, getHealthArchive()),
         }),
       });
@@ -465,7 +473,73 @@ export default function SchemaContent() {
           <div className="space-y-4">
             <GoalsSection autoOpenResult={goalParam || undefined} dark />
 
-            {/* Fasen tijdlijn */}
+            {seasonPlan ? (
+              <>
+                {/* Opgeslagen seizoensplan: het kader waar elk 2-weeks schema uit volgt */}
+                <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="font-semibold text-white">Seizoensplan</h2>
+                    <a href="/schema/seizoen" className="text-xs text-blue-400 font-medium flex-shrink-0">
+                      Opnieuw maken
+                    </a>
+                  </div>
+                  <p className="text-sm text-gray-300 leading-relaxed">{seasonPlan.summary}</p>
+                  <p className="text-xs text-gray-500">
+                    {formatRangeNL(seasonPlan.startDate, seasonPlan.endDate)} · {seasonPlan.blocks.length} blokken
+                  </p>
+
+                  {seasonStatus === 'wedstrijden-gewijzigd' && (
+                    <p className="text-xs text-amber-400">
+                      Je wedstrijdkalender is gewijzigd sinds dit plan gemaakt is — maak het opnieuw om het kloppend te houden.
+                    </p>
+                  )}
+                  {seasonStatus === 'verlopen' && (
+                    <p className="text-xs text-amber-400">
+                      Dit seizoensplan is verlopen. Maak een nieuw plan voor je volgende wedstrijden.
+                    </p>
+                  )}
+                </div>
+
+                {seasonPlan.rationale && (
+                  <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setShowSeasonRationale((v) => !v)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left"
+                    >
+                      <span className="text-sm font-semibold text-gray-200">💡 Waarom dit seizoen</span>
+                      <span className="text-gray-400 text-xs">
+                        {showSeasonRationale ? 'Verbergen ▲' : 'Toon analyse ▼'}
+                      </span>
+                    </button>
+                    {showSeasonRationale && (
+                      <div className="px-4 pb-4 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed border-t border-white/10 pt-3">
+                        {cleanStrategyText(seasonPlan.rationale)}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <SeasonBlockList blocks={seasonPlan.blocks} todayISO={amsterdamDateForOffset(0)} />
+              </>
+            ) : (
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-3xl p-4 space-y-2">
+                <h2 className="font-semibold text-blue-200">Nog geen seizoensplan</h2>
+                <p className="text-sm text-gray-300">
+                  De fases hieronder zijn een vaste afleiding van het aantal dagen tot je wedstrijd. Een seizoensplan
+                  legt jouw eigen opbouw vast in blokken — met doelbelasting en sleutelsessies — en elk 2-weeks schema
+                  wordt daar een uitwerking van.
+                </p>
+                <a
+                  href="/schema/seizoen"
+                  className="inline-block mt-1 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                >
+                  Seizoensplan maken
+                </a>
+              </div>
+            )}
+
+            {/* Fasen tijdlijn — vaste afleiding; alleen zichtbaar zonder eigen seizoensplan */}
+            {!seasonPlan && (
             <div className="relative">
               {TRAINING_PHASES.map((phase, idx) => {
                 const status = getPhaseStatus(phase, raceDate);
@@ -542,6 +616,7 @@ export default function SchemaContent() {
                 );
               })}
             </div>
+            )}
           </div>
         )}
       </div>

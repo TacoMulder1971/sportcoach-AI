@@ -395,6 +395,36 @@ export interface StoredPlan {
   refinements?: string[];  // verfijnings-verzoeken van de atleet vóór goedkeuring
 }
 
+// ── Seizoensplan ────────────────────────────────────────────────────
+// Het lange-termijnkader waar elk 2-weeks schema een uitwerking van is.
+// Bewust grofmazig: blokken van meerdere weken met een doel en een
+// belastingsrichting, géén losse sessies (die komen uit /schema/nieuw).
+
+export interface SeasonBlock {
+  startDate: string;          // ISO, altijd een maandag
+  endDate: string;            // ISO, altijd de zondag erna
+  weeks: number;              // aantal weken in dit blok
+  phaseId: string;            // id uit TRAINING_PHASES (of 'herstel')
+  label: string;              // bv. "Opbouwblok 2 — drempelkracht"
+  focus: string;              // 1-3 zinnen: waar draait dit blok om
+  targetWeeklyTrimpMin?: number;
+  targetWeeklyTrimpMax?: number;
+  keyWorkouts?: string[];     // bv. ["2× fietsdrempel", "1 brick per week"]
+  raceName?: string;          // wedstrijd die in dit blok valt
+}
+
+export interface SeasonPlan {
+  id: string;
+  createdAt: string;
+  startDate: string;          // ISO maandag: begin van het eerste blok
+  endDate: string;            // ISO zondag: eind van het laatste blok
+  goalIds: string[];          // wedstrijden die dit plan dekt (voor verouderings-check)
+  summary: string;            // de rode draad in 1-2 zinnen (gaat mee in AI-prompts)
+  rationale?: string;         // volledige coachnotitie achter het seizoensplan (UI: "Waarom dit seizoen")
+  blocks: SeasonBlock[];
+  status: 'active' | 'archived';
+}
+
 // Weersomstandigheden op een racedag (via Open-Meteo, gecached per goal)
 export interface RaceWeather {
   date: string;

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport, SwimVariant, SWIM_VARIANT_LABEL } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, buildPlanStrategyText, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant, getProfile, getHealthArchive, buildHRZoneText, getRunZones, getCyclingZones, buildRaceContextText } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, buildPlanStrategyText, buildSeasonBlockContext, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant, getProfile, getHealthArchive, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, buildRaceContextText } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock, SportZones } from '@/lib/fact-check';
@@ -165,7 +165,9 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
         ? calculateTrainingLoad(statsActivities, garminData.health)
         : null;
       const { plan: currentPlan, cycleStartDate, activeFrom } = getActivePlan();
-      const sportZones: SportZones = { run: getRunZones(), cycling: getCyclingZones() };
+      // Zwemmen stuurt op tempo per 100m; de swim-targets horen erbij zodat de
+      // coach een zwemsessie niet in bpm afrekent.
+      const sportZones: SportZones = { run: getRunZones(), cycling: getCyclingZones(), swim: getSwimPaceTargets() };
 
       let feedbackPrompt = `De atleet heeft zojuist een check-out gedaan na de training van ${dayLabel}.\n`;
       feedbackPrompt += `Gevoel: ${checkIn.feeling}/5`;
@@ -206,6 +208,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           raceContext: buildRaceContextText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           planStrategy: buildPlanStrategyText(),
+          seasonContext: buildSeasonBlockContext(),
           garminHealthArchive: getHealthArchive(),
         }),
       });
@@ -274,6 +277,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           raceContext: buildRaceContextText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           planStrategy: buildPlanStrategyText(),
+          seasonContext: buildSeasonBlockContext(),
           garminHealthArchive: getHealthArchive(),
         }),
       });

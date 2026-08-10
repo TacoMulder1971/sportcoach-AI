@@ -2,8 +2,10 @@ import { CheckIn, ChatMessage, UserProfile, DEFAULT_PROFILE, ALL_TRAINING_SPORTS
 import { trainingPlan } from '@/data/training-plan';
 import { getTrainingForDayOffset, amsterdamDateForOffset } from './schedule';
 import { StrengthWorkout, StrengthWorkoutId, DEFAULT_STRENGTH_WORKOUTS, pickStrengthWorkoutId } from './strength';
-import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones } from './swim';
+import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones, buildSwimPaceText } from './swim';
 import { combineStrategyText } from './plan-strategy';
+import { SeasonPlan } from './types';
+import { buildSeasonContextText, buildCurrentBlockText, seasonPlanStatus, SeasonPlanStatus } from './season';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
 export function generateId(): string {
@@ -39,6 +41,7 @@ const KEYS = {
   CYCLE_WEEK_FLIP: 'tricoach_cycle_week_flip',
   PLANNED_DAY_ARCHIVE: 'tricoach_planned_day_archive',
   NUTRITION_REPORT: 'tricoach_nutrition_report',
+  SEASON_PLAN: 'tricoach_season_plan',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -273,7 +276,12 @@ export function getCyclingZones(): HeartRateZoneInfo[] {
   return computeHRZones(getMaxHRCycling());
 }
 
-/** Zone-tekst voor AI-prompts, per sport. */
+/**
+ * Zone-tekst voor AI-prompts, per sport. Hardlopen en fietsen sturen op
+ * hartslag; zwemmen op tempo per 100m (hartslag is in het water onbruikbaar),
+ * dus die eenheid staat er expliciet bij — anders rekent de coach zwemmen in
+ * bpm of min/km af.
+ */
 export function buildHRZoneText(): string {
   const p = getProfile();
   const runZones = getRunZones();
@@ -282,7 +290,7 @@ export function buildHRZoneText(): string {
   const bikeMaxHR = getMaxHRCycling();
   const fmt = (z: HeartRateZoneInfo[]) =>
     z.map(z => `${z.zone}(${z.min}-${z.max} ${z.label})`).join(', ');
-  return `Hardlopen: Max HR ${runMaxHR} bpm, Zones: ${fmt(runZones)} | Fietsen: Max HR ${bikeMaxHR} bpm, Zones: ${fmt(bikeZones)}`;
+  return `Hardlopen: Max HR ${runMaxHR} bpm, Zones: ${fmt(runZones)} | Fietsen: Max HR ${bikeMaxHR} bpm, Zones: ${fmt(bikeZones)} | ${buildSwimPaceText(getSwimPaceTargets())}`;
 }
 
 // Garmin data
@@ -607,6 +615,49 @@ export function getActivePlan(): { plan: TrainingWeek[]; cycleStartDate: string;
     }
   }
   return { plan: trainingPlan, cycleStartDate: DEFAULT_CYCLE_START, activeFrom: DEFAULT_CYCLE_START, id: 'default' };
+}
+
+// ─── Seizoensplan ────────────────────────────────────────────────
+// Het lange-termijnkader (blokken van meerdere weken) waar elk 2-weeks schema
+// een uitwerking van is. Eén actief plan tegelijk; opnieuw genereren overschrijft.
+
+export function getSeasonPlan(): SeasonPlan | null {
+  return getItem<SeasonPlan | null>(KEYS.SEASON_PLAN, null);
+}
+
+export function saveSeasonPlan(plan: SeasonPlan): void {
+  setItem(KEYS.SEASON_PLAN, plan);
+}
+
+export function clearSeasonPlan(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(KEYS.SEASON_PLAN);
+}
+
+/** Status van het opgeslagen seizoensplan; null als er geen plan is. */
+export function getSeasonPlanStatus(): SeasonPlanStatus | null {
+  const plan = getSeasonPlan();
+  if (!plan) return null;
+  return seasonPlanStatus(plan, getUpcomingGoals().map((g) => g.id), amsterdamDateForOffset(0));
+}
+
+/**
+ * Seizoenskader als AI-context voor de schema-generatie. `cycleStartDate` is de
+ * maandag waarop het 2-weeks blok begint; beide weken worden apart gekoppeld aan
+ * het blok waarin ze vallen.
+ */
+export function buildSeasonPlanContext(cycleStartDate: string): string {
+  const plan = getSeasonPlan();
+  if (!plan) return '';
+  return buildSeasonContextText(plan, [
+    { label: 'Week 1', start: cycleStartDate, end: shiftDateStr(cycleStartDate, 6) },
+    { label: 'Week 2', start: shiftDateStr(cycleStartDate, 7), end: shiftDateStr(cycleStartDate, 13) },
+  ]);
+}
+
+/** Compacte seizoensblok-regel voor chat en dag-aanpassingen; '' zonder plan. */
+export function buildSeasonBlockContext(): string {
+  return buildCurrentBlockText(getSeasonPlan(), amsterdamDateForOffset(0));
 }
 
 // ─── Gepland-per-dag-archief (plan-adherentie) ───────────────────
