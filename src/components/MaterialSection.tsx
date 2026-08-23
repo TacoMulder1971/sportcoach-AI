@@ -12,11 +12,11 @@ import {
   setDefaultEquipment as setDefaultEq,
   markMaintenanceDone,
   buildDefaultMaintenance,
-  getGarminData,
+  getActivityArchive,
   getActivityAssignments,
   generateId,
 } from '@/lib/storage';
-import { calculateEquipmentKm, equipmentWearStatus, maintenanceStatus, WearStatus } from '@/lib/equipment';
+import { calculateEquipmentKm, equipmentWearStatus, maintenanceStatus, maintenanceBaselineKm, WearStatus } from '@/lib/equipment';
 import EquipmentIcon from '@/components/EquipmentIcon';
 
 const TYPE_SPORT_DEFAULT: Record<EquipmentType, Sport> = {
@@ -47,8 +47,9 @@ export default function MaterialSection() {
   const refresh = () => {
     setActive(getActiveEquipment());
     setRetired(getRetiredEquipment());
-    const garmin = getGarminData();
-    setActivities(garmin?.activities || []);
+    // Bewust het archief en niet de live-lijst: die wordt bij elke sync tot 40
+    // activiteiten getrimd, waardoor km-tellers en onderhoud fors achterliepen.
+    setActivities(getActivityArchive());
     setAssignments(getActivityAssignments());
   };
 
@@ -232,7 +233,7 @@ function EquipmentCard({
       {eq.maintenance && eq.maintenance.length > 0 && (
         <div className="space-y-1.5 mb-2">
           {eq.maintenance.map(m => {
-            const s = maintenanceStatus(m, km);
+            const s = maintenanceStatus(m, km, maintenanceBaselineKm(eq, m, activities, allEquipment, assignments));
             const colors = WEAR_COLORS[s.status === 'ok' ? 'ok' : s.status === 'warning' ? 'warning' : 'overdue'];
             return (
               <div key={m.id} className="flex items-center justify-between text-xs">
@@ -479,7 +480,9 @@ function EquipmentFormModal({
                   id: generateId(),
                   name: '',
                   lastDoneAt: new Date().toISOString().split('T')[0],
-                  lastDoneKm: 0,
+                  // Vanaf de huidige stand tellen, niet vanaf 0 — anders telt de
+                  // hele levensduur van het materiaal als "sinds de beurt".
+                  lastDoneKm: Math.round(currentKm),
                 }])}
                 className="text-xs text-blue-600 font-medium"
               >

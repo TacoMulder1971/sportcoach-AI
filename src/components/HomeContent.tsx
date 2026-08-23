@@ -106,7 +106,7 @@ export default function HomeContent() {
 
       const equipment = getEquipment();
       const assignments = getActivityAssignments();
-      const equipmentAttention = buildEquipmentAttentionLine(equipment, garminData?.activities || [], assignments);
+      const equipmentAttention = buildEquipmentAttentionLine(equipment, getActivityArchive(), assignments);
       // Filter stadsfiets-rides eruit voor de coach context
       const trainingActivities = filterStatsActivities(garminData?.activities || [], equipment, assignments);
 

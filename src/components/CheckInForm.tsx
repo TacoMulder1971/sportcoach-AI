@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { CheckIn, CheckInMessage, FEELING_SCALE, TrainingSession, GarminActivity, Equipment, EquipmentType, Sport, SwimVariant, SWIM_VARIANT_LABEL } from '@/lib/types';
-import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, buildPlanStrategyText, buildSeasonBlockContext, getEquipment, getActivityAssignments, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant, getProfile, getHealthArchive, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, buildRaceContextText } from '@/lib/storage';
+import { saveCheckIn, updateCheckIn, generateId, getGarminData, syncGarminData, getRecentCheckIns, getActivePlan, buildPlanStrategyText, buildSeasonBlockContext, getEquipment, getActivityAssignments, getActivityArchive, getActiveEquipment, assignActivityToEquipment, getLastSwimVariant, setLastSwimVariant, setActivitySwimVariant, getProfile, getHealthArchive, buildHRZoneText, getRunZones, getCyclingZones, getSwimPaceTargets, buildRaceContextText } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildVerifiedFactsBlock, SportZones } from '@/lib/fact-check';
@@ -201,7 +201,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           currentPlan,
           cycleStartDate,
           activeFrom,
-          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
+          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), getActivityArchive(), getActivityAssignments()),
           // Zonder deze twee viel de check-out-coach terug op de hardcoded
           // standaardzones/geen doelcontext, terwijl de Coach-tab ze wél meestuurt.
           hrZoneText: buildHRZoneText(),
@@ -272,7 +272,7 @@ export default function CheckInForm({ sessions, dayLabel, garminActivities = [],
           currentPlan,
           cycleStartDate,
           activeFrom,
-          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
+          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), getActivityArchive(), getActivityAssignments()),
           hrZoneText: buildHRZoneText(),
           raceContext: buildRaceContextText(),
           athleteProfile: athleteProfilePayload(getProfile()),
