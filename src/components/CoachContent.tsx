@@ -6,7 +6,7 @@ import ChatMessage from '@/components/ChatMessage';
 import CheckInContent from '@/app/coach/CheckInContent';
 import WeeklyReportSection from '@/components/WeeklyReportSection';
 import { ChatMessage as ChatMessageType } from '@/lib/types';
-import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, buildPlanStrategyText, buildSeasonBlockContext, generateId, getNutritionForDate, getActiveRaceLabel, getActiveRaceDate, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getUpcomingGoals, getEquipment, getActivityAssignments, buildHRZoneText, getProfile, getHealthArchive } from '@/lib/storage';
+import { getChatMessages, saveChatMessage, clearChatMessages, getRecentCheckIns, getCheckIns, getGarminData, getActivePlan, buildPlanStrategyText, buildSeasonBlockContext, generateId, getNutritionForDate, getActiveRaceLabel, getActiveRaceDate, formatRaceDateNL, buildRaceContextText, buildGoalsHistoryText, getDaysUntilActiveRace, getUpcomingGoals, getEquipment, getActivityAssignments, getActivityArchive, buildHRZoneText, getProfile, getHealthArchive } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getWeeklyTRIMPTotals } from '@/lib/training-load';
@@ -258,7 +258,7 @@ export default function CoachContent() {
           localDateTime: new Date().toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' }),
           raceContext: buildRaceContextText(),
           goalsHistory: buildGoalsHistoryText(),
-          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), garminData?.activities || [], getActivityAssignments()),
+          equipmentAttention: buildEquipmentAttentionLine(getEquipment(), getActivityArchive(), getActivityAssignments()),
           hrZoneText: buildHRZoneText(),
           athleteProfile: athleteProfilePayload(getProfile()),
           planStrategy: buildPlanStrategyText(),
