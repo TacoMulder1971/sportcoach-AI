@@ -34,12 +34,22 @@ export interface SwimPaceTargets {
   zones: SwimPaceTarget[];
 }
 
+/**
+ * Live-formattering tijdens het typen: het iOS-cijfertoetsenbord heeft geen dubbele punt,
+ * dus zetten we die zelf. Cijfers vullen van rechts: "2" → "2", "205" → "2:05", "2055" → "20:55".
+ */
+export function formatSwimPaceInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, digits.length - 2)}:${digits.slice(-2)}`;
+}
+
 /** "2:05" of "125" → seconden per 100m; null bij onbruikbare invoer. */
 export function parseSwimPace(input: string): number | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
   let sec: number;
-  const colonMatch = trimmed.match(/^(\d{1,2})[:.](\d{1,2})$/);
+  const colonMatch = trimmed.match(/^(\d{1,2})[:.,](\d{1,2})$/);
   if (colonMatch) {
     sec = parseInt(colonMatch[1]) * 60 + parseInt(colonMatch[2]);
   } else if (/^\d+$/.test(trimmed)) {
