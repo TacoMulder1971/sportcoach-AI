@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getProfile, saveProfile, getRunZones, getCyclingZones, getActivityArchive } from '@/lib/storage';
-import { estimateSwimPaceTargets, parseSwimPace, formatSwimPace, SwimPaceTargets } from '@/lib/swim';
+import { estimateSwimPaceTargets, parseSwimPace, formatSwimPace, formatSwimPaceInput, SwimPaceTargets } from '@/lib/swim';
 import { SwimPaceZone } from '@/lib/types';
 
 const SWIM_ZONE_LABELS = ['Herstel', 'Basis', 'Aeroob', 'Drempel', 'VO2max'];
@@ -37,7 +37,9 @@ export default function HeartRateZonesCard() {
   }, []);
 
   function setSwimZone(idx: number, field: 'min' | 'max', value: string) {
-    setSwimZones(zs => zs.map((z, i) => (i === idx ? { ...z, [field]: value } : z)));
+    // Formatteer live naar m:ss — het cijfertoetsenbord op iOS heeft geen dubbele punt.
+    const formatted = formatSwimPaceInput(value);
+    setSwimZones(zs => zs.map((z, i) => (i === idx ? { ...z, [field]: formatted } : z)));
     setSwimError('');
   }
 
