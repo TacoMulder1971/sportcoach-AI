@@ -151,6 +151,26 @@ function trimDescription(...parts: (string | undefined | null)[]): string | null
   return text.length > 220 ? `${text.slice(0, 217)}...` : text;
 }
 
+/**
+ * Korte, herkenbare naam in de stijl die de gebruiker zelf hanteert in Garmin
+ * ("Interval 4x2min Z4", "Duurloop 55min Z2") — niet de volledige omschrijving
+ * uit het schema, want die is op een horloge onleesbaar lang.
+ *
+ * De structuur komt uit een herkende herhaling ("4×2min Z4"), of anders uit
+ * gelijke hoofdblokken ("2×12min Z4"), of anders uit de totale duur.
+ */
+export function buildWorkoutName(
+  session: TrainingSession,
+  structure: string | null,
+  totalMinutes: number
+): string {
+  const rawType = (session.type || '').trim();
+  const label = rawType ? rawType.charAt(0).toUpperCase() + rawType.slice(1) : 'Training';
+  const zone = zoneNumberFor(session.zone);
+  const tail = structure ?? `${totalMinutes}min${zone ? ` Z${zone}` : ''}`;
+  return `${label} ${tail}`.replace(/\s+/g, ' ').trim().slice(0, 40);
+}
+
 export interface BuiltWorkout {
   payload: Record<string, unknown>;
   totalSeconds: number;
@@ -175,6 +195,9 @@ export function buildGarminWorkout(
 
   const steps: StepDTO[] = [];
   const summary: string[] = [];
+  // Voor de naamgeving: de herkende herhaling, of anders de gelijke hoofdblokken.
+  let structure: string | null = null;
+  const mainBlocks: { minutes: number; zone: number | null }[] = [];
   let order = 1;
   let childStepId = 1;
 
@@ -243,6 +266,7 @@ export function buildGarminWorkout(
           workoutSteps: children,
         });
         childStepId += 1;
+        structure ??= `${interval.reps}×${interval.workMinutes}min Z${interval.workZone}`;
         summary.push(
           `${interval.reps}× ${interval.workMinutes} min Hartslagzone ${interval.workZone}` +
             (interval.restMinutes ? ` / ${interval.restMinutes} min herstel` : '')
@@ -251,6 +275,7 @@ export function buildGarminWorkout(
       }
 
       const zone = zoneNumberFor(seg.zone) ?? zoneNumberFor(session.zone);
+      mainBlocks.push({ minutes: seg.minutes, zone });
       steps.push(
         executableStep(order++, 'interval', seg.minutes, zone, trimDescription(seg.detail, seg.technique))
       );
@@ -259,6 +284,16 @@ export function buildGarminWorkout(
   }
 
   if (steps.length === 0) return null;
+
+  // Twee of meer identieke hoofdblokken lezen als een herhaling: "2×12min Z4".
+  // (De AI-breakdown splitst zulke blokken vaak in "Drempelblok 1" en "2".)
+  if (!structure && mainBlocks.length >= 2) {
+    const [first] = mainBlocks;
+    const identical = mainBlocks.filter((b) => b.minutes === first.minutes && b.zone === first.zone);
+    if (identical.length >= 2) {
+      structure = `${identical.length}×${first.minutes}min${first.zone ? ` Z${first.zone}` : ''}`;
+    }
+  }
 
   const totalSeconds = steps.reduce((sum, step) => {
     if (step.type === 'RepeatGroupDTO') {
@@ -272,7 +307,9 @@ export function buildGarminWorkout(
     payload: {
       sportType,
       subSportType: null,
-      workoutName: (options.name || session.description || 'Training').slice(0, 80),
+      workoutName:
+        options.name?.slice(0, 40) ||
+        buildWorkoutName(session, structure, Math.round(totalSeconds / 60)),
       description: trimDescription(session.type, '—', session.description) ?? undefined,
       estimatedDurationInSecs: totalSeconds,
       workoutSegments: [{ segmentOrder: 1, sportType, workoutSteps: steps }],
