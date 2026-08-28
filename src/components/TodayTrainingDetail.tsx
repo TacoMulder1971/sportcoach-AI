@@ -18,6 +18,7 @@ import { athleteProfilePayload } from '@/lib/athlete';
 import { SwimPaceTargets, formatSwimPaceRange } from '@/lib/swim';
 import { findBrickPair, formatDuration } from '@/lib/schedule';
 import StrengthWorkoutDetail from '@/components/StrengthWorkoutDetail';
+import SendToGarminButton from '@/components/SendToGarminButton';
 
 function zonesForSport(sport: Sport): HeartRateZoneInfo[] {
   if (sport === 'hardlopen') return getRunZones();
@@ -232,6 +233,13 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
               ) : error ? (
                 <p className="text-sm text-gray-500">{error}</p>
               ) : null}
+
+              {/* Hardlopen/fietsen: rechtstreeks als gestructureerde workout naar het horloge. */}
+              <SendToGarminButton
+                session={session}
+                segments={breakdown?.segments ?? null}
+                skipWarmup={isBrickRun}
+              />
             </div>
           </div>
         );
