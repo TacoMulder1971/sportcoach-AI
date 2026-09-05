@@ -171,6 +171,7 @@ export interface UserProfile {
   trainingDaysPerWeek?: number;     // 2..7
   strengthTraining?: boolean;       // 40-min krachttraining inplannen (core is altijd aan)
   coachNotes?: string;              // vrije coach-wensen, gaan mee in alle AI-prompts
+  chargeDevices?: string[];         // apparaten die vóór een wedstrijd opgeladen moeten zijn; leeg = afleiden uit de wedstrijd
   onboarded?: boolean;              // onboarding doorlopen (of legacy-migratie)
 }
 

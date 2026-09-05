@@ -40,6 +40,7 @@ export default function ProfileCard() {
   const [level, setLevel] = useState<AthleteLevel>('gevorderd');
   const [strength, setStrength] = useState(false);
   const [notes, setNotes] = useState('');
+  const [devices, setDevices] = useState('');
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
@@ -55,6 +56,7 @@ export default function ProfileCard() {
     setLevel(p.level ?? 'gevorderd');
     setStrength(p.strengthTraining ?? false);
     setNotes(p.coachNotes ?? '');
+    setDevices((p.chargeDevices ?? []).join(', '));
   }, []);
 
   function toggleSport(s: TrainingSport) {
@@ -88,6 +90,7 @@ export default function ProfileCard() {
       level,
       strengthTraining: strength,
       coachNotes: notes.trim() || undefined,
+      chargeDevices: devices.split(',').map(d => d.trim()).filter(Boolean).slice(0, 8),
       onboarded: true,
     });
     setSaved(true);
@@ -254,6 +257,22 @@ export default function ProfileCard() {
         placeholder={'bijv. "geen intervallen op maandag"'}
         className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30 resize-none"
       />
+
+      <label htmlFor="pf-devices" className="block text-xs text-gray-500 mt-4 mb-1">
+        Opladen vóór een wedstrijd
+      </label>
+      <input
+        id="pf-devices"
+        type="text"
+        value={devices}
+        onChange={(e) => { setDevices(e.target.value); setSaved(false); }}
+        placeholder="Sporthorloge, Garmin Edge 530, Di2"
+        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30"
+      />
+      <p className="text-gray-600 text-[11px] mt-1 leading-relaxed">
+        Komma-gescheiden. Laat leeg om het uit je wedstrijd af te leiden (horloge,
+        en bij een fietsonderdeel ook fietscomputer en Di2).
+      </p>
 
       {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
 

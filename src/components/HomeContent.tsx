@@ -7,8 +7,10 @@ import SportIcon from '@/components/SportIcon';
 import TodayTrainingDetail from '@/components/TodayTrainingDetail';
 import LatestActivityCard from '@/components/LatestActivityCard';
 import AdherenceCard from '@/components/AdherenceCard';
+import RacePrepCard from '@/components/RacePrepCard';
+import { buildRacePrepAdvice, buildRacePrepCoachText } from '@/lib/race-prep';
 import { getTodayTraining, getCurrentWeekNumber, getDaysUntilRace, getDaysInCurrentCycle, getTrainingForDayOffset, amsterdamDateForOffset } from '@/lib/schedule';
-import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getGarminTokens, saveGarminTokens, getProfile, getRunZones, getCyclingZones, getSwimPaceTargets, recordPlannedDays, getHealthArchive } from '@/lib/storage';
+import { getRecentCheckIns, getGarminData, saveGarminData, getActivePlan, getDailyMessage, saveDailyMessage, clearDailyMessage, markAutoSyncDone, shouldAutoSync, getActiveRaceDate, buildRaceContextText, buildGoalsHistoryText, getPendingResultGoal, dismissGoalResultPrompt, getEquipment, getActivityAssignments, getActivityArchive, mergeActivitiesIntoArchive, mergeHealthIntoArchive, getGarminCredentials, getGarminTokens, saveGarminTokens, getProfile, getRunZones, getCyclingZones, getSwimPaceTargets, recordPlannedDays, getHealthArchive, getUpcomingGoals } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { buildEquipmentAttentionLine, filterStatsActivities } from '@/lib/equipment';
 import { calculateTrainingLoad, getTrainingReadiness, estimatePlannedTRIMP, getTrainingAdvice, calcTRIMP, computeWeekAdherence, computeMultisportMatchScore, expandMultisportActivity, sportsMatch, MultisportMatchScore, assessFatigue, describeGarminReadiness, healthNightIsBorrowed, describeBorrowedNight } from '@/lib/training-load';
@@ -134,6 +136,10 @@ export default function HomeContent() {
           sportZones: { run: getRunZones(), cycling: getCyclingZones(), swim: getSwimPaceTargets() },
           athleteProfile: athleteProfilePayload(getProfile()),
           garminHealthArchive: getHealthArchive(),
+          // Praktische wedstrijdvoorbereiding (apparatuur opladen) in de laatste dagen
+          racePrep: buildRacePrepCoachText(
+            buildRacePrepAdvice(getUpcomingGoals()[0] ?? null, getDaysUntilRace(getActiveRaceDate()), getProfile()),
+          ),
         }),
       });
 
@@ -419,6 +425,8 @@ export default function HomeContent() {
       </Link>
 
       <div className="px-5 space-y-5 pb-8">
+        {/* Wedstrijd in zicht: apparatuur opladen (horloge, fietscomputer, Di2) */}
+        <RacePrepCard />
         {/* Vroege vermoeidheidswaarschuwing (#5): ≥2 herstel-signalen tegelijk */}
         {fatigue.signalCount >= 2 && (() => {
           const parts: string[] = [];

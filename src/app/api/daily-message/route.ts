@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ANTHROPIC_API_KEY niet geconfigureerd' }, { status: 500 });
     }
 
-    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention, athleteProfile, garminHealthArchive, sportZones } = await request.json();
+    const { todayTraining, yesterdayTraining, yesterdayCheckOut, garminHealth, garminActivities, trainingLoad, readiness, daysUntilRace, weekNumber, dayInCycle, localDateTime, raceContext, goalsHistory, equipmentAttention, athleteProfile, garminHealthArchive, sportZones, racePrep } = await request.json();
     const profileText = buildAthleteProfileText((athleteProfile ?? null) as AthleteProfilePayload | null);
 
     // Gebruik Amsterdam tijdzone direct op de server (betrouwbaarder dan client localDateTime)
@@ -229,6 +229,11 @@ VANDAAG: ${dayName} ${dateStr}, week ${weekNumber} van de cyclus (dag ${dayInCyc
     }
     if (equipmentAttention && typeof equipmentAttention === 'string' && equipmentAttention.trim().length > 0) {
       prompt += `\nMATERIAAL-ATTENTIE:\n${equipmentAttention}\nNoem dit kort als er ruimte is — geen verplicht onderwerp.\n`;
+    }
+    // Praktische wedstrijdvoorbereiding: in de laatste dagen vóór een race is een
+    // lege accu een echt risico, dus dit is bewust WEL een verplichte zin.
+    if (racePrep && typeof racePrep === 'string' && racePrep.trim().length > 0) {
+      prompt += `\n${racePrep}\nNoem dit VERPLICHT in één korte, praktische zin (geen opsomming met opsommingstekens).\n`;
     }
 
     // Instructies voor afwisseling

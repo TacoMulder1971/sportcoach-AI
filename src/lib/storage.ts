@@ -42,6 +42,7 @@ const KEYS = {
   PLANNED_DAY_ARCHIVE: 'tricoach_planned_day_archive',
   NUTRITION_REPORT: 'tricoach_nutrition_report',
   SEASON_PLAN: 'tricoach_season_plan',
+  RACE_PREP: 'tricoach_race_prep',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -1117,6 +1118,27 @@ export function dismissGoalResultPrompt(goalId: string): void {
     dismissed.push(goalId);
     setItem(KEYS.GOAL_RESULT_DISMISSED, dismissed);
   }
+}
+
+// ── Wedstrijdvoorbereiding: welke apparaten zijn al opgeladen? ──────
+// Per wedstrijd (goalId) de afgevinkte apparaat-ids. Zo verdwijnt de
+// oplaad-herinnering zodra alles geregeld is, en komt hij bij de volgende
+// wedstrijd vanzelf weer terug.
+
+export function getRacePrepChecked(goalId: string): string[] {
+  const all = getItem<Record<string, string[]>>(KEYS.RACE_PREP, {});
+  return all[goalId] ?? [];
+}
+
+export function toggleRacePrepDevice(goalId: string, deviceId: string): string[] {
+  const all = getItem<Record<string, string[]>>(KEYS.RACE_PREP, {});
+  const current = all[goalId] ?? [];
+  const next = current.includes(deviceId)
+    ? current.filter(id => id !== deviceId)
+    : [...current, deviceId];
+  all[goalId] = next;
+  setItem(KEYS.RACE_PREP, all);
+  return next;
 }
 
 /**

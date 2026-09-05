@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { getDaysUntilRace } from '@/lib/schedule';
 import { getActiveRaceDate, getActiveRaceLabel, formatRaceDateNL, getGoals, getUpcomingGoals, formatDuration, getProfile } from '@/lib/storage';
-import { Goal, TrainingSport, GOAL_TYPES } from '@/lib/types';
+import { Goal, TrainingSport } from '@/lib/types';
 import { resolveSports } from '@/lib/athlete';
+// Sport-icoontjes horen bij de wedstrijd, niet bij het hele sportprofiel:
+// een triatlon toont zwem/fiets/loop, een marathon alleen hardlopen.
+import { sportsForGoal } from '@/lib/race-prep';
 import SportIcon from './SportIcon';
 import { TRAINING_PHASES, getCurrentPhase, getPhaseStatus, getPhaseProgress } from '@/lib/periodization';
 
@@ -12,20 +15,6 @@ const TOTAL_PREP_DAYS_DEFAULT = 104; // ~3,5 maanden (fallback bij korte traject
 const PHASE_DURATIONS: Record<string, number> = {
   basis: 50, opbouw: 28, piek: 21, taper: 14, wedstrijd: 7,
 };
-
-// Sport-icoontjes horen bij de wedstrijd, niet bij het hele sportprofiel:
-// een triatlon toont zwem/fiets/loop, een marathon alleen hardlopen.
-function sportsForGoal(goal: Goal | null): TrainingSport[] | null {
-  if (!goal) return null;
-  const info = GOAL_TYPES.find(t => t.type === goal.type);
-  if (info?.multiSport && info.disciplines) return [...new Set<TrainingSport>(info.disciplines)];
-  switch (goal.type) {
-    case 'fietstocht': return ['fietsen'];
-    case 'zwemtocht': return ['zwemmen'];
-    case 'eigen': return null; // onbekende sport → val terug op profielsporten
-    default: return ['hardlopen']; // loopafstanden (5k t/m marathon)
-  }
-}
 
 interface CountdownProps {
   gradientClassName?: string;

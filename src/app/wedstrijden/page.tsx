@@ -8,6 +8,7 @@ import { buildRaces, getRaceTotalSeconds, getRaceSplits, Race } from '@/lib/race
 import { GOAL_TYPES, Sport } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import RaceDayFlag from '@/components/RaceDayFlag';
+import RacePrepCard from '@/components/RacePrepCard';
 
 function typeLabel(race: Race): string {
   return GOAL_TYPES.find(t => t.type === race.goal.type)?.label || race.goal.name;
@@ -127,6 +128,9 @@ export default function WedstrijdenPage() {
           </div>
         </Link>
       )}
+
+      {/* Apparatuur opladen in de laatste dagen vóór de wedstrijd */}
+      <RacePrepCard />
 
       {/* Overige komende wedstrijden */}
       {upcoming.length > 1 && (
