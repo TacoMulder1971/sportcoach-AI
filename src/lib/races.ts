@@ -191,6 +191,60 @@ function officialDistance(goal: Goal, discipline: string, runNr: number): number
 }
 
 /**
+ * Nominale wedstrijdafstand van een enkelvoudig doeltype (km). Een 10 km is
+ * altijd 10 km, ongeacht wat de gps ervan maakt.
+ */
+const NOMINAL_DISTANCE_KM: Partial<Record<GoalType, number>> = {
+  '5km': 5,
+  '10km': 10,
+  halve_marathon: 21.0975,
+  marathon: 42.195,
+};
+
+/** De sport van een enkelvoudige wedstrijd — bepaalt de eenheid van het tempo. */
+function singleSportDiscipline(type: GoalType): 'hardlopen' | 'fietsen' | 'zwemmen' {
+  if (type === 'fietstocht') return 'fietsen';
+  if (type === 'zwemtocht') return 'zwemmen';
+  return 'hardlopen';
+}
+
+/**
+ * Afstand van een enkelvoudige wedstrijd. Prioriteit: zelf ingevulde afstand >
+ * nominale afstand van het doeltype > de gps-meting van Garmin. Zo klopt het
+ * tempo ook voor races van vóór de Garmin-historie.
+ */
+export function getRaceDistanceKm(race: Race): number | undefined {
+  const info = GOAL_TYPES.find(t => t.type === race.goal.type);
+  if (info?.multiSport) return undefined;
+  const d = race.goal.disciplineDistancesKm;
+  const disc = singleSportDiscipline(race.goal.type);
+  const own = disc === 'fietsen' ? d?.bike : disc === 'zwemmen' ? d?.swim : d?.run;
+  if (own && own > 0) return own;
+  const nominal = NOMINAL_DISTANCE_KM[race.goal.type];
+  if (nominal) return nominal;
+  const gps = race.activity?.distanceKm;
+  return gps && gps > 0 ? gps : undefined;
+}
+
+/**
+ * Tempo van een enkelvoudige wedstrijd: "5:44/km", "31.5 km/h" of "2:16/100m".
+ * Multisport heeft geen enkel tempo — daar toont de splitsbalk het per onderdeel.
+ */
+export function getRacePace(race: Race): string | undefined {
+  const info = GOAL_TYPES.find(t => t.type === race.goal.type);
+  if (info?.multiSport) return undefined;
+  const total = getRaceTotalSeconds(race);
+  if (!total || total <= 0) return undefined;
+  return paceFor(singleSportDiscipline(race.goal.type), getRaceDistanceKm(race), total);
+}
+
+/** Afstand als "21,1 km" — hele getallen zonder decimaal. */
+export function formatRaceDistance(km: number): string {
+  const rounded = Math.round(km * 10) / 10;
+  return `${(Number.isInteger(rounded) ? rounded : rounded.toFixed(1)).toString().replace('.', ',')} km`;
+}
+
+/**
  * Splits per onderdeel voor weergave. Bron-prioriteit:
  * 1. handmatig ingevoerd GoalResult.splits — dat zijn de officiële
  *    wedstrijdtijden en die winnen altijd van Garmins eigen registratie
