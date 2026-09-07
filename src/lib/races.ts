@@ -120,6 +120,7 @@ const MIN_PLAUSIBLE_SECONDS: Partial<Record<GoalType, number>> = {
   '10km': 25 * 60,
   halve_marathon: 55 * 60,
   marathon: 110 * 60,
+  achtste_triatlon: 40 * 60,
   kwart_triatlon: 60 * 60,
   halve_triatlon: 3 * 3600,
   hele_triatlon: 7 * 3600,

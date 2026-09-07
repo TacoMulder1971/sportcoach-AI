@@ -123,6 +123,7 @@ const GOAL_TYPE_SPORTS: Record<string, TrainingSport[][]> = {
   '10km': [['hardlopen']],
   halve_marathon: [['hardlopen']],
   marathon: [['hardlopen']],
+  achtste_triatlon: [['zwemmen'], ['fietsen', 'mountainbike'], ['hardlopen']],
   kwart_triatlon: [['zwemmen'], ['fietsen', 'mountainbike'], ['hardlopen']],
   halve_triatlon: [['zwemmen'], ['fietsen', 'mountainbike'], ['hardlopen']],
   hele_triatlon: [['zwemmen'], ['fietsen', 'mountainbike'], ['hardlopen']],
