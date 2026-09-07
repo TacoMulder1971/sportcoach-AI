@@ -20,7 +20,7 @@ import {
   getProfile,
 } from '@/lib/storage';
 import { goalTypeMatchesSports, resolveSports } from '@/lib/athlete';
-import { buildRaces, getRaceSplits, getPreRaceBuildup } from '@/lib/races';
+import { buildRaces, getRaceSplits, getPreRaceBuildup, parseRaceTime, describeRaceTime, normalizeDiscipline } from '@/lib/races';
 
 // ─── AI race-evaluatie ──────────────────────────────────────────
 // Bouwt de payload (splits uit Garmin/resultaat + trainingsaanloop uit het
@@ -552,7 +552,7 @@ function GoalFormModal({
       type,
       name: name.trim(),
       date,
-      targetTimeSeconds: targetTime ? parseDuration(targetTime) : undefined,
+      targetTimeSeconds: targetTime ? parseRaceTime(targetTime, type) : undefined,
       disciplineDistancesKm,
       location: location.trim() || undefined,
       note: note.trim() || undefined,
@@ -624,6 +624,13 @@ function GoalFormModal({
               placeholder="hh:mm:ss of mm:ss"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
             />
+            {/* Toon hoe de invoer gelezen wordt: "2:45" is voor een triatlon
+                2 uur 45, voor een 5 km 2 minuten 45. */}
+            {targetTime.trim() && parseRaceTime(targetTime, type) > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                = {describeRaceTime(parseRaceTime(targetTime, type))}
+              </p>
+            )}
           </div>
 
           <div>
@@ -757,20 +764,38 @@ function GoalResultModal({
   const [totalTime, setTotalTime] = useState(
     goal.result ? formatDuration(goal.result.totalTimeSeconds) : ''
   );
-  const [splits, setSplits] = useState<{ discipline: string; time: string }[]>(() => {
+  // Afstand per onderdeel hoort bij het resultaat: de officiële wedstrijdafstand
+  // wijkt af van wat Garmins gps meet, en die officiële afstand bepaalt het tempo.
+  const [splits, setSplits] = useState<{ discipline: string; time: string; km: string }[]>(() => {
+    // Afstand voorinvullen uit de afstanden-per-discipline van het doel, zodat
+    // de officiële wedstrijdafstand er meteen staat (en niet Garmins gps-meting).
+    const d = goal.disciplineDistancesKm;
+    let runSeen = 0;
+    const goalKm = (disc: string): string => {
+      const key = normalizeDiscipline(disc);
+      if (key === 'zwemmen') return d?.swim ? String(d.swim) : '';
+      if (key === 'fietsen') return d?.bike ? String(d.bike) : '';
+      if (key === 'hardlopen') {
+        const km = ++runSeen >= 2 ? d?.run2 : d?.run;
+        return km ? String(km) : '';
+      }
+      return '';
+    };
+
     if (goal.result?.splits) {
       return goal.result.splits.map(s => ({
         discipline: s.discipline,
         time: formatDuration(s.timeSeconds),
+        km: s.distanceKm ? String(s.distanceKm) : goalKm(s.discipline),
       }));
     }
     if (multi) {
       // Standaard: disciplines + T1/T2 bij triatlon
-      const result: { discipline: string; time: string }[] = [];
-      disciplines.forEach((d, i) => {
-        result.push({ discipline: d, time: '' });
+      const result: { discipline: string; time: string; km: string }[] = [];
+      disciplines.forEach((disc, i) => {
+        result.push({ discipline: disc, time: '', km: goalKm(disc) });
         if (i < disciplines.length - 1) {
-          result.push({ discipline: `T${i + 1}`, time: '' });
+          result.push({ discipline: `T${i + 1}`, time: '', km: '' });
         }
       });
       return result;
@@ -782,7 +807,7 @@ function GoalResultModal({
   const [trainingReflection, setTrainingReflection] = useState(goal.result?.trainingReflection || '');
 
   function handleSubmit() {
-    const totalSec = parseDuration(totalTime);
+    const totalSec = parseRaceTime(totalTime, goal.type);
     if (totalSec <= 0) {
       alert('Vul een geldige eindtijd in');
       return;
@@ -790,7 +815,14 @@ function GoalResultModal({
     const splitsArr: GoalSplit[] = multi
       ? splits
           .filter(s => s.time.trim())
-          .map(s => ({ discipline: s.discipline, timeSeconds: parseDuration(s.time) }))
+          .map(s => {
+            const km = parseFloat(s.km.replace(',', '.'));
+            return {
+              discipline: s.discipline,
+              timeSeconds: parseDuration(s.time),
+              distanceKm: isNaN(km) || km <= 0 ? undefined : km,
+            };
+          })
       : [];
 
     onSave({
@@ -830,6 +862,11 @@ function GoalResultModal({
               placeholder="bv. 2:54:12"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
             />
+            {totalTime.trim() && parseRaceTime(totalTime, goal.type) > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                = {describeRaceTime(parseRaceTime(totalTime, goal.type))}
+              </p>
+            )}
             {goal.targetTimeSeconds && (
               <p className="text-xs text-gray-500 mt-1">
                 Streeftijd: {formatDuration(goal.targetTimeSeconds)}
@@ -840,23 +877,47 @@ function GoalResultModal({
           {multi && (
             <div>
               <label className="text-xs font-medium text-gray-600 mb-2 block">Splittijden per onderdeel</label>
+              <p className="text-xs text-gray-500 mb-2">
+                Dit zijn de officiële uitslagtijden — ze gaan vóór op wat je horloge
+                registreerde. De afstand bepaalt het tempo dat de app toont.
+              </p>
               <div className="space-y-2">
-                {splits.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 w-20 capitalize">{s.discipline}</span>
-                    <input
-                      type="text"
-                      value={s.time}
-                      onChange={(e) => {
-                        const next = [...splits];
-                        next[i].time = e.target.value;
-                        setSplits(next);
-                      }}
-                      placeholder="mm:ss"
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono"
-                    />
-                  </div>
-                ))}
+                {splits.map((s, i) => {
+                  const isTransition = normalizeDiscipline(s.discipline) === 'transitie';
+                  return (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-600 w-16 flex-shrink-0 capitalize truncate">{s.discipline}</span>
+                      <input
+                        type="text"
+                        value={s.time}
+                        onChange={(e) => {
+                          const next = [...splits];
+                          next[i].time = e.target.value;
+                          setSplits(next);
+                        }}
+                        placeholder="mm:ss"
+                        className="flex-1 min-w-0 border border-gray-300 rounded-lg px-2 py-2 text-sm font-mono"
+                      />
+                      {!isTransition && (
+                        <div className="relative w-20 flex-shrink-0">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={s.km}
+                            onChange={(e) => {
+                              const next = [...splits];
+                              next[i].km = e.target.value;
+                              setSplits(next);
+                            }}
+                            placeholder="—"
+                            className="w-full border border-gray-300 rounded-lg pl-2 pr-6 py-2 text-sm font-mono"
+                          />
+                          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">km</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

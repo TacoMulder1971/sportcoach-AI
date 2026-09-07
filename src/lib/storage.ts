@@ -6,6 +6,7 @@ import { SwimPaceTargets, estimateSwimPaceTargets, buildSwimPaceTargetsFromZones
 import { combineStrategyText } from './plan-strategy';
 import { SeasonPlan } from './types';
 import { buildSeasonContextText, buildCurrentBlockText, seasonPlanStatus, SeasonPlanStatus } from './season';
+import { normalizeTargetSeconds } from './races';
 
 // Safe UUID generator that works on HTTP (crypto.randomUUID requires HTTPS on iOS Safari)
 export function generateId(): string {
@@ -1031,7 +1032,12 @@ function runGoalsMigration(): void {
 
 export function getGoals(): Goal[] {
   runGoalsMigration();
-  return getItem<Goal[]>(KEYS.GOALS, []);
+  // Read-time correctie van streeftijden die als mm:ss zijn opgeslagen terwijl
+  // h:mm bedoeld was ("2:45" voor een triatlon). Zie normalizeTargetSeconds.
+  return getItem<Goal[]>(KEYS.GOALS, []).map(g => {
+    const t = normalizeTargetSeconds(g.targetTimeSeconds, g.type);
+    return t === g.targetTimeSeconds ? g : { ...g, targetTimeSeconds: t };
+  });
 }
 
 /**

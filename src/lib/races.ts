@@ -1,4 +1,4 @@
-import { GarminActivity, GarminHealthStats, Goal, GoalSplit, GOAL_TYPES } from './types';
+import { GarminActivity, GarminHealthStats, Goal, GoalSplit, GoalType, GOAL_TYPES } from './types';
 import { calcTRIMP } from './training-load';
 
 // ── Race view-model ──────────────────────────────────────────────
@@ -41,13 +41,13 @@ function todayISO(): string {
 }
 
 /** Normaliseer een vrije-tekst discipline naar een bekende sleutel. */
-function normalizeDiscipline(raw: string): string {
+export function normalizeDiscipline(raw: string): string {
   const d = (raw || '').toLowerCase();
   if (d.startsWith('t') && /\d/.test(d)) return 'transitie';      // T1 / T2
   if (d.includes('transi') || d.includes('wissel')) return 'transitie';
   if (d.includes('zwem') || d.includes('swim')) return 'zwemmen';
   if (d.includes('fiets') || d.includes('bike') || d.includes('cycl')) return 'fietsen';
-  if (d.includes('loop') || d.includes('run')) return 'hardlopen';
+  if (d.includes('lop') || d.includes('run')) return 'hardlopen';
   return d;
 }
 
@@ -111,13 +111,98 @@ function daysBetween(a: string, b: string): number {
   return Math.round((new Date(a).getTime() - new Date(b).getTime()) / 86_400_000);
 }
 
+// ── Wedstrijdtijden invoeren ─────────────────────────────────────
+// "2:45" is dubbelzinnig: mm:ss voor een 5 km, maar h:mm voor een triatlon.
+// Per doeltype de kortste tijd waarop een uitslag nog realistisch is; leest de
+// mm:ss-variant daaronder, dan bedoelde de atleet uren en minuten.
+const MIN_PLAUSIBLE_SECONDS: Partial<Record<GoalType, number>> = {
+  '5km': 12 * 60,
+  '10km': 25 * 60,
+  halve_marathon: 55 * 60,
+  marathon: 110 * 60,
+  kwart_triatlon: 60 * 60,
+  halve_triatlon: 3 * 3600,
+  hele_triatlon: 7 * 3600,
+  duatlon: 45 * 60,
+  fietstocht: 30 * 60,
+  zwemtocht: 10 * 60,
+  // 'eigen': bewust geen ondergrens — alles kan, dus nooit herinterpreteren
+};
+
+/**
+ * Parse een ingevoerde wedstrijdtijd ("2:36:39", "2:45", "45:00") naar seconden.
+ * Twee delen worden als mm:ss gelezen, tenzij dat voor dit doeltype onmogelijk
+ * kort is — dan als h:mm. Zonder doeltype gedraagt het zich als parseDuration.
+ */
+export function parseRaceTime(input: string, goalType?: GoalType): number {
+  const parts = input.trim().split(':').map(p => parseInt(p, 10));
+  if (parts.length === 0 || parts.some(isNaN)) return 0;
+  if (parts.length >= 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  if (parts.length === 1) return parts[0];
+
+  const asMinSec = parts[0] * 60 + parts[1];
+  const min = goalType ? MIN_PLAUSIBLE_SECONDS[goalType] : undefined;
+  if (min !== undefined && asMinSec < min) return parts[0] * 3600 + parts[1] * 60;
+  return asMinSec;
+}
+
+/**
+ * Herstel een streeftijd die als mm:ss is opgeslagen terwijl h:mm bedoeld was
+ * (het oude invoerveld las "2:45" als 2 min 45 sec). Puur read-time: schrijft
+ * niets terug, maar zorgt dat weergave en AI meteen de bedoelde tijd zien.
+ * Corrigeert alleen als de opgeslagen tijd onmogelijk kort is voor dit doeltype
+ * én de h:mm-lezing wél realistisch uitkomt.
+ */
+export function normalizeTargetSeconds(seconds: number | undefined, type: GoalType): number | undefined {
+  if (!seconds || seconds <= 0) return seconds;
+  const min = MIN_PLAUSIBLE_SECONDS[type];
+  if (min === undefined || seconds >= min) return seconds;
+  const asHoursMinutes = seconds * 60; // mm:ss → h:mm is exact een factor 60
+  return asHoursMinutes >= min && asHoursMinutes <= 24 * 3600 ? asHoursMinutes : seconds;
+}
+
+/** Menselijke omschrijving van een tijd, om de invoer terug te tonen. */
+export function describeRaceTime(seconds: number): string {
+  if (seconds <= 0) return '';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${h} uur`);
+  if (m > 0) parts.push(`${m} min`);
+  if (s > 0) parts.push(`${s} sec`);
+  return parts.join(' ');
+}
+
+/**
+ * Officiële afstand per onderdeel uit het doel (`disciplineDistancesKm`).
+ * Een wedstrijd heeft een vastgestelde afstand; Garmins gps meet daar altijd
+ * naast (bochten afsnijden, drift in het water), dus de officiële afstand wint
+ * voor de weergave en het tempo.
+ */
+function officialDistance(goal: Goal, discipline: string, runNr: number): number | undefined {
+  const d = goal.disciplineDistancesKm;
+  if (!d) return undefined;
+  if (discipline === 'zwemmen') return d.swim;
+  if (discipline === 'fietsen') return d.bike;
+  if (discipline === 'hardlopen') return runNr >= 2 ? d.run2 : d.run;
+  return undefined;
+}
+
 /**
  * Splits per onderdeel voor weergave. Bron-prioriteit:
- * 1. gekoppelde Garmin-activiteit (echte data, sport per child)
- * 2. handmatig ingevoerd GoalResult.splits
+ * 1. handmatig ingevoerd GoalResult.splits — dat zijn de officiële
+ *    wedstrijdtijden en die winnen altijd van Garmins eigen registratie
+ *    (die knipt de wissel anders af dan de organisatie)
+ * 2. de gekoppelde Garmin-activiteit (multisport-children of laps met sport)
+ *
+ * Bij handmatige splits vult Garmin nog wel de ontbrekende meetwaarden aan
+ * (hartslag, vermogen, en de afstand als die nergens is ingevuld) — per
+ * onderdeel gematcht op volgorde van discipline.
  */
 export function getRaceSplits(race: Race): RaceSplit[] {
   let transitionNr = 0;
+  let runNr = 0;
   const toView = (
     discipline: string,
     timeSeconds: number,
@@ -127,30 +212,39 @@ export function getRaceSplits(race: Race): RaceSplit[] {
   ): RaceSplit => {
     const d = normalizeDiscipline(discipline);
     const label = d === 'transitie' ? `T${++transitionNr}` : (DISCIPLINE_LABELS[d] || discipline);
+    if (d === 'hardlopen') runNr++;
+    const km = officialDistance(race.goal, d, runNr) ?? distanceKm;
     return {
       discipline: d,
       label,
       timeSeconds,
-      distanceKm,
+      distanceKm: km,
       avgHR: avgHR && avgHR > 0 ? avgHR : undefined,
       avgPower: avgPower && avgPower > 0 ? avgPower : undefined,
-      pace: paceFor(d, distanceKm, timeSeconds),
+      pace: paceFor(d, km, timeSeconds),
       color: DISCIPLINE_COLORS[d] || '#6b7280',
     };
   };
 
-  // 1. Garmin-splits (multisport children of laps met sport)
-  const gSplits = race.activity?.splits;
-  if (gSplits && gSplits.length > 1 && gSplits.some(s => s.sport)) {
-    return gSplits
-      .filter(s => s.sport)
-      .map(s => toView(s.sport as string, s.durationSeconds, s.distance, s.avgHR, s.avgPower));
-  }
+  const gSplits = (race.activity?.splits ?? []).filter(s => s.sport);
+  const hasGarmin = gSplits.length > 1;
 
-  // 2. Handmatige GoalResult-splits
+  // 1. Handmatige splits (officiële tijden), aangevuld met Garmin-meetwaarden
   const rSplits: GoalSplit[] | undefined = race.goal.result?.splits;
   if (rSplits && rSplits.length > 0) {
-    return rSplits.map(s => toView(s.discipline, s.timeSeconds, s.distanceKm));
+    const pool = [...gSplits];
+    return rSplits.map(s => {
+      const d = normalizeDiscipline(s.discipline);
+      // Match op volgorde: eerste nog niet gebruikte Garmin-split van dezelfde discipline
+      const idx = pool.findIndex(g => normalizeDiscipline(g.sport as string) === d);
+      const g = idx >= 0 ? pool.splice(idx, 1)[0] : undefined;
+      return toView(s.discipline, s.timeSeconds, s.distanceKm ?? g?.distance, g?.avgHR, g?.avgPower);
+    });
+  }
+
+  // 2. Garmin-splits
+  if (hasGarmin) {
+    return gSplits.map(s => toView(s.sport as string, s.durationSeconds, s.distance, s.avgHR, s.avgPower));
   }
 
   return [];
