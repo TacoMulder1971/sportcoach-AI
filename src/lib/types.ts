@@ -457,6 +457,7 @@ export type GoalType =
   | '10km'
   | 'halve_marathon'
   | 'marathon'
+  | 'achtste_triatlon'  // 1/8 (sprint: 0,5 - 20 - 5 km)
   | 'kwart_triatlon'    // 1/4 (sprint-achtig)
   | 'halve_triatlon'    // 1/2 (70.3)
   | 'hele_triatlon'     // hele (140.6)
@@ -477,6 +478,7 @@ export const GOAL_TYPES: GoalTypeInfo[] = [
   { type: '10km',             label: '10 km',             multiSport: false },
   { type: 'halve_marathon',   label: '1/2 marathon',      multiSport: false },
   { type: 'marathon',         label: 'Marathon',          multiSport: false },
+  { type: 'achtste_triatlon', label: '1/8 triatlon',      multiSport: true,  disciplines: ['zwemmen', 'fietsen', 'hardlopen'] },
   { type: 'kwart_triatlon',   label: '1/4 triatlon',      multiSport: true,  disciplines: ['zwemmen', 'fietsen', 'hardlopen'] },
   { type: 'halve_triatlon',   label: '1/2 triatlon',      multiSport: true,  disciplines: ['zwemmen', 'fietsen', 'hardlopen'] },
   { type: 'hele_triatlon',    label: 'Hele triatlon',     multiSport: true,  disciplines: ['zwemmen', 'fietsen', 'hardlopen'] },
