@@ -8,7 +8,7 @@ import {
   getRaceWeather, saveRaceWeather,
 } from '@/lib/storage';
 import { getDaysUntilRace } from '@/lib/schedule';
-import { buildRaces, getRaceSplits, getRaceTotalSeconds, getPreRaceBuildup, Race } from '@/lib/races';
+import { buildRaces, getRaceSplits, getRaceTotalSeconds, getRacePace, getRaceDistanceKm, formatRaceDistance, getPreRaceBuildup, Race } from '@/lib/races';
 import { GOAL_TYPES, RaceWeather, Sport } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import RaceDayFlag from '@/components/RaceDayFlag';
@@ -71,6 +71,8 @@ export default function WedstrijdDetailPage() {
 
   const info = GOAL_TYPES.find(t => t.type === race.goal.type);
   const total = getRaceTotalSeconds(race);
+  const pace = getRacePace(race);
+  const raceKm = getRaceDistanceKm(race);
   const days = getDaysUntilRace(race.goal.date);
   const result = race.goal.result;
 
@@ -125,6 +127,11 @@ export default function WedstrijdDetailPage() {
               <div>
                 <p className="text-blue-300 text-xs">Eindtijd</p>
                 <p className="text-4xl font-extrabold leading-none tabular-nums">{total ? formatDuration(total) : '–'}</p>
+                {pace && (
+                  <p className="text-blue-200/80 text-xs mt-1 tabular-nums">
+                    {raceKm ? `${formatRaceDistance(raceKm)} · ` : ''}{pace}
+                  </p>
+                )}
               </div>
               {race.goal.targetTimeSeconds && total && (
                 <div className="text-right">

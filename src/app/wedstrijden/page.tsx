@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getGoals, getActivityArchive, formatDuration, formatRaceDateNL } from '@/lib/storage';
 import { getDaysUntilRace } from '@/lib/schedule';
-import { buildRaces, getRaceTotalSeconds, getRaceSplits, Race } from '@/lib/races';
+import { buildRaces, getRaceTotalSeconds, getRaceSplits, getRacePace, Race } from '@/lib/races';
 import { GOAL_TYPES, Sport } from '@/lib/types';
 import SportIcon from '@/components/SportIcon';
 import RaceDayFlag from '@/components/RaceDayFlag';
@@ -165,6 +165,7 @@ export default function WedstrijdenPage() {
 function RaceRow({ race, showResult }: { race: Race; showResult?: boolean }) {
   const total = getRaceTotalSeconds(race);
   const splits = getRaceSplits(race);
+  const pace = getRacePace(race);
   const rating = race.goal.result?.rating;
   return (
     <Link
@@ -184,7 +185,10 @@ function RaceRow({ race, showResult }: { race: Race; showResult?: boolean }) {
       </div>
       <div className="text-right flex-shrink-0">
         {total ? (
-          <p className="text-sm font-bold text-white tabular-nums">{formatDuration(total)}</p>
+          <>
+            <p className="text-sm font-bold text-white tabular-nums">{formatDuration(total)}</p>
+            {pace && <p className="text-[11px] text-gray-500 tabular-nums">{pace}</p>}
+          </>
         ) : showResult ? (
           // Afgerond zonder tijd: geen doodlopend "geen tijd" maar direct naar het invulformulier
           <button

@@ -507,6 +507,14 @@ function ArchiveRow({
 
 // ─── Goal form modal (nieuw / bewerken) ─────────────────────────
 
+// Standaardafstand per enkelvoudig doeltype, als hint in het invoerveld.
+const SINGLE_DISTANCE_PLACEHOLDER: Partial<Record<GoalType, string>> = {
+  '5km': '5',
+  '10km': '10',
+  halve_marathon: '21.0975',
+  marathon: '42.195',
+};
+
 function GoalFormModal({
   goal,
   onClose,
@@ -531,6 +539,12 @@ function GoalFormModal({
   const [distBike, setDistBike] = useState(goal?.disciplineDistancesKm?.bike?.toString() || '');
   const [distRun, setDistRun] = useState(goal?.disciplineDistancesKm?.run?.toString() || '');
   const [distRun2, setDistRun2] = useState(goal?.disciplineDistancesKm?.run2?.toString() || '');
+  // Enkelvoudige wedstrijd: één afstand, in het veld dat bij de sport hoort
+  const singleKey: 'swim' | 'bike' | 'run' =
+    (goal?.type ?? 'eigen') === 'zwemtocht' ? 'swim' : (goal?.type ?? 'eigen') === 'fietstocht' ? 'bike' : 'run';
+  const [distSingle, setDistSingle] = useState(
+    goal?.disciplineDistancesKm?.[singleKey]?.toString() || ''
+  );
 
   const typeInfo = GOAL_TYPES.find(t => t.type === type);
   const isMultiSport = typeInfo?.multiSport ?? false;
@@ -546,6 +560,10 @@ function GoalFormModal({
       if (distRun) d.run = parseFloat(distRun);
       if (isDuatlon && distRun2) d.run2 = parseFloat(distRun2);
       if (Object.keys(d).length > 0) disciplineDistancesKm = d;
+    } else if (distSingle) {
+      const key = type === 'zwemtocht' ? 'swim' : type === 'fietstocht' ? 'bike' : 'run';
+      const km = parseFloat(distSingle);
+      if (km > 0) disciplineDistancesKm = { [key]: km };
     }
     const newGoal: Goal = {
       id: goal?.id || generateId(),
@@ -703,6 +721,26 @@ function GoalFormModal({
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {!isMultiSport && (
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">
+                Afstand (km, optioneel)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={distSingle}
+                onChange={(e) => setDistSingle(e.target.value)}
+                placeholder={SINGLE_DISTANCE_PLACEHOLDER[type] ?? 'bv. 15'}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+              <p className="text-[11px] text-gray-500 mt-1">
+                Voor het tempo. Leeg laten mag — dan rekent de app met de standaardafstand van het doeltype.
+              </p>
             </div>
           )}
 
