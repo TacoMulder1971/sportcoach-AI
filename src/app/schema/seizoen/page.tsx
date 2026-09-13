@@ -16,6 +16,7 @@ import { buildPerformanceSummary } from '@/lib/performance-summary';
 import { filterStatsActivities } from '@/lib/equipment';
 import { amsterdamDateForOffset } from '@/lib/schedule';
 import { cleanStrategyText } from '@/lib/plan-strategy';
+import { readApiJson } from '@/lib/api-response';
 import { SeasonBlock } from '@/lib/types';
 
 interface Proposal {
@@ -71,8 +72,7 @@ export default function SeizoensplanPage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Genereren mislukt');
+      const data = await readApiJson<Proposal>(res, 'Genereren mislukt');
 
       setProposal({ summary: data.summary, rationale: data.rationale || '', blocks: data.blocks });
       setFeedback('');
