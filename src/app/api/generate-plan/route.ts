@@ -380,7 +380,7 @@ Houd expliciet rekening met de PRESTATIES van de afgelopen weken:
 - Sluit de progressie aan op de huidige trainingsfase en de dagen tot de wedstrijd?
 ${seasonContext ? '- Blijf binnen het seizoensplan hierboven: dit blok is een uitwerking van dat kader, geen losse planning.\n' : ''}- Valt er een fasegrens middenin dit blok? Laat het verschil tussen week 1 en week 2 dan ook echt terugkomen in volume en intensiteit.
 
-Geef je antwoord als beknopte coachnotitie in het Nederlands:
+Geef je antwoord als beknopte coachnotitie in het Nederlands, KORT: maximaal 400 woorden in totaal:
 1. KORTE ANALYSE (2-4 zinnen): hoe staat de atleet ervoor op basis van de recente prestaties en herstel.
 2. STRATEGIE WEEK 1 en WEEK 2: belasting-progressie, accenten per discipline, intensiteitsverdeling, herstel.
 3. CONCRETE SESSIE-RICHTLIJNEN per week: welke type sessies, ongeveer hoeveel en welke duur/zone${multiSport ? ', plus minimaal 1 brick-sessie per 2 weken' : ''}.
@@ -388,11 +388,15 @@ Wees specifiek met getallen (duur, zones) zodat een schema hier 1-op-1 op gebouw
 
 ${strengthStrategy}`;
 
+    // Bewust 'low' effort en een krapper token-budget: met seizoensplan, fase-
+    // planning, vorige strategie en HRV-context liep trap 1 over de 60s-limiet
+    // van Vercel heen (504 → niet-JSON antwoord). Zelfde keuze als /api/season-plan.
+    const t0 = Date.now();
     const strategyResponse = await client.messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 4000,
+      max_tokens: 2500,
       thinking: { type: 'adaptive' },
-      output_config: { effort: 'medium' },
+      output_config: { effort: 'low' },
       system: `Je bent een ervaren, data-gedreven ${persona} die trainingsschema's afstemt op recente prestaties en herstel.`,
       messages: [{ role: 'user', content: strategyPrompt }],
     });
@@ -432,6 +436,7 @@ ${JSON_FORMAT_SPEC}`;
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
     const result = parseAndValidate(text);
+    console.log(`[generate-plan] klaar in ${Math.round((Date.now() - t0) / 1000)}s`);
 
     if (!result.valid) {
       return NextResponse.json({ error: `Validatie mislukt: ${result.errors.join(', ')}` }, { status: 422 });

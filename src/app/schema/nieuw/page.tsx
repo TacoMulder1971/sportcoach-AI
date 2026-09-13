@@ -16,6 +16,7 @@ import {
   buildSeasonPlanContext,
 } from '@/lib/storage';
 import { cleanStrategyText } from '@/lib/plan-strategy';
+import { readApiJson } from '@/lib/api-response';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { calculateTrainingLoad } from '@/lib/training-load';
 import { buildPerformanceSummary } from '@/lib/performance-summary';
@@ -245,8 +246,7 @@ export default function NieuwSchemaPage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Genereren mislukt');
+      const data = await readApiJson<{ plan: TrainingWeek[]; strategy?: string }>(res, 'Genereren mislukt');
 
       setProposal(data.plan);
       setStrategy(data.strategy || null);
@@ -284,8 +284,7 @@ export default function NieuwSchemaPage() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Aanpassen mislukt');
+      const data = await readApiJson<{ plan: TrainingWeek[] }>(res, 'Aanpassen mislukt');
 
       setProposal(data.plan);
       setRefinements((prev) => [...prev, feedback.trim()]);
