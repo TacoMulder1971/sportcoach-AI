@@ -14,6 +14,13 @@ export interface StrengthExercise {
   name: string;
   prescription: string; // bijv. "40 sec", "3×12", "3×10 per been"
   note?: string;        // korte techniek-/uitvoeringstip
+  /**
+   * Garmins eigen oefeningcode ("CATEGORIE/OEFENING", bijv. "PLANK/SIDE_PLANK").
+   * Hiermee toont het horloge de échte oefening i.p.v. alleen tekst. Zie
+   * garmin-exercises.ts. Ontbreekt hij (bijv. bij een zelf ingetypte oefening),
+   * dan gaat de stap zonder code mee — dat werkt ook, alleen zonder animatie.
+   */
+  garminCode?: string;
 }
 
 export interface StrengthBlock {
@@ -44,18 +51,19 @@ const CORE_7MIN: StrengthWorkout = {
       label: 'Circuit — 1 ronde',
       note: '10 sec rust tussen de oefeningen',
       exercises: [
-        { name: 'Plank', prescription: '40 sec', note: 'Rechte lijn, billen aanspannen' },
-        { name: 'Mountain climbers', prescription: '30 sec', note: 'Heupen laag, tempo hoog' },
-        { name: 'Dead bug', prescription: '30 sec', note: 'Onderrug tegen de grond' },
-        { name: 'Side plank links', prescription: '30 sec', note: 'Heup hoog' },
-        { name: 'Side plank rechts', prescription: '30 sec', note: 'Heup hoog' },
-        { name: 'Bicycle crunches', prescription: '30 sec', note: 'Rustig, controle boven snelheid' },
-        { name: 'Superman', prescription: '30 sec', note: 'Armen en benen optillen' },
-        { name: 'Glute bridge — hold', prescription: '40 sec', note: 'Knijp de billen aan' },
-        { name: 'Bird dog', prescription: '30 sec', note: 'Wissel arm/been, geen heupdraai' },
-        { name: 'Leg raises', prescription: '30 sec', note: 'Onderrug blijft op de grond' },
-        { name: 'Russian twists', prescription: '30 sec', note: 'Romp draaien, niet alleen armen' },
-        { name: 'Plank', prescription: '40 sec', note: 'Afmaken — kern strak houden' },
+        { name: 'Plank', prescription: '40 sec', note: 'Rechte lijn, billen aanspannen', garminCode: 'PLANK/PLANK' },
+        { name: 'Mountain climbers', prescription: '30 sec', note: 'Heupen laag, tempo hoog', garminCode: 'PLANK/MOUNTAIN_CLIMBER' },
+        { name: 'Dead bug', prescription: '30 sec', note: 'Onderrug tegen de grond', garminCode: 'HIP_STABILITY/DEAD_BUG' },
+        { name: 'Side plank links', prescription: '30 sec', note: 'Heup hoog', garminCode: 'PLANK/SIDE_PLANK' },
+        { name: 'Side plank rechts', prescription: '30 sec', note: 'Heup hoog', garminCode: 'PLANK/SIDE_PLANK' },
+        { name: 'Bicycle crunches', prescription: '30 sec', note: 'Rustig, controle boven snelheid', garminCode: 'CRUNCH/BICYCLE_CRUNCH' },
+        { name: 'Superman', prescription: '30 sec', note: 'Armen en benen optillen', garminCode: 'HYPEREXTENSION/SUPERMAN_FROM_FLOOR' },
+        { name: 'Glute bridge — hold', prescription: '40 sec', note: 'Knijp de billen aan', garminCode: 'HIP_RAISE/HIP_RAISE' },
+        { name: 'Bird dog', prescription: '30 sec', note: 'Wissel arm/been, geen heupdraai', garminCode: 'HIP_STABILITY/QUADRUPED_WITH_LEG_LIFT' },
+        { name: 'Plank met schoudertik', prescription: '30 sec', note: 'Heupen stil — tik afwisselend de tegenoverliggende schouder aan', garminCode: 'PLANK/PLANK_WITH_ARM_RAISE' },
+        { name: 'Leg raises', prescription: '30 sec', note: 'Onderrug blijft op de grond', garminCode: 'HIP_RAISE/LEG_LIFT' },
+        { name: 'Russian twists', prescription: '30 sec', note: 'Romp draaien, niet alleen armen', garminCode: 'CORE/RUSSIAN_TWIST' },
+        { name: 'Plank', prescription: '40 sec', note: 'Afmaken — kern strak houden', garminCode: 'PLANK/PLANK' },
       ],
     },
   ],
@@ -73,41 +81,41 @@ const TRI_STRENGTH: StrengthWorkout = {
       label: 'Warming-up — 5 min',
       exercises: [
         { name: 'Foam roll + dynamisch mobiliseren', prescription: '4 min', note: 'Heupen, enkels, schouders' },
-        { name: 'Band pull-aparts', prescription: '1×20', note: 'Schouders activeren' },
+        { name: 'Band pull-aparts', prescription: '1×20', note: 'Schouders activeren', garminCode: 'BANDED_EXERCISES/PULL_APART' },
       ],
     },
     {
       label: 'Superset A — 3 rondes',
       note: '60–90 sec rust',
       exercises: [
-        { name: 'Leg extension (machine)', prescription: '3×15', note: 'Quadriceps — fietskracht' },
-        { name: 'Lat pulldown (machine)', prescription: '3×12', note: 'Rug/lats — zwem-trek' },
+        { name: 'Leg extension (machine)', prescription: '3×15', note: 'Quadriceps — fietskracht', garminCode: 'BANDED_EXERCISES/LEG_EXTENSION' },
+        { name: 'Leg curl (machine)', prescription: '3×12', note: 'Hamstrings — loopkracht', garminCode: 'LEG_CURL/LEG_CURL' },
       ],
     },
     {
       label: 'Superset B — 3 rondes',
       note: '60–90 sec rust',
       exercises: [
-        { name: 'Leg curl (machine)', prescription: '3×12', note: 'Hamstrings — loopkracht' },
-        { name: 'Chest press (machine)', prescription: '3×12', note: 'Duw-balans, houding' },
+        { name: 'Lat pulldown (machine)', prescription: '3×12', note: 'Rug/lats — zwem-trek', garminCode: 'PULL_UP/LAT_PULLDOWN' },
+        { name: 'Chest press (machine)', prescription: '3×12', note: 'Duw-balans, houding', garminCode: 'BANDED_EXERCISES/CHEST_PRESS' },
       ],
     },
     {
       label: 'Superset C — 3 rondes',
       note: '60–90 sec rust',
       exercises: [
-        { name: 'Bulgarian split squat', prescription: '3×10 per been', note: 'Achterste voet verhoogd — single-leg stabiliteit' },
-        { name: 'Seated row (lage katrol)', prescription: '3×12', note: 'Schouderbladen samenknijpen — houding' },
+        { name: 'Bulgarian split squat', prescription: '3×10 per been', note: 'Achterste voet verhoogd — single-leg stabiliteit', garminCode: 'LUNGE/OVERHEAD_BULGARIAN_SPLIT_SQUAT' },
+        { name: 'Seated row (lage katrol)', prescription: '3×12', note: 'Schouderbladen samenknijpen — houding', garminCode: 'ROW/SEATED_CABLE_ROW' },
       ],
     },
     {
       label: 'Prehab & core — 2 rondes',
       note: 'Blessurepreventie, weinig rust',
       exercises: [
-        { name: '1-benige Roemeense deadlift', prescription: '2×10 per been', note: 'Band of eigen lichaam — glutes/hamstrings + balans' },
-        { name: 'Face pulls (band)', prescription: '2×15', note: 'Rotator cuff — schoudergezondheid zwem' },
-        { name: 'Kuitheffing (1-benig)', prescription: '2×15 per been', note: 'Volledige beweging, even vasthouden' },
-        { name: 'Pallof press (band)', prescription: '2×10 per zijde', note: 'Anti-rotatie romp, niet meedraaien' },
+        { name: '1-benige Roemeense deadlift', prescription: '2×10 per been', note: 'Band of eigen lichaam — glutes/hamstrings + balans', garminCode: 'DEADLIFT/ROMANIAN_DEADLIFT' },
+        { name: 'Face pulls (band)', prescription: '2×15', note: 'Rotator cuff — schoudergezondheid zwem', garminCode: 'ROW/FACE_PULL' },
+        { name: 'Kuitheffing (1-benig)', prescription: '2×15 per been', note: 'Volledige beweging, even vasthouden', garminCode: 'CALF_RAISE/SINGLE_LEG_STANDING_CALF_RAISE' },
+        { name: 'Knielende houthakker (band)', prescription: '2×10 per zijde', note: 'Diagonaal omhoog — draai uit je romp, niet uit je armen', garminCode: 'CHOP/KNEELING_WOODCHOPPER' },
       ],
     },
     {
@@ -139,6 +147,25 @@ export function pickStrengthWorkoutId(session: TrainingSession): StrengthWorkout
       (session.durationMinutes ?? 0) > 0 &&
       (session.durationMinutes ?? 0) <= 15);
   return isCore ? 'core7' : 'tri-strength';
+}
+
+/**
+ * Zoeklink naar uitleg-video's van een oefening (YouTube).
+ *
+ * Bewust een ZOEKOPDRACHT en geen vast video-id: er zijn ruim 700 oefeningen, dus
+ * per oefening een video uitzoeken is niet te onderhouden, en een vast id wordt na
+ * verloop van tijd toch verwijderd of op privé gezet. Een zoeklink blijft altijd
+ * werken en geeft meteen meerdere uitvoeringen.
+ *
+ * De zoekterm komt bij voorkeur uit de Garmin-oefeningcode: dat is de canonieke
+ * Engelse naam ("SIDE_PLANK_WITH_LEG_LIFT" → "side plank with leg lift"), wat veel
+ * betere resultaten geeft dan een Nederlandse vertaling. Zonder code valt hij terug
+ * op de naam zoals die in de app staat.
+ */
+export function exerciseVideoUrl(exercise: StrengthExercise): string {
+  const fromCode = exercise.garminCode?.split('/')[1]?.replace(/_/g, ' ').toLowerCase();
+  const term = fromCode || exercise.name;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${term} exercise how to`)}`;
 }
 
 /** Diepe kloon van een workout (voor veilig bewerken zonder de defaults te muteren). */

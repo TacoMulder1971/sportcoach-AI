@@ -3,34 +3,47 @@
 import { useState } from 'react';
 import { SessionSegment, TrainingSession } from '@/lib/types';
 import { getGarminCredentials, getGarminTokens, saveGarminTokens } from '@/lib/storage';
-import { buildGarminWorkout, canSendToGarmin } from '@/lib/garmin-workout';
+import type { StrengthWorkout } from '@/lib/strength';
+import { buildGarminStrengthWorkout, buildGarminWorkout, canSendToGarmin } from '@/lib/garmin-workout';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 
 /**
  * Zet de geplande sessie als gestructureerde workout in Garmin Connect.
- * Alleen zichtbaar voor hardlopen en fietsen (zie canSendToGarmin) — zwemmen
- * stuurt op tempo en kracht heeft geen hartslagdoel.
+ *
+ * Hardlopen/fietsen gaan op hartslagzones (zie canSendToGarmin); een KRACHTsessie
+ * gaat als krachtworkout met sets/herhalingen, mits de oefenlijst meegegeven is.
+ * Zwemmen blijft eruit — dat stuurt op tempo per 100m.
+ *
+ * De workout wordt ook op vandaag in de Garmin-agenda gezet; daardoor staat hij op
+ * het horloge als de geplande training van de dag, niet alleen in de workout-lijst.
  */
 export default function SendToGarminButton({
   session,
   segments,
   skipWarmup,
+  strengthWorkout,
 }: {
   session: TrainingSession;
   segments: SessionSegment[] | null;
   skipWarmup?: boolean;
+  strengthWorkout?: StrengthWorkout | null;
 }) {
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const [scheduled, setScheduled] = useState(false);
 
-  if (!canSendToGarmin(session)) return null;
+  const isStrength = session.sport === 'kracht';
+  if (!canSendToGarmin(session) && !(isStrength && strengthWorkout)) return null;
 
   async function send() {
     setStatus('sending');
     setMessage(null);
     try {
-      const built = buildGarminWorkout(session, segments, { skipWarmup });
+      const built =
+        isStrength && strengthWorkout
+          ? buildGarminStrengthWorkout(strengthWorkout)
+          : buildGarminWorkout(session, segments, { skipWarmup });
       if (!built) throw new Error('Kon deze sessie niet omzetten');
 
       const tokens = getGarminTokens();
@@ -46,6 +59,8 @@ export default function SendToGarminButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workout: built.payload,
+          // Deze knop staat bij de training van vandaag, dus daar plannen we hem op.
+          scheduleDate: new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Amsterdam' }),
           tokens: tokens ?? undefined,
           email: creds?.email,
           password: creds?.password,
@@ -56,6 +71,7 @@ export default function SendToGarminButton({
       if (data.tokens) saveGarminTokens(data.tokens);
 
       setStatus('done');
+      setScheduled(Boolean(data.scheduled));
       setMessage(built.summary.join(' · '));
     } catch (e) {
       setStatus('error');
@@ -69,7 +85,9 @@ export default function SendToGarminButton({
         <p className="text-sm font-medium text-green-400">In Garmin gezet</p>
         {message && <p className="text-xs text-gray-500 mt-0.5">{message}</p>}
         <p className="text-xs text-gray-500 mt-1">
-          Synchroniseer je horloge om de workout op te halen.
+          {scheduled
+            ? 'Staat in je Garmin-agenda van vandaag. Synchroniseer je horloge om hem op te halen.'
+            : 'Synchroniseer je horloge om de workout op te halen (te vinden onder Training > Workouts).'}
         </p>
       </div>
     );

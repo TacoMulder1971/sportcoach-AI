@@ -8,6 +8,12 @@
  *
  * De workout-DTO wordt client-side opgebouwd door src/lib/garmin-workout.ts;
  * deze route doet alleen auth + de POST naar /workout-service/workout.
+ *
+ * Met `scheduleDate` wordt de workout daarna ook op die dag in de Garmin-agenda
+ * gezet (POST /workout-service/schedule/{id}). Dat is de stap die hem op je horloge
+ * als de geplande training van die dag laat verschijnen; zonder agenda staat hij
+ * alleen onder Training > Workouts. Mislukt het inplannen, dan blijft de workout
+ * gewoon bestaan — dat melden we terug in `scheduled`.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { GarminConnect } from 'garmin-connect';
@@ -39,12 +45,16 @@ export async function POST(request: NextRequest) {
     let password: string | undefined;
     let tokens: GarminTokens | undefined;
     let workout: Record<string, unknown> | undefined;
+    let scheduleDate: string | undefined;
     try {
       const body = await request.json();
       email = body.email;
       password = body.password;
       tokens = body.tokens || undefined;
       workout = body.workout;
+      scheduleDate = typeof body.scheduleDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.scheduleDate)
+        ? body.scheduleDate
+        : undefined;
     } catch {
       // hieronder afgevangen
     }
@@ -109,6 +119,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Garmin gaf geen workout-id terug' }, { status: 502 });
     }
 
+    // Inplannen op de dag zelf — niet fataal als het misgaat.
+    let scheduled = false;
+    if (scheduleDate) {
+      try {
+        await (GC as unknown as { post: (url: string, data: unknown) => Promise<unknown> }).post(
+          `https://connectapi.garmin.com/workout-service/schedule/${created.workoutId}`,
+          { date: scheduleDate }
+        );
+        scheduled = true;
+      } catch (e) {
+        console.warn('[garmin-workout] inplannen mislukt:', e instanceof Error ? e.message : e);
+      }
+    }
+
     let freshTokens: GarminTokens | undefined;
     try {
       freshTokens = GC.exportToken() as unknown as GarminTokens;
@@ -119,6 +143,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       workoutId: created.workoutId,
       workoutName: created.workoutName,
+      scheduled,
       tokens: freshTokens,
     });
   } catch (error) {

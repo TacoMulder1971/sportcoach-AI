@@ -44,6 +44,8 @@ const KEYS = {
   NUTRITION_REPORT: 'tricoach_nutrition_report',
   SEASON_PLAN: 'tricoach_season_plan',
   RACE_PREP: 'tricoach_race_prep',
+  STRENGTH_VARIATION: 'tricoach_strength_variation',
+  STRENGTH_HISTORY: 'tricoach_strength_history',
 } as const;
 
 const AUTO_BACKUP_KEY = 'tricoach_last_backup';
@@ -174,6 +176,52 @@ export function resetStrengthWorkout(id: StrengthWorkoutId): void {
 /** De (mogelijk aangepaste) workout die bij een geplande krachtsessie hoort. */
 export function getStrengthWorkoutForSession(session: TrainingSession): StrengthWorkout {
   return getStrengthWorkouts()[pickStrengthWorkoutId(session)];
+}
+
+// ── Wisselende oefenlijst per krachtdag ─────────────────────────────
+// De workouts hierboven zijn de vaste basis (materiaal + opzet). Voor de
+// daadwerkelijke krachtdag stelt /api/strength-workout daar een variatie op
+// samen, zodat je niet elke week exact dezelfde oefeningen doet. Gecachet per
+// dag + schema-handtekening, net als de sessie-uitsplitsing.
+interface StrengthVariationCache {
+  key: string;        // Amsterdam-datum
+  signature: string;  // handtekening van de krachtsessies van vandaag
+  workouts: (StrengthWorkout | null)[]; // uitgelijnd op de krachtsessies; null = vaste workout
+}
+
+/** Hoeveel oefennamen we onthouden om herhaling te vermijden. */
+const STRENGTH_HISTORY_MAX = 40;
+
+export function getStrengthVariations(signature: string): (StrengthWorkout | null)[] | null {
+  const stored = getItem<StrengthVariationCache | null>(KEYS.STRENGTH_VARIATION, null);
+  if (!stored) return null;
+  if (stored.key !== getTodayAmsterdam() || stored.signature !== signature) return null;
+  return stored.workouts;
+}
+
+export function saveStrengthVariations(signature: string, workouts: (StrengthWorkout | null)[]): void {
+  setItem(KEYS.STRENGTH_VARIATION, { key: getTodayAmsterdam(), signature, workouts });
+  const names = workouts
+    .filter((w): w is StrengthWorkout => w !== null)
+    .flatMap((w) => w.blocks.flatMap((b) => b.exercises.map((e) => e.name)));
+  if (names.length > 0) rememberStrengthExercises(names);
+}
+
+/** Recent gebruikte oefeningen — gaan mee als "vermijd dit" naar de generatie. */
+export function getRecentStrengthExercises(): string[] {
+  return getItem<string[]>(KEYS.STRENGTH_HISTORY, []);
+}
+
+function rememberStrengthExercises(names: string[]): void {
+  const previous = getRecentStrengthExercises();
+  // Nieuwste vooraan, dubbele weg, en afkappen zodat de prompt kort blijft.
+  const merged = [...names, ...previous];
+  const unique: string[] = [];
+  for (const name of merged) {
+    if (!unique.some((n) => n.toLowerCase() === name.toLowerCase())) unique.push(name);
+    if (unique.length >= STRENGTH_HISTORY_MAX) break;
+  }
+  setItem(KEYS.STRENGTH_HISTORY, unique);
 }
 
 // Auto-sync throttle (1x per dag)
