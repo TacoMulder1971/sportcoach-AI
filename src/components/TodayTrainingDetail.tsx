@@ -11,12 +11,16 @@ import {
   saveSessionBreakdowns,
   sessionsSignature,
   getStrengthWorkoutForSession,
+  getStrengthVariations,
+  saveStrengthVariations,
+  getRecentStrengthExercises,
   getSwimPaceTargets,
   getProfile,
 } from '@/lib/storage';
 import { athleteProfilePayload } from '@/lib/athlete';
 import { SwimPaceTargets, formatSwimPaceRange } from '@/lib/swim';
 import { findBrickPair, formatDuration } from '@/lib/schedule';
+import type { StrengthWorkout } from '@/lib/strength';
 import StrengthWorkoutDetail from '@/components/StrengthWorkoutDetail';
 import SendToGarminButton from '@/components/SendToGarminButton';
 
@@ -84,6 +88,11 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
   const [breakdowns, setBreakdowns] = useState<SessionBreakdown[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Wisselende oefenlijst per krachtsessie (null = nog niet binnen → vaste workout).
+  const [strengthVariations, setStrengthVariations] = useState<(StrengthWorkout | null)[] | null>(null);
+  const [strengthLoading, setStrengthLoading] = useState(false);
+  // Ophogen = opnieuw laten samenstellen ("Andere oefeningen").
+  const [strengthNonce, setStrengthNonce] = useState(0);
 
   const sessions = training && !training.isRestDay ? training.sessions : [];
   const hasSwim = sessions.some((s) => s.sport === 'zwemmen');
@@ -91,6 +100,8 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
   // Krachtsessies krijgen een vaste oefenlijst (geen AI-breakdown met zones).
   const breakdownSessions = sessions.filter((s) => s.sport !== 'kracht');
   const signature = breakdownSessions.length > 0 ? sessionsSignature(breakdownSessions) : '';
+  const strengthSessions = sessions.filter((s) => s.sport === 'kracht');
+  const strengthSignature = strengthSessions.length > 0 ? sessionsSignature(strengthSessions) : '';
 
   useEffect(() => {
     if (!signature) {
@@ -130,6 +141,57 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
 
+  // Krachtsessies: de vaste workout uit strength.ts is de basis (materiaal +
+  // opzet); /api/strength-workout maakt daar een variatie op zodat je niet elke
+  // week dezelfde oefeningen doet. Mislukt dat, dan blijft de vaste lijst staan.
+  useEffect(() => {
+    if (!strengthSignature) {
+      setStrengthVariations(null);
+      return;
+    }
+    if (strengthNonce === 0) {
+      const cached = getStrengthVariations(strengthSignature);
+      if (cached) {
+        setStrengthVariations(cached);
+        return;
+      }
+    }
+    let cancelled = false;
+    setStrengthLoading(true);
+    (async () => {
+      try {
+        const res = await fetch('/api/strength-workout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessions: strengthSessions.map((s) => ({
+              type: s.type,
+              durationMinutes: s.durationMinutes,
+              description: s.description,
+              base: getStrengthWorkoutForSession(s),
+            })),
+            athleteProfile: athleteProfilePayload(getProfile()),
+            avoid: getRecentStrengthExercises(),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Mislukt');
+        if (cancelled) return;
+        setStrengthVariations(data.workouts);
+        saveStrengthVariations(strengthSignature, data.workouts);
+      } catch {
+        // Stil: de vaste workout is een prima terugval, geen foutmelding nodig.
+        if (!cancelled) setStrengthVariations(null);
+      } finally {
+        if (!cancelled) setStrengthLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [strengthSignature, strengthNonce]);
+
   if (!training) {
     return (
       <div className="bg-[#0d0d0f] rounded-3xl p-6 border border-white/5 text-center">
@@ -153,6 +215,12 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
     s.sport === 'kracht' ? undefined : breakdowns?.[breakdownCursor++]
   );
 
+  // strengthVariations is uitgelijnd op de krachtsessies — map terug op sessievolgorde.
+  let strengthCursor = 0;
+  const variationForIdx = training.sessions.map((s) =>
+    s.sport === 'kracht' ? strengthVariations?.[strengthCursor++] ?? null : null
+  );
+
   // Brick-dag: loop direct na het fietsen — wissel-connector tussen de kaarten,
   // en de brick-run krijgt geen eigen warming-up (je komt warm van de fiets).
   const brick = findBrickPair(training.sessions);
@@ -167,7 +235,7 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
         if (breakdown && isBrickRun) {
           breakdown = { ...breakdown, segments: breakdown.segments.filter((seg) => seg.kind !== 'warmup') };
         }
-        const workout = isStrength ? getStrengthWorkoutForSession(session) : null;
+        const workout = isStrength ? variationForIdx[idx] ?? getStrengthWorkoutForSession(session) : null;
         const card = (
           <div className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4">
             {/* Kop: sport + samenvatting */}
@@ -209,7 +277,12 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
             {/* Gedetailleerde uitvoering */}
             <div className="mt-4 pt-4 border-t border-white/5">
               {isStrength && workout ? (
-                <StrengthWorkoutDetail workout={workout} />
+                <StrengthWorkoutDetail
+                  workout={workout}
+                  varied={variationForIdx[idx] !== null}
+                  refreshing={strengthLoading}
+                  onRefresh={() => setStrengthNonce((n) => n + 1)}
+                />
               ) : breakdown ? (
                 <div className="space-y-3">
                   {isBrickRun && (
@@ -234,11 +307,13 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
                 <p className="text-sm text-gray-500">{error}</p>
               ) : null}
 
-              {/* Hardlopen/fietsen: rechtstreeks als gestructureerde workout naar het horloge. */}
+              {/* Rechtstreeks als gestructureerde workout naar het horloge:
+                  hardlopen/fietsen op hartslagzones, kracht op sets/herhalingen. */}
               <SendToGarminButton
                 session={session}
                 segments={breakdown?.segments ?? null}
                 skipWarmup={isBrickRun}
+                strengthWorkout={workout}
               />
             </div>
           </div>
