@@ -79,8 +79,14 @@ const TRI_STRENGTH: StrengthWorkout = {
   blocks: [
     {
       label: 'Warming-up — 5 min',
+      // Losse, benoemde bewegingen i.p.v. één regel "dynamisch mobiliseren": alleen
+      // zo heeft elke stap een Garmin-oefening en zie je ze terug op je horloge.
       exercises: [
-        { name: 'Foam roll + dynamisch mobiliseren', prescription: '4 min', note: 'Heupen, enkels, schouders' },
+        { name: 'Kat-koe', prescription: '45 sec', note: 'Rug afwisselend bol en hol, rustig ademen', garminCode: 'WARM_UP/CAT_CAMEL' },
+        { name: 'Beenzwaaien voor/achter', prescription: '45 sec', note: 'Per been — heup losmaken, romp stil', garminCode: 'WARM_UP/FORWARD_AND_BACKWARD_LEG_SWINGS' },
+        { name: 'Heupcirkels', prescription: '45 sec', note: 'Rustige, grote cirkels beide kanten op', garminCode: 'WARM_UP/HIP_CIRCLES' },
+        { name: 'Enkelmobilisatie', prescription: '45 sec', note: 'Per enkel — knie over de tenen, hiel blijft staan', garminCode: 'WARM_UP/THREE_WAY_ANKLE_MOBILIZATION' },
+        { name: 'Schoudercirkels', prescription: '30 sec', note: 'Voorwaarts en achterwaarts, volledige beweging', garminCode: 'WARM_UP/SHOULDER_CIRCLES' },
         { name: 'Band pull-aparts', prescription: '1×20', note: 'Schouders activeren', garminCode: 'BANDED_EXERCISES/PULL_APART' },
       ],
     },
@@ -121,7 +127,10 @@ const TRI_STRENGTH: StrengthWorkout = {
     {
       label: 'Cooldown',
       exercises: [
-        { name: 'Stretchen', prescription: '4 min', note: 'Heupbuigers, hamstrings, kuiten' },
+        { name: 'Heupbuiger-stretch', prescription: '60 sec', note: 'Per been — bekken kantelen, niet doorzakken', garminCode: 'WARM_UP/STRETCH_LUNGING_HIP_FLEXOR' },
+        { name: 'Hamstring-stretch', prescription: '60 sec', note: 'Per been — rug recht, buig vanuit de heup', garminCode: 'WARM_UP/STRETCH_HAMSTRING' },
+        { name: 'Kuit-stretch', prescription: '60 sec', note: 'Per been — hiel op de grond houden', garminCode: 'WARM_UP/STRETCH_CALF' },
+        { name: 'Bil-stretch', prescription: '60 sec', note: 'Per zijde — enkel over de knie, rustig aandrukken', garminCode: 'WARM_UP/GLUTES_STRETCH' },
       ],
     },
   ],
