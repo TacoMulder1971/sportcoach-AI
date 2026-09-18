@@ -10,13 +10,14 @@
  *
  * Daarom staan hier alleen codes die EMPIRISCH getoetst zijn tegen de echte
  * workout-service (aanmaken -> teruglezen -> verwijderen): van 719 kandidaten uit de
- * FIT-catalogus kwamen er 711 exact terug. Afgekeurd werden namen met een cijfer erin
+ * FIT-catalogus kwamen er 711 exact terug; later aangevuld met 14 kettlebell-oefeningen
+ * (ook getoetst, alle 14 goed), dus 725 in totaal. Afgekeurd werden namen met een cijfer erin
  * (ROWING1, STRETCH90_90, 3_WAY_CALF_RAISE) - die spelling wijkt af van wat Garmin
  * intern gebruikt.
  *
  * De selectie is toegesneden op thuistraining: eigen lichaamsgewicht, elastische
  * banden, matje en krachtstation/katrol. Losse halters, kettlebells, Smith-machines
- * en ballen zitten er bewust niet in.
+ * en ballen zitten er bewust niet in; één losse kettlebell wél.
  *
  * Alleen server-side gebruiken (de API-route): het is ~20 KB aan data die niet in de
  * client-bundel hoeft. De client heeft genoeg aan garmin-exercises.ts.
@@ -78,6 +79,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "L_SIT",
     "TURKISH_GET_UP",
     "SEATED_SIDE_BEND",
+    "KETTLEBELL_WINDMILL",
   ],
   CRUNCH: [
     "BICYCLE_CRUNCH",
@@ -201,6 +203,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "SIT_UP",
     "GHD_SIT_UPS",
     "SIT_UP_TURKISH_GET_UP",
+    "KETTLEBELL_SIT_UP",
   ],
   HYPEREXTENSION: [
     "BASE_ROTATIONS",
@@ -239,6 +242,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "LEG_CIRCLES",
     "LEG_LIFT",
     "LEG_LIFT_IN_EXTERNAL_ROTATION",
+    "KETTLEBELL_SWING",
   ],
   HIP_STABILITY: [
     "BAND_SIDE_LYING_LEG_RAISE",
@@ -272,6 +276,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "REVERSE_LEG_RAISE",
     "SINGLE_LEG_LOWERING_DRILL",
     "LATERAL_STEPOVER",
+    "KETTLEBELL_LEG_RAISES",
   ],
   SHOULDER_STABILITY: [
     "BAND_EXTERNAL_ROTATION",
@@ -379,6 +384,9 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "WALL_BALL_SQUAT_AND_PRESS",
     "SQUAT_AMERICAN_SWING",
     "AIR_SQUAT",
+    "KETTLEBELL_SQUAT",
+    "KETTLEBELL_SWING_OVERHEAD",
+    "KETTLEBELL_SWING_WITH_FLIP_TO_SQUAT",
   ],
   DEADLIFT: [
     "ONE_ARM_ONE_LEG_DEADLIFT",
@@ -390,6 +398,9 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "ROMANIAN_DEADLIFT",
     "SINGLE_LEG_ROMANIAN_DEADLIFT_CIRCUIT",
     "STRAIGHT_LEG_DEADLIFT",
+    "KETTLEBELL_FLOOR_TO_SHELF",
+    "KETTLEBELL_DEADLIFT",
+    "KETTLEBELL_SUMO_DEADLIFT",
   ],
   LEG_CURL: [
     "LEG_CURL",
@@ -429,6 +440,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "RING_ROW",
     "BENT_OVER_ROW_WITH_DUMBELL",
     "SEATED_UNDERHAND_GRIP_CABLE_ROW",
+    "KETTLEBELL_ROW",
   ],
   PULL_UP: [
     "BANDED_PULL_UPS",
@@ -506,6 +518,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "PARTIAL_LOCKOUT",
     "REVERSE_GRIP_INCLINE_BENCH_PRESS",
     "SINGLE_ARM_CABLE_CHEST_PRESS",
+    "KETTLEBELL_CHEST_PRESS",
   ],
   SHOULDER_PRESS: [
     "ARNOLD_PRESS",
@@ -535,6 +548,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "STANDING_ZOTTMAN_BICEPS_CURL",
     "BOTTLE_CURL",
     "SEATED_BOTTLE_CURL",
+    "KETTLEBELL_BICEPS_CURL",
   ],
   TRICEPS_EXTENSION: [
     "BENCH_DIP",
@@ -563,6 +577,7 @@ export const GARMIN_EXERCISE_CATALOG: Record<string, string[]> = {
     "HUG_A_TREE",
     "FACE_DOWN_INCLINE_REVERSE_FLYE",
     "INCLINE_REVERSE_FLYE",
+    "KETTLEBELL_FLYE",
   ],
   LATERAL_RAISE: [
     "ALTERNATING_LATERAL_RAISE_WITH_STATIC_HOLD",

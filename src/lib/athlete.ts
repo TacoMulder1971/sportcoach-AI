@@ -15,6 +15,7 @@ export interface AthleteProfilePayload {
   trainingDaysPerWeek?: number;
   strengthTraining?: boolean;
   coachNotes?: string;
+  strengthEquipment?: string;
 }
 
 const SPORT_LABELS: Record<TrainingSport, string> = {
@@ -43,6 +44,7 @@ export function athleteProfilePayload(p: UserProfile): AthleteProfilePayload {
     trainingDaysPerWeek: p.trainingDaysPerWeek,
     strengthTraining: p.strengthTraining,
     coachNotes: p.coachNotes?.trim() || undefined,
+    strengthEquipment: p.strengthEquipment?.trim() || undefined,
   };
 }
 
@@ -96,6 +98,7 @@ export function buildAthleteProfileText(p?: AthleteProfilePayload | null): strin
   if (p.level) lines.push(`- Niveau: ${LEVEL_LABELS[p.level]}`);
   if (p.trainingDaysPerWeek) lines.push(`- Beschikbaar: ~${p.trainingDaysPerWeek} trainingsdagen per week`);
   if (p.coachNotes) lines.push(`- EIGEN WENSEN VAN DE ATLEET (respecteer deze altijd): "${p.coachNotes}"`);
+  if (p.strengthEquipment) lines.push(`- KRACHTMATERIAAL THUIS (plan nooit iets dat hier niet mee kan): "${p.strengthEquipment}"`);
   return `PROFIEL ATLEET:\n${lines.join('\n')}`;
 }
 

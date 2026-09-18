@@ -136,6 +136,9 @@ export async function POST(request: NextRequest) {
 
     const profileText = buildAthleteProfileText(athleteProfile ?? null);
     const catalogText = buildExerciseCatalogText();
+    // Het materiaal uit het profiel is leidend zodra het ingevuld is; anders leiden
+    // we het materiaal af uit de referentie-workout (zoals voorheen).
+    const equipment = athleteProfile?.strengthEquipment?.trim();
     const recent = (avoid ?? []).filter((n) => typeof n === 'string' && n.trim()).slice(0, 40);
 
     const sessionList = sessions
@@ -155,7 +158,9 @@ ${profileText ? `${profileText}\n\n` : ''}${sessionList}
 DOEL: variatie. De atleet doet deze sessie wekelijks en wil niet elke keer exact dezelfde oefeningen. Houd de OPZET van de referentie-workout aan (zelfde soort blokken, zelfde aantal blokken, vergelijkbare totaalduur en setopbouw), maar wissel de oefeningen af.
 
 REGELS:
-- Gebruik UITSLUITEND materiaal dat in de referentie-workout voorkomt (bijv. krachtstation-machines, elastische banden, eigen lichaamsgewicht, matje). Verzin geen halters, kettlebells of apparaten die er niet staan.
+${equipment
+      ? `- BESCHIKBAAR MATERIAAL (dit is hard — kies NOOIT een oefening die hier niet mee kan): "${equipment}". Twijfel je of een oefening met dit materiaal uitvoerbaar is, kies dan iets anders.`
+      : '- Gebruik UITSLUITEND materiaal dat in de referentie-workout voorkomt (bijv. krachtstation-machines, elastische banden, eigen lichaamsgewicht, matje). Verzin geen halters, kettlebells of apparaten die er niet staan.'}
 - Houd per blok dezelfde structuur: hetzelfde aantal sets en een vergelijkbaar aantal oefeningen. Een circuit blijft een circuit, supersets blijven supersets.
 - Behoud de trainingsprikkel: dezelfde spiergroepen en hetzelfde doel per blok als in de referentie. Varieer de OEFENING, niet de bedoeling.
 - Houd ongeveer 60-70% van de oefeningen anders dan de referentie; sleutelbewegingen die weinig alternatief hebben mogen blijven staan.

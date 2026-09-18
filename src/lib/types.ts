@@ -171,6 +171,13 @@ export interface UserProfile {
   trainingDaysPerWeek?: number;     // 2..7
   strengthTraining?: boolean;       // 40-min krachttraining inplannen (core is altijd aan)
   coachNotes?: string;              // vrije coach-wensen, gaan mee in alle AI-prompts
+  /**
+   * Welk krachtmateriaal de atleet thuis heeft (vrije tekst). Bepaalt welke
+   * oefeningen de app mag voorstellen — zonder dit weet de generatie alleen wat
+   * er toevallig in de vaste workout staat en kan ze iets kiezen dat je toestel
+   * niet kan. Leeg = geen beperking bekend.
+   */
+  strengthEquipment?: string;
   chargeDevices?: string[];         // apparaten die vóór een wedstrijd opgeladen moeten zijn; leeg = afleiden uit de wedstrijd
   onboarded?: boolean;              // onboarding doorlopen (of legacy-migratie)
 }

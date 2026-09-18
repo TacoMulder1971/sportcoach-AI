@@ -40,6 +40,7 @@ export default function ProfileCard() {
   const [level, setLevel] = useState<AthleteLevel>('gevorderd');
   const [strength, setStrength] = useState(false);
   const [notes, setNotes] = useState('');
+  const [equipment, setEquipment] = useState('');
   const [devices, setDevices] = useState('');
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -56,6 +57,7 @@ export default function ProfileCard() {
     setLevel(p.level ?? 'gevorderd');
     setStrength(p.strengthTraining ?? false);
     setNotes(p.coachNotes ?? '');
+    setEquipment(p.strengthEquipment ?? '');
     setDevices((p.chargeDevices ?? []).join(', '));
   }, []);
 
@@ -90,6 +92,7 @@ export default function ProfileCard() {
       level,
       strengthTraining: strength,
       coachNotes: notes.trim() || undefined,
+      strengthEquipment: equipment.trim() || undefined,
       chargeDevices: devices.split(',').map(d => d.trim()).filter(Boolean).slice(0, 8),
       onboarded: true,
     });
@@ -257,6 +260,21 @@ export default function ProfileCard() {
         placeholder={'bijv. "geen intervallen op maandag"'}
         className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30 resize-none"
       />
+
+      <label htmlFor="pf-equipment" className="block text-xs text-gray-500 mt-4 mb-1">
+        Krachtmateriaal thuis
+      </label>
+      <textarea
+        id="pf-equipment"
+        value={equipment}
+        onChange={(e) => { setEquipment(e.target.value); setSaved(false); }}
+        rows={3}
+        placeholder={'bijv. "krachtstation met katrollen en leg extension, 1 kettlebell, banden, matje. Geen optrekstang of losse halters."'}
+        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-white/30 resize-none"
+      />
+      <p className="text-[11px] text-gray-600 mt-1">
+        Bepaalt welke oefeningen je krachtschema mag voorstellen. Noem ook wat je <em>niet</em> hebt.
+      </p>
 
       <label htmlFor="pf-devices" className="block text-xs text-gray-500 mt-4 mb-1">
         Opladen vóór een wedstrijd
