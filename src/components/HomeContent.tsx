@@ -284,25 +284,33 @@ export default function HomeContent() {
   // staat onderaan bij "Laatste activiteit". Kracht/core telt niet mee in de
   // check (niet betrouwbaar via Garmin te meten), tenzij de dag alléén uit
   // kracht bestaat — dan pas weg bij een geregistreerde krachtactiviteit.
-  const todayTrainingDone = useMemo(() => {
-    if (!todayTraining || todayTraining.isRestDay) return false;
+  // Welke geplande sessies van vandaag zijn al uitgevoerd? Per sessie, zodat een
+  // dag met meerdere onderdelen (bijv. zwemmen + kernstabiliteit) niet in z'n
+  // geheel inklapt zodra het eerste onderdeel gedaan is.
+  const doneSessionIdxs = useMemo(() => {
+    const done = new Set<number>();
+    if (!todayTraining || todayTraining.isRestDay) return done;
     const today = amsterdamDateForOffset(0);
     const doneToday = statsActivities
       .filter((a) => a.date === today)
       .flatMap(expandMultisportActivity);
-    if (doneToday.length === 0) return false;
-    const sessions = todayTraining.sessions.filter((s) => s.sport !== 'kracht');
-    if (sessions.length === 0) {
-      return doneToday.some((a) => a.sport === 'kracht');
-    }
+    if (doneToday.length === 0) return done;
     const used = new Set<number>();
-    return sessions.every((session) => {
+    todayTraining.sessions.forEach((session, sIdx) => {
       const idx = doneToday.findIndex((a, i) => !used.has(i) && sportsMatch(session.sport, a.sport));
-      if (idx === -1) return false;
+      if (idx === -1) return;
       used.add(idx);
-      return true;
+      done.add(sIdx);
     });
+    return done;
   }, [todayTraining, statsActivities]);
+
+  // Pas als élk onderdeel gedaan is klapt de sectie in. Kracht/core telt dus mee:
+  // zonder geregistreerde krachtactiviteit blijft die sessie gewoon staan.
+  const todayTrainingDone = useMemo(() => {
+    if (!todayTraining || todayTraining.isRestDay || todayTraining.sessions.length === 0) return false;
+    return doneSessionIdxs.size === todayTraining.sessions.length;
+  }, [todayTraining, doneSessionIdxs]);
 
   const trainingLoad: TrainingLoadData | null = useMemo(() => {
     if (!garmin) return null;
@@ -663,7 +671,7 @@ export default function HomeContent() {
                 </div>
               </div>
             ) : (
-              <TodayTrainingDetail training={todayTraining} />
+              <TodayTrainingDetail training={todayTraining} doneSessions={doneSessionIdxs} />
             )
           ) : (
             /* Nog geen eigen (AI-gegenereerd) schema — geen voorbeeldschema tonen,

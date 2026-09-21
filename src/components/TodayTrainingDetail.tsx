@@ -84,7 +84,14 @@ function SegmentRow({ segment, sport, swimPaces }: { segment: SessionSegment; sp
   );
 }
 
-export default function TodayTrainingDetail({ training }: { training: TrainingDay | null }) {
+export default function TodayTrainingDetail({
+  training,
+  doneSessions,
+}: {
+  training: TrainingDay | null;
+  /** Indexen van sessies die vandaag al zijn uitgevoerd (compact afgevinkt tonen). */
+  doneSessions?: Set<number>;
+}) {
   const [breakdowns, setBreakdowns] = useState<SessionBreakdown[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -228,6 +235,25 @@ export default function TodayTrainingDetail({ training }: { training: TrainingDa
   return (
     <div className="space-y-3">
       {training.sessions.map((session, idx) => {
+        // Al uitgevoerd vandaag: compact afvinken i.p.v. het volledige plan, zodat
+        // de resterende onderdelen (bijv. kernstabiliteit) zichtbaar blijven.
+        if (doneSessions?.has(idx)) {
+          return (
+            <div key={idx} className="bg-[#0d0d0f] rounded-3xl border border-white/5 p-4 flex items-center gap-3">
+              <SportIcon sport={session.sport} size="md" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-300 truncate">{session.description}</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {SPORT_LABEL[session.sport] || session.sport}
+                  {session.durationMinutes ? ` · ${formatDuration(session.durationMinutes)}` : ''}
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-green-400 bg-green-500/10 border border-green-500/25 px-2 py-0.5 rounded-full flex-shrink-0">
+                Gedaan
+              </span>
+            </div>
+          );
+        }
         const zoneInfo = session.zone ? zonesForSport(session.sport).find((z) => z.zone === session.zone) : null;
         const isStrength = session.sport === 'kracht';
         const isBrickRun = brick?.runIndex === idx;
