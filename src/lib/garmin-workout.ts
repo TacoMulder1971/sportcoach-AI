@@ -9,7 +9,8 @@
  * Intensiteitsdoel: we sturen Garmins EIGEN hartslagzones aan via `zoneNumber`,
  * niet losse bpm-grenzen. Empirisch getest tegen /workout-service/workout: dat
  * levert in Garmin Connect "Hartslagzone 4" op i.p.v. "136-153 bpm".
- * Warming-up en cooldown krijgen bewust GEEN doel — die loop je op gevoel.
+ * Warming-up, cooldown en de herstelstap tussen intervallen krijgen bewust GEEN
+ * doel — die loop je op gevoel.
  */
 import { HeartRateZone, SessionSegment, Sport, TrainingSession } from './types';
 import type { StrengthBlock, StrengthWorkout } from './strength';
@@ -350,8 +351,17 @@ export function buildGarminWorkout(
           ),
         ];
         if (interval.rest) {
+          // Herstel zonder zonedoel: dat loop je op gevoel, net als de warming-up.
+          // De herkende zone blijft wel in de omschrijving staan.
           children.push(
-            measuredStep(order++, 'recovery', interval.rest, interval.restZone, 'Actief herstel', childStepId)
+            measuredStep(
+              order++,
+              'recovery',
+              interval.rest,
+              null,
+              interval.restZone ? `Actief herstel (Z${interval.restZone})` : 'Actief herstel',
+              childStepId
+            )
           );
         }
         steps.push({
