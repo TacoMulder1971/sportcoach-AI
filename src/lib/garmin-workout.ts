@@ -31,7 +31,12 @@ const STEP_TYPES = {
 } as const;
 
 const END_TIME = { conditionTypeId: 2, conditionTypeKey: 'time', displayOrder: 2 };
+const END_DISTANCE = { conditionTypeId: 3, conditionTypeKey: 'distance', displayOrder: 3 };
 const END_ITERATIONS = { conditionTypeId: 7, conditionTypeKey: 'iterations', displayOrder: 7 };
+
+/** Afstandseenheid bij een distance-stap; endConditionValue blijft altijd in meters. */
+const UNIT_KILOMETER = { unitId: 2, unitKey: 'kilometer', factor: 100000 };
+const UNIT_METER = { unitId: 1, unitKey: 'meter', factor: 100 };
 
 const TARGET_NONE = { workoutTargetTypeId: 1, workoutTargetTypeKey: 'no.target', displayOrder: 1 };
 const TARGET_HR_ZONE = { workoutTargetTypeId: 4, workoutTargetTypeKey: 'heart.rate.zone', displayOrder: 4 };
@@ -60,41 +65,105 @@ export function zoneNumberFor(zone?: HeartRateZone | string | null): number | nu
 
 // ─── Intervalherkenning ──────────────────────────────────────────────────────
 
+/**
+ * Eén stapmaat: op tijd óf op afstand. Garmin kent beide als eindvoorwaarde, en
+ * een intervalblok is vaak in afstand geschreven ("3× 3 km Z4") — dat willen we
+ * niet platslaan tot één lang blok.
+ */
+export type StepMeasure = { kind: 'time'; seconds: number } | { kind: 'distance'; meters: number };
+
 export interface ParsedInterval {
   reps: number;
-  workMinutes: number;
+  work: StepMeasure;
   workZone: number;
-  restMinutes: number | null;
+  rest: StepMeasure | null;
   restZone: number | null;
+}
+
+const UNIT_PATTERN = "(?:kilometer|km|minuten|minuut|min|meter|m|')";
+const AMOUNT_PATTERN = '(\\d{1,5}(?:[.,]\\d{1,2})?)';
+/** Wat er tussen de maat en de zone kan staan: "3 km op Z4", "2 min in Z1". */
+const ZONE_LEAD = '(?:in\\s+|op\\s+|naar\\s+|@\\s*)?';
+
+/** "3" + "km" → 3000 m; "2" + "min" → 120 s. Onzinnige waarden → null. */
+export function parseMeasure(amount: string, unit: string): StepMeasure | null {
+  const value = parseFloat(amount.replace(',', '.'));
+  if (!isFinite(value) || value <= 0) return null;
+  const u = unit.toLowerCase();
+  if (u === 'km' || u === 'kilometer' || u === 'm' || u === 'meter') {
+    const meters = Math.round(u.startsWith('k') ? value * 1000 : value);
+    return meters >= 100 && meters <= 60000 ? { kind: 'distance', meters } : null;
+  }
+  const seconds = Math.round(value * 60);
+  return seconds >= 30 && seconds <= 10800 ? { kind: 'time', seconds } : null;
+}
+
+/** "3 km", "800 m", "4 min" — voor de naam en de samenvatting in de UI. */
+export function describeMeasure(m: StepMeasure): string {
+  if (m.kind === 'time') {
+    return m.seconds % 60 === 0 ? `${m.seconds / 60} min` : `${m.seconds} sec`;
+  }
+  if (m.meters < 1000) return `${m.meters} m`;
+  const km = m.meters / 1000;
+  return `${(Number.isInteger(km) ? String(km) : km.toFixed(1)).replace('.', ',')} km`;
 }
 
 /**
  * Herkent een intervalblok in de tekst van een segment, bijv.
- *   "4× 2 min Z4 / 2 min Z1 herstel"  → 4x (2min Z4 + 2min Z1)
- *   "6x 3min Z4, 2min Z1 dribbelen"   → 6x (3min Z4 + 2min Z1)
- *   "5× 4 min Z5"                     → 5x 4min Z5, zonder herstelstap
+ *   "4× 2 min Z4 / 2 min Z1 herstel"        → 4x (2min Z4 + 2min Z1)
+ *   "3× 3 km op Z4 ... 3 min herstel op Z1" → 3x (3km Z4 + 3min Z1)
+ *   "6x 800 m Z5, 400 m Z1 dribbelen"       → 6x (800m Z5 + 400m Z1)
+ *   "5× 4 min Z5"                           → 5x 4min Z5, zonder herstelstap
+ * Werk en herstel mogen elk hun eigen maat hebben (afstand of tijd).
  * Zonder herkenbaar patroon: null (dan wordt het één doorlopend blok).
  */
 export function parseIntervalBlock(text: string): ParsedInterval | null {
   if (!text) return null;
-  const re =
-    /(\d{1,2})\s*[x×]\s*(\d{1,3})\s*(?:min|minuten|')\s*(?:in\s+|@\s*)?(Z[1-5])(?:[^Z]{0,40}?(\d{1,3})\s*(?:min|minuten|')\s*(?:in\s+|@\s*)?(Z[1-5]))?/i;
-  const m = re.exec(text);
+  const workRe = new RegExp(
+    `(\\d{1,2})\\s*[x×]\\s*${AMOUNT_PATTERN}\\s*(${UNIT_PATTERN})(?![a-z])\\s*(?:\\([^)]*\\))?\\s*${ZONE_LEAD}(Z[1-5])`,
+    'i'
+  );
+  const m = workRe.exec(text);
   if (!m) return null;
 
   const reps = parseInt(m[1], 10);
-  const workMinutes = parseInt(m[2], 10);
-  const workZone = zoneNumberFor(m[3]);
-  if (!reps || reps < 2 || !workMinutes || !workZone) return null;
+  const work = parseMeasure(m[2], m[3]);
+  const workZone = zoneNumberFor(m[4]);
+  if (!reps || reps < 2 || reps > 30 || !work || !workZone) return null;
 
-  const restMinutes = m[4] ? parseInt(m[4], 10) : null;
-  const restZone = m[5] ? zoneNumberFor(m[5]) : null;
-  // Een "herstel" die zwaarder is dan het werkblok is geen herstel — dan
-  // hebben we waarschijnlijk twee losse werkblokken te pakken. Laat 'm vallen.
-  if (restMinutes && restZone && restZone >= workZone) {
-    return { reps, workMinutes, workZone, restMinutes: null, restZone: null };
+  // Herstel: de eerstvolgende maat-met-zone ná het werkblok die LICHTER is. Een
+  // even zware of zwaardere zone is geen herstel maar een tweede werkblok — dan
+  // laten we het herstel weg in plaats van er iets verkeerds van te maken.
+  const tail = text.slice(m.index + m[0].length, m.index + m[0].length + 240);
+  const restRe = new RegExp(
+    `${AMOUNT_PATTERN}\\s*(${UNIT_PATTERN})(?![a-z])[^.;]{0,40}?${ZONE_LEAD}(Z[1-5])`,
+    'gi'
+  );
+  let match: RegExpExecArray | null;
+  while ((match = restRe.exec(tail)) !== null) {
+    const zone = zoneNumberFor(match[3]);
+    const measure = parseMeasure(match[1], match[2]);
+    if (!zone || !measure || zone >= workZone) continue;
+    return { reps, work, workZone, rest: measure, restZone: zone };
   }
-  return { reps, workMinutes, workZone, restMinutes, restZone };
+
+  // Herstel zonder zone ("90 sec herstel", "2 min pauze") — de stap krijgt dan
+  // geen hartslagdoel, maar de herhaling klopt wel.
+  const plainRest = new RegExp(
+    `${AMOUNT_PATTERN}\\s*(${UNIT_PATTERN}|sec|seconden|s)(?![a-z])[^.;]{0,20}?(?:herstel|rust|pauze|dribbel|wandel)`,
+    'i'
+  ).exec(tail);
+  if (plainRest) {
+    const unit = plainRest[2].toLowerCase();
+    const measure = /^s(?:ec|econden)?$/.test(unit)
+      ? { kind: 'time' as const, seconds: Math.round(parseFloat(plainRest[1].replace(',', '.'))) }
+      : parseMeasure(plainRest[1], unit);
+    if (measure && (measure.kind === 'distance' || (measure.seconds >= 20 && measure.seconds <= 1800))) {
+      return { reps, work, workZone, rest: measure, restZone: null };
+    }
+  }
+
+  return { reps, work, workZone, rest: null, restZone: null };
 }
 
 // ─── Payload-opbouw ──────────────────────────────────────────────────────────
@@ -106,9 +175,10 @@ interface StepDTO {
   stepType: { stepTypeId: number; stepTypeKey: string; displayOrder: number };
   childStepId: number | null;
   description?: string | null;
-  endCondition: typeof END_TIME | typeof END_ITERATIONS | typeof END_REPS;
+  endCondition: typeof END_TIME | typeof END_DISTANCE | typeof END_ITERATIONS | typeof END_REPS;
+  /** Seconden bij een tijd-stap, meters bij een afstand-stap, reps bij kracht. */
   endConditionValue: number;
-  preferredEndConditionUnit: null;
+  preferredEndConditionUnit: typeof UNIT_KILOMETER | typeof UNIT_METER | null;
   endConditionCompare: null;
   endConditionZone: null;
   targetType?: typeof TARGET_NONE | typeof TARGET_HR_ZONE;
@@ -125,6 +195,39 @@ interface StepDTO {
   weightUnit?: string | null;
 }
 
+function measuredStep(
+  stepOrder: number,
+  stepTypeKey: keyof typeof STEP_TYPES,
+  measure: StepMeasure,
+  zoneNumber: number | null,
+  description: string | null,
+  childStepId: number | null = null
+): StepDTO {
+  const onDistance = measure.kind === 'distance';
+  return {
+    type: 'ExecutableStepDTO',
+    stepId: null,
+    stepOrder,
+    stepType: STEP_TYPES[stepTypeKey],
+    childStepId,
+    description,
+    endCondition: onDistance ? END_DISTANCE : END_TIME,
+    endConditionValue: onDistance ? measure.meters : measure.seconds,
+    // Garmin rekent altijd in meters; de eenheid bepaalt alleen hoe hij het toont.
+    preferredEndConditionUnit: onDistance
+      ? measure.meters % 1000 === 0
+        ? UNIT_KILOMETER
+        : UNIT_METER
+      : null,
+    endConditionCompare: null,
+    endConditionZone: null,
+    targetType: zoneNumber ? TARGET_HR_ZONE : TARGET_NONE,
+    targetValueOne: null,
+    targetValueTwo: null,
+    zoneNumber: zoneNumber ?? null,
+  };
+}
+
 function executableStep(
   stepOrder: number,
   stepTypeKey: keyof typeof STEP_TYPES,
@@ -133,23 +236,14 @@ function executableStep(
   description: string | null,
   childStepId: number | null = null
 ): StepDTO {
-  return {
-    type: 'ExecutableStepDTO',
-    stepId: null,
+  return measuredStep(
     stepOrder,
-    stepType: STEP_TYPES[stepTypeKey],
-    childStepId,
+    stepTypeKey,
+    { kind: 'time', seconds: Math.round(minutes * 60) },
+    zoneNumber,
     description,
-    endCondition: END_TIME,
-    endConditionValue: Math.round(minutes * 60),
-    preferredEndConditionUnit: null,
-    endConditionCompare: null,
-    endConditionZone: null,
-    targetType: zoneNumber ? TARGET_HR_ZONE : TARGET_NONE,
-    targetValueOne: null,
-    targetValueTwo: null,
-    zoneNumber: zoneNumber ?? null,
-  };
+    childStepId
+  );
 }
 
 /** Kort houden: Garmin toont de omschrijving op een klein scherm. */
@@ -208,6 +302,9 @@ export function buildGarminWorkout(
   const mainBlocks: { minutes: number; zone: number | null }[] = [];
   let order = 1;
   let childStepId = 1;
+  // Geschatte duur: een afstand-stap heeft geen seconden, dus daar vallen we
+  // terug op de geplande minuten van het segment (die het herstel meetellen).
+  let estimatedSeconds = 0;
 
   const usable = (segments ?? []).filter((s) => (s.minutes ?? 0) > 0);
 
@@ -216,6 +313,7 @@ export function buildGarminWorkout(
     const minutes = session.durationMinutes ?? 45;
     const zone = zoneNumberFor(session.zone);
     steps.push(executableStep(order++, 'interval', minutes, zone, trimDescription(session.description)));
+    estimatedSeconds += Math.round(minutes * 60);
     summary.push(`${minutes} min${zone ? ` · Hartslagzone ${zone}` : ''}`);
   } else {
     for (const seg of usable) {
@@ -234,6 +332,7 @@ export function buildGarminWorkout(
             trimDescription(seg.detail, seg.technique)
           )
         );
+        estimatedSeconds += Math.round(seg.minutes * 60);
         summary.push(`${seg.label || (isWarmup ? 'Warming-up' : 'Cooldown')} — ${seg.minutes} min`);
         continue;
       }
@@ -241,18 +340,18 @@ export function buildGarminWorkout(
       const interval = parseIntervalBlock(`${seg.label ?? ''} ${seg.detail ?? ''}`);
       if (interval) {
         const children: StepDTO[] = [
-          executableStep(
+          measuredStep(
             order++,
             'interval',
-            interval.workMinutes,
+            interval.work,
             interval.workZone,
             trimDescription(seg.detail, seg.technique),
             childStepId
           ),
         ];
-        if (interval.restMinutes) {
+        if (interval.rest) {
           children.push(
-            executableStep(order++, 'recovery', interval.restMinutes, interval.restZone, 'Actief herstel', childStepId)
+            measuredStep(order++, 'recovery', interval.rest, interval.restZone, 'Actief herstel', childStepId)
           );
         }
         steps.push({
@@ -274,10 +373,14 @@ export function buildGarminWorkout(
           workoutSteps: children,
         });
         childStepId += 1;
-        structure ??= `${interval.reps}×${interval.workMinutes}min Z${interval.workZone}`;
+        estimatedSeconds +=
+          interval.work.kind === 'time' && (!interval.rest || interval.rest.kind === 'time')
+            ? interval.reps * (interval.work.seconds + (interval.rest?.seconds ?? 0))
+            : Math.round(seg.minutes * 60);
+        structure ??= `${interval.reps}×${describeMeasure(interval.work).replace(' ', '')} Z${interval.workZone}`;
         summary.push(
-          `${interval.reps}× ${interval.workMinutes} min Hartslagzone ${interval.workZone}` +
-            (interval.restMinutes ? ` / ${interval.restMinutes} min herstel` : '')
+          `${interval.reps}× ${describeMeasure(interval.work)} Hartslagzone ${interval.workZone}` +
+            (interval.rest ? ` / ${describeMeasure(interval.rest)} herstel` : '')
         );
         continue;
       }
@@ -287,6 +390,7 @@ export function buildGarminWorkout(
       steps.push(
         executableStep(order++, 'interval', seg.minutes, zone, trimDescription(seg.detail, seg.technique))
       );
+      estimatedSeconds += Math.round(seg.minutes * 60);
       summary.push(`${seg.label || 'Blok'} — ${seg.minutes} min${zone ? ` · Hartslagzone ${zone}` : ''}`);
     }
   }
@@ -303,13 +407,7 @@ export function buildGarminWorkout(
     }
   }
 
-  const totalSeconds = steps.reduce((sum, step) => {
-    if (step.type === 'RepeatGroupDTO') {
-      const inner = (step.workoutSteps ?? []).reduce((s, c) => s + c.endConditionValue, 0);
-      return sum + inner * (step.numberOfIterations ?? 1);
-    }
-    return sum + step.endConditionValue;
-  }, 0);
+  const totalSeconds = estimatedSeconds;
 
   return {
     payload: {
