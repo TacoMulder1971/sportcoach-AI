@@ -10,7 +10,11 @@
  * niet losse bpm-grenzen. Empirisch getest tegen /workout-service/workout: dat
  * levert in Garmin Connect "Hartslagzone 4" op i.p.v. "136-153 bpm".
  * Warming-up, cooldown en de herstelstap tussen intervallen krijgen bewust GEEN
- * doel — die loop je op gevoel.
+ * doel — die loop je op gevoel, en je hartslag zakt niet in één keer van Z4 naar Z1.
+ *
+ * Notities per stap houden we leeg of heel kort: het horloge toont ze bij elke
+ * stap en een alinea tekst lees je onderweg niet. Duur en zone toont Garmin zelf;
+ * de volledige uitleg blijft in de app.
  */
 import { HeartRateZone, SessionSegment, Sport, TrainingSession } from './types';
 import type { StrengthBlock, StrengthWorkout } from './strength';
@@ -81,12 +85,17 @@ export interface ParsedInterval {
   restZone: number | null;
 }
 
-const UNIT_PATTERN = "(?:kilometer|km|minuten|minuut|min|meter|m|')";
+const UNIT_PATTERN = "(?:kilometer|km|minuten|minuut|min|meter|m|seconden|seconde|sec|s|')";
 const AMOUNT_PATTERN = '(\\d{1,5}(?:[.,]\\d{1,2})?)';
 /** Wat er tussen de maat en de zone kan staan: "3 km op Z4", "2 min in Z1". */
 const ZONE_LEAD = '(?:in\\s+|op\\s+|naar\\s+|@\\s*)?';
+/**
+ * Losse woorden tussen werkblok en zone: "60 seconden licht versnellen naar Z3".
+ * Geen cijfers en geen zinseinde, anders plakken we een volgend blok eraan vast.
+ */
+const ZONE_FILLER = '[^.;\\d()]{0,30}?';
 
-/** "3" + "km" → 3000 m; "2" + "min" → 120 s. Onzinnige waarden → null. */
+/** "3" + "km" → 3000 m; "2" + "min" → 120 s; "60" + "sec" → 60 s. Onzinnige waarden → null. */
 export function parseMeasure(amount: string, unit: string): StepMeasure | null {
   const value = parseFloat(amount.replace(',', '.'));
   if (!isFinite(value) || value <= 0) return null;
@@ -95,8 +104,8 @@ export function parseMeasure(amount: string, unit: string): StepMeasure | null {
     const meters = Math.round(u.startsWith('k') ? value * 1000 : value);
     return meters >= 100 && meters <= 60000 ? { kind: 'distance', meters } : null;
   }
-  const seconds = Math.round(value * 60);
-  return seconds >= 30 && seconds <= 10800 ? { kind: 'time', seconds } : null;
+  const seconds = Math.round(/^s/.test(u) ? value : value * 60);
+  return seconds >= 10 && seconds <= 10800 ? { kind: 'time', seconds } : null;
 }
 
 /** "3 km", "800 m", "4 min" — voor de naam en de samenvatting in de UI. */
@@ -114,6 +123,7 @@ export function describeMeasure(m: StepMeasure): string {
  *   "4× 2 min Z4 / 2 min Z1 herstel"        → 4x (2min Z4 + 2min Z1)
  *   "3× 3 km op Z4 ... 3 min herstel op Z1" → 3x (3km Z4 + 3min Z1)
  *   "6x 800 m Z5, 400 m Z1 dribbelen"       → 6x (800m Z5 + 400m Z1)
+ *   "3× 60 sec versnellen naar Z3, 60 sec hersteldraven" → 3x (60s Z3 + 60s)
  *   "5× 4 min Z5"                           → 5x 4min Z5, zonder herstelstap
  * Werk en herstel mogen elk hun eigen maat hebben (afstand of tijd).
  * Zonder herkenbaar patroon: null (dan wordt het één doorlopend blok).
@@ -121,7 +131,7 @@ export function describeMeasure(m: StepMeasure): string {
 export function parseIntervalBlock(text: string): ParsedInterval | null {
   if (!text) return null;
   const workRe = new RegExp(
-    `(\\d{1,2})\\s*[x×]\\s*${AMOUNT_PATTERN}\\s*(${UNIT_PATTERN})(?![a-z])\\s*(?:\\([^)]*\\))?\\s*${ZONE_LEAD}(Z[1-5])`,
+    `(\\d{1,2})\\s*[x×]\\s*\\(?\\s*${AMOUNT_PATTERN}\\s*(${UNIT_PATTERN})(?![a-z])\\s*(?:\\([^)]*\\))?${ZONE_FILLER}${ZONE_LEAD}(Z[1-5])`,
     'i'
   );
   const m = workRe.exec(text);
@@ -148,17 +158,14 @@ export function parseIntervalBlock(text: string): ParsedInterval | null {
     return { reps, work, workZone, rest: measure, restZone: zone };
   }
 
-  // Herstel zonder zone ("90 sec herstel", "2 min pauze") — de stap krijgt dan
-  // geen hartslagdoel, maar de herhaling klopt wel.
+  // Herstel zonder zone ("90 sec herstel", "2 min pauze", "2min trav") — de
+  // herhaling klopt dan wel, en een doel krijgt het herstel sowieso niet.
   const plainRest = new RegExp(
-    `${AMOUNT_PATTERN}\\s*(${UNIT_PATTERN}|sec|seconden|s)(?![a-z])[^.;]{0,20}?(?:herstel|rust|pauze|dribbel|wandel)`,
+    `${AMOUNT_PATTERN}\\s*(${UNIT_PATTERN})(?![a-z])[^.;]{0,20}?(?:herstel|rust|pauze|dribbel|wandel|trav|draaf|draven|jog)`,
     'i'
   ).exec(tail);
   if (plainRest) {
-    const unit = plainRest[2].toLowerCase();
-    const measure = /^s(?:ec|econden)?$/.test(unit)
-      ? { kind: 'time' as const, seconds: Math.round(parseFloat(plainRest[1].replace(',', '.'))) }
-      : parseMeasure(plainRest[1], unit);
+    const measure = parseMeasure(plainRest[1], plainRest[2]);
     if (measure && (measure.kind === 'distance' || (measure.seconds >= 20 && measure.seconds <= 1800))) {
       return { reps, work, workZone, rest: measure, restZone: null };
     }
@@ -247,11 +254,34 @@ function executableStep(
   );
 }
 
-/** Kort houden: Garmin toont de omschrijving op een klein scherm. */
+/** Voor de omschrijving van de héle workout (Connect-app), niet voor stapnotities. */
 function trimDescription(...parts: (string | undefined | null)[]): string | null {
   const text = parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
   if (!text) return null;
   return text.length > 220 ? `${text.slice(0, 217)}...` : text;
+}
+
+/** Max. lengte van een stapnotitie: één regel die je onderweg in één blik leest. */
+const WATCH_NOTE_MAX = 30;
+
+/** Stapnotitie voor het horloge: kort, afgekapt op een woordgrens, of niets. */
+export function watchNote(text?: string | null): string | null {
+  const clean = (text ?? '').replace(/\s+/g, ' ').trim();
+  if (!clean) return null;
+  if (clean.length <= WATCH_NOTE_MAX) return clean;
+  const cut = clean.slice(0, WATCH_NOTE_MAX + 1);
+  const space = cut.lastIndexOf(' ');
+  return (space > 10 ? cut.slice(0, space) : clean.slice(0, WATCH_NOTE_MAX)).replace(/[\s,;:–—-]+$/, '');
+}
+
+/**
+ * Is dit hoofdblok eigenlijk het herstel tussen twee werkblokken? De breakdown
+ * splitst een herhaling soms in losse segmenten ("Drempelblok 1", "Herstel",
+ * "Drempelblok 2"). Alleen het label telt — de detailtekst van een werkblok
+ * noemt het herstel ook ("met 2 min herstel ertussen").
+ */
+export function isRecoverySegment(label?: string | null): boolean {
+  return /^(?:actief\s+)?(?:herstel|rust|pauze|dribbel|wandel|trav|draaf|jog)/i.test((label ?? '').trim());
 }
 
 /**
@@ -300,6 +330,8 @@ export function buildGarminWorkout(
   const summary: string[] = [];
   // Voor de naamgeving: de herkende herhaling, of anders de gelijke hoofdblokken.
   let structure: string | null = null;
+  let intervalStructure: { text: string; minutes: number } | null = null;
+  let mainMinutes = 0;
   const mainBlocks: { minutes: number; zone: number | null }[] = [];
   let order = 1;
   let childStepId = 1;
@@ -313,7 +345,7 @@ export function buildGarminWorkout(
     // Terugval: één blok van de volle duur in de hoofdzone.
     const minutes = session.durationMinutes ?? 45;
     const zone = zoneNumberFor(session.zone);
-    steps.push(executableStep(order++, 'interval', minutes, zone, trimDescription(session.description)));
+    steps.push(executableStep(order++, 'interval', minutes, zone, null));
     estimatedSeconds += Math.round(minutes * 60);
     summary.push(`${minutes} min${zone ? ` · Hartslagzone ${zone}` : ''}`);
   } else {
@@ -322,47 +354,24 @@ export function buildGarminWorkout(
       const isCooldown = seg.kind === 'cooldown';
       if (isWarmup && options.skipWarmup) continue;
 
-      // Warming-up en cooldown: alleen tijd, geen zonedoel (voorkeur gebruiker).
+      // Warming-up en cooldown: alleen tijd, geen zonedoel en geen notitie.
       if (isWarmup || isCooldown) {
-        steps.push(
-          executableStep(
-            order++,
-            isWarmup ? 'warmup' : 'cooldown',
-            seg.minutes,
-            null,
-            trimDescription(seg.detail, seg.technique)
-          )
-        );
+        steps.push(executableStep(order++, isWarmup ? 'warmup' : 'cooldown', seg.minutes, null, null));
         estimatedSeconds += Math.round(seg.minutes * 60);
         summary.push(`${seg.label || (isWarmup ? 'Warming-up' : 'Cooldown')} — ${seg.minutes} min`);
         continue;
       }
 
+      mainMinutes += seg.minutes;
       const interval = parseIntervalBlock(`${seg.label ?? ''} ${seg.detail ?? ''}`);
       if (interval) {
         const children: StepDTO[] = [
-          measuredStep(
-            order++,
-            'interval',
-            interval.work,
-            interval.workZone,
-            trimDescription(seg.detail, seg.technique),
-            childStepId
-          ),
+          measuredStep(order++, 'interval', interval.work, interval.workZone, null, childStepId),
         ];
         if (interval.rest) {
-          // Herstel zonder zonedoel: dat loop je op gevoel, net als de warming-up.
-          // De herkende zone blijft wel in de omschrijving staan.
-          children.push(
-            measuredStep(
-              order++,
-              'recovery',
-              interval.rest,
-              null,
-              interval.restZone ? `Actief herstel (Z${interval.restZone})` : 'Actief herstel',
-              childStepId
-            )
-          );
+          // Herstel zonder zonedoel en zonder zone in de notitie: dat loop je op
+          // gevoel, je hartslag zakt niet in één keer van Z4 naar Z1.
+          children.push(measuredStep(order++, 'recovery', interval.rest, null, null, childStepId));
         }
         steps.push({
           type: 'RepeatGroupDTO',
@@ -387,7 +396,10 @@ export function buildGarminWorkout(
           interval.work.kind === 'time' && (!interval.rest || interval.rest.kind === 'time')
             ? interval.reps * (interval.work.seconds + (interval.rest?.seconds ?? 0))
             : Math.round(seg.minutes * 60);
-        structure ??= `${interval.reps}×${describeMeasure(interval.work).replace(' ', '')} Z${interval.workZone}`;
+        intervalStructure ??= {
+          text: `${interval.reps}×${describeMeasure(interval.work).replace(' ', '')} Z${interval.workZone}`,
+          minutes: seg.minutes,
+        };
         summary.push(
           `${interval.reps}× ${describeMeasure(interval.work)} Hartslagzone ${interval.workZone}` +
             (interval.rest ? ` / ${describeMeasure(interval.rest)} herstel` : '')
@@ -395,17 +407,29 @@ export function buildGarminWorkout(
         continue;
       }
 
+      // Los herstelblok tussen twee werkblokken: herstelstap zonder doel.
+      if (isRecoverySegment(seg.label)) {
+        steps.push(executableStep(order++, 'recovery', seg.minutes, null, null));
+        estimatedSeconds += Math.round(seg.minutes * 60);
+        summary.push(`${seg.label} — ${seg.minutes} min`);
+        continue;
+      }
+
       const zone = zoneNumberFor(seg.zone) ?? zoneNumberFor(session.zone);
       mainBlocks.push({ minutes: seg.minutes, zone });
-      steps.push(
-        executableStep(order++, 'interval', seg.minutes, zone, trimDescription(seg.detail, seg.technique))
-      );
+      steps.push(executableStep(order++, 'interval', seg.minutes, zone, null));
       estimatedSeconds += Math.round(seg.minutes * 60);
       summary.push(`${seg.label || 'Blok'} — ${seg.minutes} min${zone ? ` · Hartslagzone ${zone}` : ''}`);
     }
   }
 
   if (steps.length === 0) return null;
+
+  // De herhaling geeft de naam alleen als ze de kern van de training is: een
+  // duurloop met "3× 60 sec versnellen" blijft "Duur 48min Z2".
+  if (intervalStructure && intervalStructure.minutes * 2 >= mainMinutes) {
+    structure = intervalStructure.text;
+  }
 
   // Twee of meer identieke hoofdblokken lezen als een herhaling: "2×12min Z4".
   // (De AI-breakdown splitst zulke blokken vaak in "Drempelblok 1" en "2".)
@@ -446,10 +470,9 @@ export function buildGarminWorkout(
 //  - een oefening met meerdere sets wordt een RepeatGroupDTO (1 ronde = alle
 //    oefeningen van het blok achter elkaar), zodat je op je horloge per set
 //    doorstapt; supersets zijn dus simpelweg één groep met beide oefeningen erin
-//  - category/exerciseName laten we bewust leeg: de Garmin-oefencatalogus-
-//    sleutels verschillen per toestel en een foute sleutel laat de API de hele
-//    workout weigeren. Zonder sleutel wordt het een generieke stap met de naam
-//    in de omschrijving — werkt altijd en leest prima op het horloge.
+//  - met een geldige garminCode krijgt de stap category/exerciseName mee en toont
+//    het horloge zelf de oefening (naam + animatie); de notitie blijft dan leeg
+//    of zegt alleen "per been". Zonder code staat de naam kort in de notitie.
 
 const SPORT_STRENGTH = { sportTypeId: 5, sportTypeKey: 'strength_training', displayOrder: 5 } as const;
 const STEP_REST = { stepTypeId: 5, stepTypeKey: 'rest', displayOrder: 5 } as const;
@@ -541,18 +564,25 @@ function roundsForBlock(block: StrengthBlock): number {
 }
 
 /**
- * Omschrijving van een oefening op het horloge. Het voorschrift ("3×12") laten
- * we weg zodra de stap het zelf al uitdrukt — behalve bij "per been/zijde", want
- * dat kan Garmin niet tonen, en als we het niet konden lezen.
+ * Notitie van een oefening op het horloge — alleen wat Garmin zelf niet toont.
+ * Met een Garmin-code toont het horloge de oefening al; dan alleen "per been".
+ * Zonder code: de naam (kort). Techniektips blijven in de app.
  */
 function exerciseDescription(
   name: string,
   prescription: string | undefined,
   note: string | undefined,
-  parsed: ParsedPrescription | null
+  parsed: ParsedPrescription | null,
+  exerciseCode?: string
 ): string | null {
-  const keepPrescription = !parsed || parsed.perSide;
-  return trimDescription(name, keepPrescription && prescription ? `— ${prescription}` : null, note);
+  // "per been" staat soms in het voorschrift ("2×10 per been"), soms in de tip.
+  const side =
+    /per\s+(?:been|zijde|kant|arm)/i.exec(`${prescription ?? ''} ${note ?? ''}`)?.[0].toLowerCase() ?? null;
+  // Onleesbaar voorschrift ("max", "tot falen"): dat kan de stap niet uitdrukken.
+  const extra = !parsed && prescription && prescription.length <= 12 ? prescription : side;
+  if (parseExerciseCode(exerciseCode)) return watchNote(extra);
+  const short = name.replace(/\s*\([^)]*\)/g, '').trim();
+  return extra ? `${watchNote(short)} · ${extra}` : watchNote(short);
 }
 
 function strengthStep(
@@ -634,13 +664,13 @@ export function buildGarminStrengthWorkout(
       exercises.forEach((ex, i) => {
         const p = parsePrescription(ex.prescription);
         steps.push(
-          strengthStep(order++, stepType, p, 30, exerciseDescription(ex.name, ex.prescription, ex.note, p), null, ex.garminCode)
+          strengthStep(order++, stepType, p, 30, exerciseDescription(ex.name, ex.prescription, ex.note, p, ex.garminCode), null, ex.garminCode)
         );
         totalSeconds += stepSeconds(p, 30);
         // Rust tussen de oefeningen van een circuit (niet na de laatste, en niet
         // in warming-up/cooldown — die loop je aaneengesloten door).
         if (stepTypeKey === 'interval' && i < exercises.length - 1 && restWithin > 0) {
-          steps.push(strengthStep(order++, STEP_REST, null, restWithin, 'Rust', null));
+          steps.push(strengthStep(order++, STEP_REST, null, restWithin, null, null));
           totalSeconds += restWithin;
         }
       });
@@ -654,12 +684,12 @@ export function buildGarminStrengthWorkout(
     exercises.forEach((ex, i) => {
       const p = parsePrescription(ex.prescription);
       children.push(
-        strengthStep(order++, STEP_TYPES.interval, p, 30, exerciseDescription(ex.name, ex.prescription, ex.note, p), childStepId, ex.garminCode)
+        strengthStep(order++, STEP_TYPES.interval, p, 30, exerciseDescription(ex.name, ex.prescription, ex.note, p, ex.garminCode), childStepId, ex.garminCode)
       );
       roundSeconds += stepSeconds(p, 30);
       const rest = i === exercises.length - 1 ? restFromBlock(block, REST_AFTER_ROUND) : restWithin;
       if (rest > 0) {
-        children.push(strengthStep(order++, STEP_REST, null, rest, 'Rust', childStepId));
+        children.push(strengthStep(order++, STEP_REST, null, rest, null, childStepId));
         roundSeconds += rest;
       }
     });
