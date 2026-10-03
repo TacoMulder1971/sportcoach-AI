@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 import { AthleteProfilePayload, buildAthleteProfileText, buildSportConstraintText, coachPersona, isMultiSportAthlete } from '@/lib/athlete';
 import { materializeBlocks, SeasonBlockSpec, SeasonWeekSlot, formatRangeNL } from '@/lib/season';
 
@@ -135,20 +136,18 @@ Schrijf een coachnotitie in het Nederlands, concreet met getallen maar KORT: max
     // Bewust 'low' effort en een krap token-budget: de hele route (Opus + Haiku)
     // moet binnen de Vercel-limiet van 60s blijven. Met 'medium' en een lange
     // notitie liep dit op tot ~67s en zou de functie in productie afgekapt worden.
-    const strategyResponse = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 2500,
+    const t0 = Date.now();
+    const strategyResponse = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.opus,
+      max_tokens: 4000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'low' },
       system: `Je bent een ervaren, data-gedreven ${persona} die seizoensplanningen (periodisering) opstelt.`,
       messages: [{ role: 'user', content: strategyPrompt }],
     });
 
-    const rationale = strategyResponse.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b.type === 'text' ? b.text : ''))
-      .join('\n')
-      .trim();
+    const rationale = extractText(strategyResponse);
+    console.log(`[season-plan] strategie klaar in ${Math.round((Date.now() - t0) / 1000)}s`);
 
     // --- TRAP 2: Haiku zet de blokindeling om naar JSON ---
     const formatPrompt = `Zet de seizoensplanning hieronder exact om naar JSON.
@@ -160,14 +159,15 @@ ${rationale}
 
 ${JSON_FORMAT_SPEC}`;
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.haiku,
       max_tokens: 3000,
       system: formatPrompt,
       messages: [{ role: 'user', content: 'Genereer het seizoensplan als JSON.' }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = extractText(response);
+    console.log(`[season-plan] klaar in ${Math.round((Date.now() - t0) / 1000)}s`);
     const parsed = parseJson(text);
     if (!parsed || !Array.isArray(parsed.blocks) || parsed.blocks.length === 0) {
       return NextResponse.json({ error: 'Kon geen geldige blokindeling maken — probeer het opnieuw.' }, { status: 422 });

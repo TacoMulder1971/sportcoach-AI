@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 import { getAmsterdamNow, relativeDayLabel, buildTimingRule, daysBetween } from '@/lib/coach-dates';
 import { AthleteProfilePayload, buildAthleteProfileText, coachPersona } from '@/lib/athlete';
 import { buildHrvCoachText, buildReadinessFactorText, remainingRecoveryHours, formatRecoveryTime } from '@/lib/training-load';
@@ -283,15 +284,17 @@ Week 2:
 
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
+    // Opus 5.5 denkt altijd na en thinking telt mee in max_tokens; 'low' houdt de
+    // chat binnen de 30s-limiet.
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.opus,
+      max_tokens: 4096,
+      output_config: { effort: 'low' },
       system: fullSystemPrompt,
       messages: messages.slice(-20),
     });
 
-    const content =
-      response.content[0].type === 'text' ? response.content[0].text : '';
+    const content = extractText(response);
 
     return NextResponse.json({ content });
   } catch (error) {

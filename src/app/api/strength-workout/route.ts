@@ -22,6 +22,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
 import { StrengthBlock, StrengthExercise, StrengthWorkout } from '@/lib/strength';
 import { GARMIN_EXERCISE_CATALOG, buildExerciseCatalogText, isKnownExerciseCode } from '@/lib/garmin-exercise-catalog';
@@ -181,13 +182,14 @@ Antwoord met UITSLUITEND geldige JSON, zonder uitleg eromheen:
 Eén workout per sessie, in dezelfde volgorde.`;
 
     const anthropic = new Anthropic({ apiKey });
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+    const response = await createClaudeMessage(anthropic, {
+      model: CLAUDE_MODELS.sonnet,
+      max_tokens: 8000,
+      output_config: { effort: 'low' },
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = extractText(response);
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
       return NextResponse.json({ error: 'Geen geldige JSON terug van het model' }, { status: 502 });

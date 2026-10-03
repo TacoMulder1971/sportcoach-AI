@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 import { TrainingWeek } from '@/lib/types';
 import { AthleteProfilePayload, buildAthleteProfileText, buildSportConstraintText } from '@/lib/athlete';
 import { SWIM_PACE_RULE } from '@/lib/swim';
@@ -170,14 +171,17 @@ Output: TrainingWeek[] (array van exact 2 weken)
 
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+    // 'low' effort: snelle aanpassing. Ruim budget — het hele 2-weekse schema komt
+    // als JSON terug, en thinking telt mee in max_tokens.
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.sonnet,
+      max_tokens: 8000,
+      output_config: { effort: 'low' },
       system: systemPrompt,
       messages: [{ role: 'user', content: 'Pas het trainingsschema aan.' }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = extractText(response);
 
     const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
     const jsonStr = jsonMatch ? jsonMatch[1] : text;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 
 export async function POST(request: NextRequest) {
   try {
@@ -105,13 +106,13 @@ Houd het bij 7-9 zinnen totaal. Geen opsommingstekens, gewone tekst.`;
 
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.haiku,
       max_tokens: 800,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const report = response.content[0].type === 'text' ? response.content[0].text : '';
+    const report = extractText(response);
 
     return NextResponse.json({ report });
   } catch (error) {

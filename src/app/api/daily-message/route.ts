@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 import { buildVerifiedFactsBlock } from '@/lib/fact-check';
 import { getAmsterdamNow, relativeDayLabel } from '@/lib/coach-dates';
 import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
@@ -270,13 +271,13 @@ Houd het bij 3-5 zinnen totaal. Niet meer.`;
 
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.haiku,
       max_tokens: 512,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const content = response.content[0].type === 'text' ? response.content[0].text : '';
+    const content = extractText(response);
 
     return NextResponse.json({ message: content });
   } catch (error) {

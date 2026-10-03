@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 import { TrainingWeek, DayPreference } from '@/lib/types';
 import { AthleteProfilePayload, buildAthleteProfileText, buildSportConstraintText, buildStrengthStrategyText, buildStrengthFormatRule, coachPersona, isMultiSportAthlete } from '@/lib/athlete';
 import { buildHrvCoachText, buildReadinessFactorText, remainingRecoveryHours, formatRecoveryTime } from '@/lib/training-load';
@@ -246,14 +247,14 @@ ${sportConstraintSoft ? `- ${sportConstraintSoft}\n` : ''}- Descriptions max 10 
 
 ${JSON_FORMAT_SPEC}`;
 
-      const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+      const response = await createClaudeMessage(client, {
+        model: CLAUDE_MODELS.haiku,
         max_tokens: 8000,
         system: refinePrompt,
         messages: [{ role: 'user', content: 'Pas het trainingsschema aan volgens de feedback.' }],
       });
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = extractText(response);
       const result = parseAndValidate(text);
 
       if (!result.valid) {
@@ -369,7 +370,7 @@ ${phaseAdvice}
 ${seasonContext ? `\n${seasonContext}\n` : ''}${goalsHistory ? `\n${goalsHistory}\n` : ''}${blockedText}${preferencesText}${previousPlanText}${performanceText}`;
 
     // --- TRAP 1: Opus denkt na over de coachstrategie (extended thinking) ---
-    const strategyPrompt = `Je bent een ervaren ${persona}. Analyseer de situatie van de atleet en bepaal de strategie voor de komende 2 trainingsweken. Schrijf GEEN schema in JSON — alleen je redenering en concrete richtlijnen.
+    const strategyPrompt = `Je bent een ervaren ${persona}. Analyseer de situatie van de atleet en bepaal de strategie voor de komende 2 trainingsweken. Schrijf GEEN schema in JSON — alleen je analyse en concrete richtlijnen.
 
 ${athleteContext}
 
@@ -392,20 +393,17 @@ ${strengthStrategy}`;
     // planning, vorige strategie en HRV-context liep trap 1 over de 60s-limiet
     // van Vercel heen (504 → niet-JSON antwoord). Zelfde keuze als /api/season-plan.
     const t0 = Date.now();
-    const strategyResponse = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 2500,
+    const strategyResponse = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.opus,
+      max_tokens: 4000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'low' },
       system: `Je bent een ervaren, data-gedreven ${persona} die trainingsschema's afstemt op recente prestaties en herstel.`,
       messages: [{ role: 'user', content: strategyPrompt }],
     });
 
-    const strategy = strategyResponse.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b.type === 'text' ? b.text : ''))
-      .join('\n')
-      .trim();
+    const strategy = extractText(strategyResponse);
+    console.log(`[generate-plan] strategie klaar in ${Math.round((Date.now() - t0) / 1000)}s`);
 
     // --- TRAP 2: Haiku zet de strategie snel om naar gevalideerde JSON ---
     const formatPrompt = `Je bent My Sport Coach AI planmaker. Zet de coachstrategie hieronder exact om naar een 2-weekse trainingsplanning als JSON.
@@ -425,8 +423,8 @@ ${sportConstraint ? `- ${sportConstraint}\n` : ''}- Descriptions max 10 woorden,
 
 ${JSON_FORMAT_SPEC}`;
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.haiku,
       // Ruim budget: met kracht hebben de meeste dagen 2 sessies, dus de JSON is
       // groter. Te krap → afgekapte JSON → "Kon geen geldig JSON vinden".
       max_tokens: 8000,
@@ -434,7 +432,7 @@ ${JSON_FORMAT_SPEC}`;
       messages: [{ role: 'user', content: 'Genereer het trainingsschema als JSON volgens de strategie.' }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = extractText(response);
     const result = parseAndValidate(text);
     console.log(`[generate-plan] klaar in ${Math.round((Date.now() - t0) / 1000)}s`);
 

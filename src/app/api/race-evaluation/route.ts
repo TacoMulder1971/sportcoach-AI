@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 
 export const maxDuration = 30; // Opus-evaluatie kan langer duren dan de standaard 10s
 
@@ -88,13 +89,15 @@ REGELS:
 
     const client = new Anthropic({ apiKey });
 
-    const response = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
+    // Laagfrequente oordeelsvorming: 'medium' effort; thinking telt mee in max_tokens.
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.opus,
+      max_tokens: 4096,
+      output_config: { effort: 'medium' },
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const evaluation = response.content[0].type === 'text' ? response.content[0].text : '';
+    const evaluation = extractText(response);
     if (!evaluation) throw new Error('Lege evaluatie');
 
     return NextResponse.json({ evaluation });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 import { AthleteProfilePayload, buildAthleteProfileText } from '@/lib/athlete';
 import { SWIM_PACE_RULE } from '@/lib/swim';
 
@@ -71,13 +72,14 @@ Antwoord met UITSLUITEND geldige JSON, exact dit formaat (de array "breakdowns" 
 }`;
 
     const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.sonnet,
+      max_tokens: 4000,
+      output_config: { effort: 'low' },
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = extractText(response);
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
     if (jsonStart === -1 || jsonEnd === -1) throw new Error('Geen JSON in antwoord');

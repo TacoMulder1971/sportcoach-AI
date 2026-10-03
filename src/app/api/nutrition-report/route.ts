@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 
-export const maxDuration = 30; // Opus-rapport kan langer duren dan de standaard 10s
+export const maxDuration = 60; // Opus 5.5 op 'medium' effort doet er 16-21s over — ruime marge t.o.v. 30s
 
 interface DayPayload {
   date: string;
@@ -82,13 +83,15 @@ STRUCTUUR VAN HET RAPPORT:
 Houd het bij 6-8 zinnen, gewone tekst.`;
 
     const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 1024,
+    // Laagfrequente oordeelsvorming: 'medium' effort; thinking telt mee in max_tokens.
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.opus,
+      max_tokens: 4096,
+      output_config: { effort: 'medium' },
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const raw = response.content[0].type === 'text' ? response.content[0].text : '';
+    const raw = extractText(response);
     // Vangnet: markdown-koppen en vetmarkering eruit, mocht het model ze toch gebruiken
     const report = raw
       .replace(/^#+\s.*$/gm, '')

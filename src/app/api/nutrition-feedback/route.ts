@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { CLAUDE_MODELS, createClaudeMessage, extractText } from '@/lib/claude';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,13 +38,13 @@ VOEDING VANDAAG:
 
     prompt += `\n${raceContext || `Nog ${daysUntilRace} dagen tot de wedstrijd.`}`;
 
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+    const response = await createClaudeMessage(client, {
+      model: CLAUDE_MODELS.haiku,
       max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const feedback = response.content[0].type === 'text' ? response.content[0].text : '';
+    const feedback = extractText(response);
     return NextResponse.json({ feedback });
   } catch (error) {
     console.error('Nutrition feedback error:', error);
